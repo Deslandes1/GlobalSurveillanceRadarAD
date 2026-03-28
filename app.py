@@ -637,15 +637,15 @@ radar_html = """
             const altVal = (ac.altitude !== null) ? ac.altitude.toFixed(0) : 'N/A';
             const rowClass = (selectedIcao === ac.icao24) ? 'selected-row' : '';
             html += `<tr class="${rowClass}" data-icao="${ac.icao24}">
-                           <td>${escapeHtml(ac.callsign)}</td>
-                           <td>${ac.type}</td>
-                           <td>${ac.lat.toFixed(4)}</td>
-                           <td>${ac.lon.toFixed(4)}</td>
-                           <td>${altVal}</td>
-                           <td>${speedVal}</td>
-                           <td>${statusLabel}</td>
-                           <td>${headingVal}</td>
-                       </tr>`;
+                            <td>${escapeHtml(ac.callsign)}<\/td>
+                            <td>${ac.type}<\/td>
+                            <td>${ac.lat.toFixed(4)}<\/td>
+                            <td>${ac.lon.toFixed(4)}<\/td>
+                            <td>${altVal}<\/td>
+                            <td>${speedVal}<\/td>
+                            <td>${statusLabel}<\/td>
+                            <td>${headingVal}<\/td>
+                        <\/tr>`;
         }
         tableBody.innerHTML = html;
         document.querySelectorAll('#aircraftTable tbody tr').forEach(row => {
@@ -791,4 +791,4 @@ Data source: OpenSky Network
 </html>
 """
 
-st.components.v1.html(radar_html, height=1100, scrolling=False)
+st.components.v1.html(radar_html, height=1400, scrolling=True)
