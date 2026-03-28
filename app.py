@@ -625,7 +625,7 @@ radar_html = """
 
     function renderTable(aircraftList) {
         if (!aircraftList.length) {
-            tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.<\/td><\/tr>';
+            tableBody.innerHTML = '车脉<td colspan="8">✈️ No flying objects detected within radar range.<\/td><\/tr>';
             return;
         }
         let html = '';
@@ -637,15 +637,15 @@ radar_html = """
             const altVal = (ac.altitude !== null) ? ac.altitude.toFixed(0) : 'N/A';
             const rowClass = (selectedIcao === ac.icao24) ? 'selected-row' : '';
             html += `<tr class="${rowClass}" data-icao="${ac.icao24}">
-                          <td>${escapeHtml(ac.callsign)}<\/td>
-                          <td>${ac.type}<\/td>
-                          <td>${ac.lat.toFixed(4)}<\/td>
-                          <td>${ac.lon.toFixed(4)}<\/td>
-                          <td>${altVal}<\/td>
-                          <td>${speedVal}<\/td>
-                          <td>${statusLabel}<\/td>
-                          <td>${headingVal}<\/td>
-                       <\/tr>`;
+                           <td>${escapeHtml(ac.callsign)}</td>
+                           <td>${ac.type}</td>
+                           <td>${ac.lat.toFixed(4)}</td>
+                           <td>${ac.lon.toFixed(4)}</td>
+                           <td>${altVal}</td>
+                           <td>${speedVal}</td>
+                           <td>${statusLabel}</td>
+                           <td>${headingVal}</td>
+                       </tr>`;
         }
         tableBody.innerHTML = html;
         document.querySelectorAll('#aircraftTable tbody tr').forEach(row => {
@@ -791,4 +791,4 @@ Data source: OpenSky Network
 </html>
 """
 
-st.components.v1.html(radar_html, height=850, scrolling=False)
+st.components.v1.html(radar_html, height=1100, scrolling=False)
