@@ -430,7 +430,7 @@ radar_html = """
     }
 
     // --------------------------------------------------------------
-    // DRAW RADAR
+    // DRAW RADAR (improved marker visibility)
     // --------------------------------------------------------------
     function drawRadar(aircraftList, radarLat, radarLon, maxRange, nowSeconds) {
         if (!radarCtx) return;
@@ -476,6 +476,7 @@ radar_html = """
         radarCtx.fillText("N", centerX-6, centerY-maxRadiusPx+12);
 
         // draw targets
+        let drawn = 0;
         for (let ac of aircraftList) {
             const dist = ac.distance;
             if (dist > maxRange) continue;
@@ -490,25 +491,29 @@ radar_html = """
             else if (ac.isDrone) color = '#ffaa44';
             else if (ac.velocity !== null && ac.velocity <= 0.5) color = '#ff5555';
             radarCtx.beginPath();
-            radarCtx.arc(x, y, 6, 0, 2*Math.PI);
+            radarCtx.arc(x, y, 8, 0, 2*Math.PI);  // larger marker
             radarCtx.fillStyle = color;
-            radarCtx.shadowBlur = 8;
-            radarCtx.shadowColor = color;
+            radarCtx.shadowBlur = 0;  // disable shadow for clarity
             radarCtx.fill();
+            radarCtx.strokeStyle = 'white';
+            radarCtx.lineWidth = 1;
+            radarCtx.stroke();
             radarCtx.fillStyle = 'white';
             radarCtx.font = "bold 10px monospace";
-            radarCtx.shadowBlur = 2;
             let label = ac.callsign ? ac.callsign.trim() : (ac.icao24 ? ac.icao24.slice(-5) : "???");
             if(label.length > 6) label = label.slice(0,6);
-            radarCtx.fillText(label, x+8, y-4);
+            radarCtx.fillText(label, x+10, y-6);
             if (selectedIcao === ac.icao24) {
                 radarCtx.beginPath();
-                radarCtx.arc(x, y, 12, 0, 2*Math.PI);
+                radarCtx.arc(x, y, 14, 0, 2*Math.PI);
                 radarCtx.strokeStyle = '#ffdd77';
                 radarCtx.lineWidth = 2.5;
                 radarCtx.stroke();
             }
+            drawn++;
         }
+        // console.log(`Drawn ${drawn} aircraft`); // uncomment to debug
+
         // sweep line
         const sweepAngle = (nowSeconds * 1.2) % 360;
         const radSweep = sweepAngle * Math.PI/180;
@@ -629,7 +634,7 @@ radar_html = """
 
     function renderTable(aircraftList) {
         if (!aircraftList.length) {
-            tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.</td></tr>';
+            tableBody.innerHTML = '车脉<td colspan="8">✈️ No flying objects detected within radar range.脉舶';
             return;
         }
         let html = '';
@@ -641,15 +646,15 @@ radar_html = """
             const altVal = (ac.altitude !== null) ? ac.altitude.toFixed(0) : 'N/A';
             const rowClass = (selectedIcao === ac.icao24) ? 'selected-row' : '';
             html += `<tr class="${rowClass}" data-icao="${ac.icao24}">
-                            <td>${escapeHtml(ac.callsign)}</td>
-                            <td>${ac.type}</td>
-                            <td>${ac.lat.toFixed(4)}</td>
-                            <td>${ac.lon.toFixed(4)}</td>
-                            <td>${altVal}</td>
-                            <td>${speedVal}</td>
-                            <td>${statusLabel}</td>
-                            <td>${headingVal}</td>
-                        </tr>`;
+                            <td>${escapeHtml(ac.callsign)}<\/td>
+                            <td>${ac.type}<\/td>
+                            <td>${ac.lat.toFixed(4)}<\/td>
+                            <td>${ac.lon.toFixed(4)}<\/td>
+                            <td>${altVal}<\/td>
+                            <td>${speedVal}<\/td>
+                            <td>${statusLabel}<\/td>
+                            <td>${headingVal}<\/td>
+                        <\/tr>`;
         }
         tableBody.innerHTML = html;
         document.querySelectorAll('#aircraftTable tbody tr').forEach(row => {
