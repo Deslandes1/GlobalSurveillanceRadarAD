@@ -32,13 +32,12 @@ st.markdown("**GlobalInternet.py – Director & Python Programmer: Gesner Deslan
 
 radar_html = """
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Radar</title>
     <style>
-        * { box-sizing: border-box; user-select: none; }
         body {
             background: #0a0f1e;
             font-family: monospace;
@@ -46,7 +45,10 @@ radar_html = """
             padding: 20px;
             color: #ccd6f6;
         }
-        .dashboard { max-width: 1000px; margin: 0 auto; }
+        .dashboard {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
         .controls-panel {
             background: #11161fcc;
             border-radius: 24px;
@@ -225,7 +227,7 @@ radar_html = """
 
 <script>
     // --------------------------------------------------------------
-    // Simple helper: distance and bearing
+    // Helper functions
     // --------------------------------------------------------------
     function haversine(lat1, lon1, lat2, lon2) {
         const R = 6371;
@@ -345,7 +347,7 @@ radar_html = """
     }
 
     // --------------------------------------------------------------
-    // Draw radar (always includes a test marker)
+    // Draw radar (with test marker)
     // --------------------------------------------------------------
     function drawRadar(aircraft, radarLat, radarLon, maxRange, timestamp) {
         if (!ctx) return;
@@ -386,7 +388,7 @@ radar_html = """
         ctx.fillStyle = '#ffffff';
         ctx.fillText("N", centerX-6, centerY-maxRadius+12);
 
-        // Test marker (orange dot at 100 km, 45°)
+        // Test marker (orange dot at 45°, 100 km) – always drawn
         const testDist = 100;
         const testBrng = 45;
         if (testDist <= maxRange) {
@@ -441,7 +443,7 @@ radar_html = """
             drawn++;
         }
 
-        // sweep line
+        // Sweep line
         const sweepAngle = (timestamp * 1.2) % 360;
         const radSweep = sweepAngle * Math.PI/180;
         ctx.beginPath();
@@ -457,7 +459,7 @@ radar_html = """
         ctx.fillStyle = '#ffaa44';
         ctx.fill();
 
-        // debug text
+        // Debug text
         ctx.font = "12px monospace";
         ctx.fillStyle = "#9effcf";
         ctx.fillText(`DRAWN: ${drawn} / ${aircraft.length}`, 15, 25);
@@ -660,4 +662,4 @@ Time: ${new Date().toLocaleString()}
 </html>
 """
 
-st.components.v1.html(radar_html, height=1200, scrolling=True)
+st.components.v1.html(radar_html, height=1100, scrolling=True)
