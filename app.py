@@ -309,6 +309,9 @@ radar_html = """
             🛸 DASHBOARD REPORT — DETECTED OBJECTS (real-time)
             <span style="font-size:0.7rem;">click any row to view detailed report</span>
         </div>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button id="downloadAllBtn" style="background:#0f7b3e; border-color:#2aff9e; box-shadow:0 0 5px #2aff9e66;">📥 Download All Data (CSV)</button>
+        </div>
         <div class="table-wrapper">
             <table id="aircraftTable">
                 <thead>
@@ -402,6 +405,7 @@ radar_html = """
     const refreshSecInput = document.getElementById('refreshSec');
     const updateRadarBtn = document.getElementById('updateRadarBtn');
     const locateMeBtn = document.getElementById('locateMeBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
 
     // --------------------------------------------------------------
     // GEOMETRY HELPERS
@@ -625,7 +629,7 @@ radar_html = """
 
     function renderTable(aircraftList) {
         if (!aircraftList.length) {
-            tableBody.innerHTML = '车脉<td colspan="8">✈️ No flying objects detected within radar range.<\/td><\/tr>';
+            tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.</td></tr>';
             return;
         }
         let html = '';
@@ -637,15 +641,15 @@ radar_html = """
             const altVal = (ac.altitude !== null) ? ac.altitude.toFixed(0) : 'N/A';
             const rowClass = (selectedIcao === ac.icao24) ? 'selected-row' : '';
             html += `<tr class="${rowClass}" data-icao="${ac.icao24}">
-                            <td>${escapeHtml(ac.callsign)}<\/td>
-                            <td>${ac.type}<\/td>
-                            <td>${ac.lat.toFixed(4)}<\/td>
-                            <td>${ac.lon.toFixed(4)}<\/td>
-                            <td>${altVal}<\/td>
-                            <td>${speedVal}<\/td>
-                            <td>${statusLabel}<\/td>
-                            <td>${headingVal}<\/td>
-                        <\/tr>`;
+                            <td>${escapeHtml(ac.callsign)}</td>
+                            <td>${ac.type}</td>
+                            <td>${ac.lat.toFixed(4)}</td>
+                            <td>${ac.lon.toFixed(4)}</td>
+                            <td>${altVal}</td>
+                            <td>${speedVal}</td>
+                            <td>${statusLabel}</td>
+                            <td>${headingVal}</td>
+                        </tr>`;
         }
         tableBody.innerHTML = html;
         document.querySelectorAll('#aircraftTable tbody tr').forEach(row => {
@@ -723,6 +727,34 @@ Data source: OpenSky Network
         });
     }
 
+    // Download all aircraft as CSV
+    function downloadAllCSV() {
+        if (!currentAircraft.length) {
+            alert("No data to download.");
+            return;
+        }
+        const headers = ["Callsign", "Type", "Latitude", "Longitude", "Altitude (m)", "Speed (m/s)", "Status", "Heading", "Distance (km)"];
+        const rows = currentAircraft.map(ac => [
+            ac.callsign,
+            ac.type,
+            ac.lat.toFixed(5),
+            ac.lon.toFixed(5),
+            ac.altitude !== null ? ac.altitude.toFixed(1) : "N/A",
+            ac.velocity !== null ? ac.velocity.toFixed(1) : "?",
+            (ac.velocity !== null && ac.velocity > 0.5) ? "MOVING" : "STATIC",
+            ac.heading !== null ? ac.heading.toFixed(0)+"°" : "---",
+            ac.distance.toFixed(0)
+        ]);
+        const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], {type: "text/csv"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `radar_data_${new Date().toISOString().slice(0,19).replace(/:/g, "-")}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
     // --------------------------------------------------------------
@@ -769,6 +801,7 @@ Data source: OpenSky Network
         rangeKmDisplay.innerText = maxRangeKm;
         refreshRadarData();
     });
+    downloadAllBtn.addEventListener('click', downloadAllCSV);
     window.addEventListener('resize', () => {
         setTimeout(() => {
             const container = document.querySelector('.radar-container');
@@ -791,4 +824,4 @@ Data source: OpenSky Network
 </html>
 """
 
-st.components.v1.html(radar_html, height=1400, scrolling=True)
+st.components.v1.html(radar_html, height=1500, scrolling=True)
