@@ -430,13 +430,18 @@ radar_html = """
     }
 
     // --------------------------------------------------------------
-    // DRAW RADAR (with debug counter)
+    // DRAW RADAR (with test marker and console log)
     // --------------------------------------------------------------
     function drawRadar(aircraftList, radarLat, radarLon, maxRange, nowSeconds) {
-        if (!radarCtx) return;
+        if (!radarCtx) {
+            console.error("No radarCtx");
+            return;
+        }
         const w = canvasSize, h = canvasSize;
         const centerX = w/2, centerY = h/2;
         const maxRadiusPx = w/2 - 25;
+
+        console.log("drawRadar called", aircraftList.length, maxRange, nowSeconds);
 
         radarCtx.clearRect(0, 0, w, h);
         radarCtx.beginPath();
@@ -475,8 +480,29 @@ radar_html = """
         radarCtx.font = "bold 12px monospace";
         radarCtx.fillText("N", centerX-6, centerY-maxRadiusPx+12);
 
-        // draw targets
+        // draw targets (including test marker)
         let drawn = 0;
+        // Add a test marker at 45°, 100 km if within range
+        const testDist = 100;
+        const testBearing = 45;
+        if (testDist <= maxRange) {
+            const angleRad = testBearing * Math.PI/180;
+            const radiusPx = (testDist / maxRange) * maxRadiusPx;
+            const x = centerX + radiusPx * Math.sin(angleRad);
+            const y = centerY - radiusPx * Math.cos(angleRad);
+            radarCtx.beginPath();
+            radarCtx.arc(x, y, 10, 0, 2*Math.PI);
+            radarCtx.fillStyle = '#ffaa44';
+            radarCtx.fill();
+            radarCtx.strokeStyle = 'white';
+            radarCtx.lineWidth = 1.5;
+            radarCtx.stroke();
+            radarCtx.fillStyle = 'white';
+            radarCtx.font = "bold 10px monospace";
+            radarCtx.fillText("TEST", x+12, y-8);
+            drawn++;
+        }
+
         for (let ac of aircraftList) {
             const dist = ac.distance;
             if (dist > maxRange) continue;
@@ -485,15 +511,13 @@ radar_html = """
             const radiusPx = (dist / maxRange) * maxRadiusPx;
             const x = centerX + radiusPx * Math.sin(angleRad);
             const y = centerY - radiusPx * Math.cos(angleRad);
-            // colour based on classification & movement
-            let color = '#2eff9e'; // civilian moving default
+            let color = '#2eff9e';
             if (ac.isMilitary) color = '#ff4444';
             else if (ac.isDrone) color = '#ffaa44';
             else if (ac.velocity !== null && ac.velocity <= 0.5) color = '#ff5555';
             radarCtx.beginPath();
-            radarCtx.arc(x, y, 10, 0, 2*Math.PI);  // even larger marker
+            radarCtx.arc(x, y, 10, 0, 2*Math.PI);
             radarCtx.fillStyle = color;
-            radarCtx.shadowBlur = 0;
             radarCtx.fill();
             radarCtx.strokeStyle = 'white';
             radarCtx.lineWidth = 1.5;
@@ -513,17 +537,13 @@ radar_html = """
             drawn++;
         }
 
-        // Debug text: show how many aircraft were drawn
+        // Debug text
         radarCtx.font = "12px monospace";
         radarCtx.fillStyle = "#9effcf";
-        radarCtx.shadowBlur = 0;
-        radarCtx.fillText(`✈️ DRAWN: ${drawn} / ${aircraftList.length}`, 15, 25);
-        if (aircraftList.length === 0) {
+        radarCtx.fillText(`✈️ DRAWN: ${drawn} / ${aircraftList.length + (testDist<=maxRange?1:0)}`, 15, 25);
+        if (aircraftList.length === 0 && testDist > maxRange) {
             radarCtx.fillStyle = "#ffaa44";
             radarCtx.fillText("No aircraft in range", 15, 45);
-        } else if (drawn === 0 && aircraftList.length > 0) {
-            radarCtx.fillStyle = "#ffaa44";
-            radarCtx.fillText("WARNING: 0 drawn but data exists", 15, 45);
         }
 
         // sweep line
@@ -550,6 +570,8 @@ radar_html = """
             const lon = parseFloat(radarLonInput.value);
             const range = parseFloat(maxRangeInput.value);
             drawRadar(currentAircraft, lat, lon, range, now);
+        } else {
+            console.log("animate: no radarCtx");
         }
         animationFrameId = requestAnimationFrame(animate);
     }
@@ -785,6 +807,7 @@ Data source: OpenSky Network
         canvasSize = size;
         radarCtx = radarCanvas.getContext('2d');
         radarCtx.shadowBlur = 0;
+        console.log("Canvas initialized", radarCtx);
         refreshRadarData();
     }
 
