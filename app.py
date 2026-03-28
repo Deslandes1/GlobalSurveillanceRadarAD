@@ -430,7 +430,7 @@ radar_html = """
     }
 
     // --------------------------------------------------------------
-    // DRAW RADAR (improved marker visibility)
+    // DRAW RADAR (with debug counter)
     // --------------------------------------------------------------
     function drawRadar(aircraftList, radarLat, radarLon, maxRange, nowSeconds) {
         if (!radarCtx) return;
@@ -491,18 +491,18 @@ radar_html = """
             else if (ac.isDrone) color = '#ffaa44';
             else if (ac.velocity !== null && ac.velocity <= 0.5) color = '#ff5555';
             radarCtx.beginPath();
-            radarCtx.arc(x, y, 8, 0, 2*Math.PI);  // larger marker
+            radarCtx.arc(x, y, 10, 0, 2*Math.PI);  // even larger marker
             radarCtx.fillStyle = color;
-            radarCtx.shadowBlur = 0;  // disable shadow for clarity
+            radarCtx.shadowBlur = 0;
             radarCtx.fill();
             radarCtx.strokeStyle = 'white';
-            radarCtx.lineWidth = 1;
+            radarCtx.lineWidth = 1.5;
             radarCtx.stroke();
             radarCtx.fillStyle = 'white';
             radarCtx.font = "bold 10px monospace";
             let label = ac.callsign ? ac.callsign.trim() : (ac.icao24 ? ac.icao24.slice(-5) : "???");
             if(label.length > 6) label = label.slice(0,6);
-            radarCtx.fillText(label, x+10, y-6);
+            radarCtx.fillText(label, x+12, y-8);
             if (selectedIcao === ac.icao24) {
                 radarCtx.beginPath();
                 radarCtx.arc(x, y, 14, 0, 2*Math.PI);
@@ -512,7 +512,19 @@ radar_html = """
             }
             drawn++;
         }
-        // console.log(`Drawn ${drawn} aircraft`); // uncomment to debug
+
+        // Debug text: show how many aircraft were drawn
+        radarCtx.font = "12px monospace";
+        radarCtx.fillStyle = "#9effcf";
+        radarCtx.shadowBlur = 0;
+        radarCtx.fillText(`✈️ DRAWN: ${drawn} / ${aircraftList.length}`, 15, 25);
+        if (aircraftList.length === 0) {
+            radarCtx.fillStyle = "#ffaa44";
+            radarCtx.fillText("No aircraft in range", 15, 45);
+        } else if (drawn === 0 && aircraftList.length > 0) {
+            radarCtx.fillStyle = "#ffaa44";
+            radarCtx.fillText("WARNING: 0 drawn but data exists", 15, 45);
+        }
 
         // sweep line
         const sweepAngle = (nowSeconds * 1.2) % 360;
