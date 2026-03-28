@@ -38,7 +38,11 @@ radar_html = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Global Surveillance Radar – ADS-B</title>
     <style>
-        * { box-sizing: border-box; user-select: none; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
         body {
             background: #0a0f1e;
             font-family: 'Segoe UI', 'Roboto', monospace;
@@ -46,7 +50,12 @@ radar_html = """
             padding: 20px;
             color: #ccd6f6;
         }
-        .dashboard { max-width: 1400px; margin: 0 auto; }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
         h1 {
             font-size: 1.7rem;
             margin: 0 0 5px 0;
@@ -57,6 +66,7 @@ radar_html = """
             color: transparent;
             display: inline-block;
         }
+
         .sub {
             color: #8e9aaf;
             font-size: 0.8rem;
@@ -64,6 +74,7 @@ radar_html = """
             border-left: 3px solid #2aff9e;
             padding-left: 12px;
         }
+
         .owner {
             font-size: 0.8rem;
             margin-top: 5px;
@@ -72,6 +83,7 @@ radar_html = """
             align-items: center;
             gap: 6px;
         }
+
         .controls-panel {
             background: #11161fcc;
             backdrop-filter: blur(8px);
@@ -85,11 +97,13 @@ radar_html = """
             border: 1px solid #2a3a5a;
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
+
         .input-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
+
         .input-group label {
             font-size: 0.7rem;
             font-weight: bold;
@@ -97,6 +111,7 @@ radar_html = """
             letter-spacing: 1px;
             color: #8aa2d4;
         }
+
         input, button {
             background: #0b1018;
             border: 1px solid #2c3f5f;
@@ -107,24 +122,29 @@ radar_html = """
             font-weight: bold;
             transition: 0.2s;
         }
+
         input:focus {
             outline: none;
             border-color: #2aff9e;
             box-shadow: 0 0 8px #2aff9e66;
         }
+
         button {
             background: #1e2a3a;
             cursor: pointer;
         }
+
         button.primary {
             background: #0f7b3e;
             border-color: #2aff9e;
             box-shadow: 0 0 5px #2aff9e66;
         }
+
         button.primary:hover {
             background: #19a854;
             transform: scale(0.97);
         }
+
         .radar-container {
             background: #03060c;
             border-radius: 32px;
@@ -133,6 +153,7 @@ radar_html = """
             border: 1px solid #1e3a5f;
             margin-bottom: 20px;
         }
+
         canvas {
             display: block;
             margin: 0 auto;
@@ -143,6 +164,7 @@ radar_html = """
             height: auto;
             cursor: crosshair;
         }
+
         .radar-stats {
             display: flex;
             justify-content: space-between;
@@ -152,18 +174,21 @@ radar_html = """
             flex-wrap: wrap;
             gap: 10px;
         }
+
         .badge {
             background: #0f172a;
             padding: 5px 12px;
             border-radius: 40px;
             border-left: 3px solid #2aff9e;
         }
+
         .report-section {
             background: #0c1220;
             border-radius: 24px;
             padding: 20px;
             border: 1px solid #233453;
         }
+
         .section-title {
             font-size: 1.2rem;
             margin-bottom: 15px;
@@ -173,33 +198,40 @@ radar_html = """
             border-bottom: 1px solid #2a3f60;
             padding-bottom: 8px;
         }
+
         .table-wrapper {
             overflow-x: auto;
             border-radius: 20px;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.8rem;
         }
+
         th, td {
             padding: 10px 8px;
             text-align: left;
             border-bottom: 1px solid #1f2c44;
         }
+
         th {
             background: #07101f;
             color: #9effcf;
             font-weight: 600;
         }
+
         tr:hover {
             background: #101a2c;
             cursor: pointer;
         }
+
         .selected-row {
             background: #1a3a4e !important;
             border-left: 3px solid #2aff9e;
         }
+
         .report-card {
             background: #030812;
             border-radius: 20px;
@@ -208,16 +240,19 @@ radar_html = """
             border: 1px solid #2a4a6a;
             font-family: monospace;
         }
+
         .report-card h3 {
             margin: 0 0 8px 0;
             color: #6effb0;
         }
+
         footer {
             text-align: center;
             margin-top: 25px;
             font-size: 0.7rem;
             opacity: 0.6;
         }
+
         @media (max-width: 700px) {
             body { padding: 12px; }
             th, td { font-size: 0.7rem; padding: 6px 4px; }
@@ -249,11 +284,11 @@ radar_html = """
         </div>
         <div class="input-group">
             <label>📡 MAX RANGE (km)</label>
-            <input type="number" id="maxRange" value="120" step="10" min="30" max="2000">
+            <input type="number" id="maxRange" value="500" step="50" min="30" max="2000">
         </div>
         <div class="input-group">
             <label>⏱️ REFRESH (sec)</label>
-            <input type="number" id="refreshSec" value="60" step="1" min="3" max="60">
+            <input type="number" id="refreshSec" value="60" step="5" min="10" max="120">
         </div>
         <button class="primary" id="updateRadarBtn">🔄 UPDATE RADAR</button>
         <button id="locateMeBtn" style="background:#2a4359;">📍 MY LOCATION</button>
@@ -263,9 +298,9 @@ radar_html = """
         <canvas id="radarCanvas" width="700" height="700" style="width:100%; max-width:700px; height:auto; aspect-ratio:1/1"></canvas>
         <div class="radar-stats">
             <span>🎯 TARGETS: <strong id="targetCount">0</strong></span>
-            <span>🟢 MOVING | 🔴 STATIC (speed < 0.5 m/s)</span>
+            <span>🟢 MOVING | 🔴 STATIC | 🔫 MILITARY | 🚁 DRONE</span>
             <span>📡 LAST UPDATE: <span id="lastUpdate">--</span></span>
-            <span>📐 RANGE: <span id="rangeKmDisplay">120</span> km</span>
+            <span>📐 RANGE: <span id="rangeKmDisplay">500</span> km</span>
         </div>
     </div>
 
@@ -277,22 +312,70 @@ radar_html = """
         <div class="table-wrapper">
             <table id="aircraftTable">
                 <thead>
-                    <tr><th>CALLSIGN / ID</th><th>LATITUDE</th><th>LONGITUDE</th><th>ALT (m)</th><th>SPEED (m/s)</th><th>STATUS</th><th>HEADING</th>觼
+                    <tr><th>CALLSIGN / ID</th><th>TYPE</th><th>LATITUDE</th><th>LONGITUDE</th><th>ALT (m)</th><th>SPEED (m/s)</th><th>STATUS</th><th>HEADING</th>觼
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="7">🔄 loading live radar data...<\/td>觼
+                    <tr><td colspan="8">🔄 loading live radar data...<\/td>觼
                 </tbody>
             表
         </div>
         <div id="detailedReport" class="report-card">
             <h3>📋 SPECIFIC OBJECT REPORT</h3>
             <div id="reportContent">Select any flying object from the list above to generate detailed intelligence report.</div>
+            <div id="downloadButtonContainer" style="margin-top: 15px;"></div>
         </div>
     </div>
-    <footer>⚠️ Real ADS-B data via OpenSky Network. Coverage depends on ground stations. Drones with ADS-B transponders appear. Static = velocity < 0.5 m/s.</footer>
+    <footer>⚠️ Real ADS-B data via OpenSky Network. Military detection based on ICAO hex ranges & callsigns. Drone detection includes heuristics (low alt/speed).</footer>
 </div>
 
 <script>
+    // --------------------------------------------------------------
+    // CONSTANTS & CLASSIFICATION
+    // --------------------------------------------------------------
+    const MILITARY_ICAO_PREFIXES = [
+        "AE","AD","AF","3C","3E","33","34","38","39","40","43","44","45","46","48",
+        "4B","4C","4D","4E","4F","50","51","52","53","54","55","56","57","58","59",
+        "5A","5B","5C","5D","5E","5F","60","61","62","63","64","65","66","67","68",
+        "69","6A","6B","6C","6D","6E","6F","70","71","72","73","74","75","76","77",
+        "78","79","7A","7B","7C","7D","7E","7F","80","81","82","83","84","85","86",
+        "87","88","89","8A","8B","8C","8D","8E","8F","90","91","92","93","94","95",
+        "96","97","98","99","9A","9B","9C","9D","9E","9F","A0","A1","A2","A3","A4",
+        "A5","A6","A7","A8","A9","AA","AB","AC"
+    ];
+    const DRONE_ICAO_PREFIXES = [
+        "4CAA","4CAB","4CAC","4CAD","4CAE","4CAF","4CB0","4CB1","4CB2","4CB3","4CB4",
+        "4CB5","4CB6","4CB7","4CB8","4CB9","4CBA","4CBB","4CBC","4CBD","4CBE","4CBF"
+    ];
+
+    function classifyAircraft(icao24, callsign, velocity, altitude) {
+        let isMilitary = false;
+        let isDrone = false;
+        const icaoUpper = (icao24 || "").toUpperCase();
+        const callsignUpper = (callsign || "").toUpperCase();
+
+        for (let prefix of MILITARY_ICAO_PREFIXES) {
+            if (icaoUpper.startsWith(prefix)) { isMilitary = true; break; }
+        }
+        const milKeywords = ["AF","NAVY","ARMY","AIR FORCE","MIL","RAAF","RAF","LUFT","ARMEE"];
+        if (milKeywords.some(kw => callsignUpper.includes(kw))) isMilitary = true;
+
+        for (let prefix of DRONE_ICAO_PREFIXES) {
+            if (icaoUpper.startsWith(prefix)) { isDrone = true; break; }
+        }
+        const droneKeywords = ["DRONE","UAV","DRON","QUAD","HEXA","OCTO"];
+        if (droneKeywords.some(kw => callsignUpper.includes(kw))) isDrone = true;
+
+        if (!isDrone && !isMilitary && altitude !== null && altitude < 500 && velocity !== null && velocity < 30) {
+            isDrone = true;
+        }
+
+        let typeStr = "✈️ Civilian";
+        if (isMilitary) typeStr = "🔫 Military";
+        else if (isDrone) typeStr = "🚁 Drone";
+
+        return { isMilitary, isDrone, type: typeStr };
+    }
+
     // --------------------------------------------------------------
     // GLOBALS
     // --------------------------------------------------------------
@@ -302,7 +385,7 @@ radar_html = """
     let selectedIcao = null;
     let refreshTimer = null;
     let radarCenter = { lat: 40.7128, lon: -74.0060 };
-    let maxRangeKm = 120;
+    let maxRangeKm = 500;
     let refreshIntervalSec = 60;
     let animationFrameId = null;
 
@@ -311,6 +394,7 @@ radar_html = """
     const lastUpdateSpan = document.getElementById('lastUpdate');
     const tableBody = document.getElementById('tableBody');
     const reportDiv = document.getElementById('reportContent');
+    const downloadContainer = document.getElementById('downloadButtonContainer');
     const rangeKmDisplay = document.getElementById('rangeKmDisplay');
     const radarLatInput = document.getElementById('radarLat');
     const radarLonInput = document.getElementById('radarLon');
@@ -319,7 +403,9 @@ radar_html = """
     const updateRadarBtn = document.getElementById('updateRadarBtn');
     const locateMeBtn = document.getElementById('locateMeBtn');
 
-    // Haversine
+    // --------------------------------------------------------------
+    // GEOMETRY HELPERS
+    // --------------------------------------------------------------
     function haversineDistance(lat1, lon1, lat2, lon2) {
         const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -339,7 +425,9 @@ radar_html = """
         return (θ * 180/Math.PI + 360) % 360;
     }
 
+    // --------------------------------------------------------------
     // DRAW RADAR
+    // --------------------------------------------------------------
     function drawRadar(aircraftList, radarLat, radarLon, maxRange, nowSeconds) {
         if (!radarCtx) return;
         const w = canvasSize, h = canvasSize;
@@ -369,6 +457,7 @@ radar_html = """
             radarCtx.fillText(rangeVal+"km", centerX + radius + 3, centerY - 3);
         }
         radarCtx.setLineDash([]);
+
         // crosshair & north
         radarCtx.beginPath();
         radarCtx.moveTo(centerX, centerY-12);
@@ -391,13 +480,16 @@ radar_html = """
             const radiusPx = (dist / maxRange) * maxRadiusPx;
             const x = centerX + radiusPx * Math.sin(angleRad);
             const y = centerY - radiusPx * Math.cos(angleRad);
-            const isMoving = (ac.velocity !== null && ac.velocity > 0.5);
-            const color = isMoving ? '#2eff9e' : '#ff5555';
+            // colour based on classification & movement
+            let color = '#2eff9e'; // civilian moving default
+            if (ac.isMilitary) color = '#ff4444';
+            else if (ac.isDrone) color = '#ffaa44';
+            else if (ac.velocity !== null && ac.velocity <= 0.5) color = '#ff5555';
             radarCtx.beginPath();
             radarCtx.arc(x, y, 6, 0, 2*Math.PI);
             radarCtx.fillStyle = color;
             radarCtx.shadowBlur = 8;
-            radarCtx.shadowColor = isMoving ? '#2eff9e' : '#ff7777';
+            radarCtx.shadowColor = color;
             radarCtx.fill();
             radarCtx.fillStyle = 'white';
             radarCtx.font = "bold 10px monospace";
@@ -441,7 +533,9 @@ radar_html = """
         animationFrameId = requestAnimationFrame(animate);
     }
 
-    // Fetch live data from OpenSky (CORS enabled)
+    // --------------------------------------------------------------
+    // FETCH DATA FROM OPENSKY
+    // --------------------------------------------------------------
     async function fetchLiveAircraft() {
         const lat = parseFloat(radarLatInput.value);
         const lon = parseFloat(radarLonInput.value);
@@ -470,18 +564,22 @@ radar_html = """
                 const dist = haversineDistance(lat, lon, latVal, lonVal);
                 if (dist > maxRange) continue;
                 const brng = bearing(lat, lon, latVal, lonVal);
+                const classification = classifyAircraft(icao24, callsign, velocity, alt);
                 aircraft.push({
                     icao24: icao24,
                     callsign: callsign || `FLT${icao24.slice(-4)}`,
                     lat: latVal,
                     lon: lonVal,
-                    geoAltitude: alt,
+                    altitude: alt,
                     velocity: velocity,
                     heading: heading,
                     onGround: s[8],
                     verticalRate: s[11],
                     distance: dist,
-                    bearing: brng
+                    bearing: brng,
+                    isMilitary: classification.isMilitary,
+                    isDrone: classification.isDrone,
+                    type: classification.type
                 });
             }
             // remove duplicates
@@ -501,6 +599,9 @@ radar_html = """
         }
     }
 
+    // --------------------------------------------------------------
+    // UPDATE UI
+    // --------------------------------------------------------------
     async function refreshRadarData() {
         const aircraftData = await fetchLiveAircraft();
         if (!aircraftData) {
@@ -524,7 +625,7 @@ radar_html = """
 
     function renderTable(aircraftList) {
         if (!aircraftList.length) {
-            tableBody.innerHTML = '车脉<td colspan="7">✈️ No flying objects detected within radar range.脉舶';
+            tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.<\/td><\/tr>';
             return;
         }
         let html = '';
@@ -533,17 +634,17 @@ radar_html = """
             const statusLabel = isMoving ? '🟢 MOVING' : '🔴 STATIC';
             const speedVal = (ac.velocity !== null) ? ac.velocity.toFixed(1) : '?';
             const headingVal = (ac.heading !== null) ? ac.heading.toFixed(0)+'°' : '---';
-            const callsignDisplay = ac.callsign ? ac.callsign : (ac.icao24 ? ac.icao24.slice(0,8) : 'UNKNOWN');
-            const altVal = (ac.geoAltitude !== null) ? ac.geoAltitude.toFixed(0) : 'N/A';
+            const altVal = (ac.altitude !== null) ? ac.altitude.toFixed(0) : 'N/A';
             const rowClass = (selectedIcao === ac.icao24) ? 'selected-row' : '';
             html += `<tr class="${rowClass}" data-icao="${ac.icao24}">
-                         <td>${escapeHtml(callsignDisplay)}<\/td>
-                         <td>${ac.lat.toFixed(4)}<\/td>
-                         <td>${ac.lon.toFixed(4)}<\/td>
-                         <td>${altVal}<\/td>
-                         <td>${speedVal}<\/td>
-                         <td>${statusLabel}<\/td>
-                         <td>${headingVal}<\/td>
+                          <td>${escapeHtml(ac.callsign)}<\/td>
+                          <td>${ac.type}<\/td>
+                          <td>${ac.lat.toFixed(4)}<\/td>
+                          <td>${ac.lon.toFixed(4)}<\/td>
+                          <td>${altVal}<\/td>
+                          <td>${speedVal}<\/td>
+                          <td>${statusLabel}<\/td>
+                          <td>${headingVal}<\/td>
                        <\/tr>`;
         }
         tableBody.innerHTML = html;
@@ -554,7 +655,6 @@ radar_html = """
                 if (aircraft) {
                     selectedIcao = icao;
                     generateDetailedReport(aircraft);
-                    // reapply selected class
                     document.querySelectorAll('#aircraftTable tbody tr').forEach(r => r.classList.remove('selected-row'));
                     row.classList.add('selected-row');
                 }
@@ -565,14 +665,14 @@ radar_html = """
     function generateDetailedReport(ac) {
         const isMoving = (ac.velocity !== null && ac.velocity > 0.5);
         let speedText = ac.velocity !== null ? `${ac.velocity.toFixed(2)} m/s (${(ac.velocity*3.6).toFixed(1)} km/h)` : 'unknown';
-        let altText = ac.geoAltitude !== null ? `${ac.geoAltitude.toFixed(1)} meters (${(ac.geoAltitude*3.28084).toFixed(0)} ft)` : 'not reported';
+        let altText = ac.altitude !== null ? `${ac.altitude.toFixed(1)} meters (${(ac.altitude*3.28084).toFixed(0)} ft)` : 'not reported';
         let headingText = ac.heading !== null ? `${ac.heading.toFixed(1)}° (true)` : 'unknown';
         let verticalRate = ac.verticalRate !== null ? `${ac.verticalRate.toFixed(1)} m/s` : 'N/A';
         let onGround = ac.onGround ? 'YES (on ground)' : 'AIRBORNE';
         let callsignNice = ac.callsign ? ac.callsign : 'no callsign';
         let icao = ac.icao24;
         let lastSeen = new Date().toLocaleTimeString();
-        
+
         reportDiv.innerHTML = `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <div><strong>✈️ OBJECT:</strong> ${escapeHtml(callsignNice)}</div>
@@ -584,16 +684,50 @@ radar_html = """
                 <div><strong>📈 VERTICAL RATE:</strong> ${verticalRate}</div>
                 <div><strong>⚡ STATUS:</strong> ${isMoving ? '🟢 MOVING' : '🔴 STATIC (low velocity)'}</div>
                 <div><strong>🛬 ON GROUND:</strong> ${onGround}</div>
-                <div><strong>🕒 LAST RADAR CONTACT:</strong> ${lastSeen}</div>
                 <div><strong>📡 RADAR RANGE:</strong> ${maxRangeKm} km from center</div>
+                <div><strong>🛡️ CLASSIFICATION:</strong> ${ac.type}</div>
             </div>
             <hr style="border-color:#2a4f6e; margin-top:12px;">
-            <div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network. This report corresponds to real-world transponder emissions.</div>
+            <div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network. Military detection based on ICAO hex ranges & callsigns. Drone detection includes manufacturer ICAO prefixes and heuristic low‑altitude/speed behaviour.</div>
         `;
+
+        // Download button
+        const reportText = `
+SURVEILLANCE REPORT
+===================
+Object: ${callsignNice}
+ICAO24: ${icao}
+Type: ${ac.type}
+Latitude: ${ac.lat.toFixed(5)}
+Longitude: ${ac.lon.toFixed(5)}
+Distance from radar: ${ac.distance.toFixed(0)} km
+Altitude: ${altText}
+Speed: ${speedText}
+Heading: ${headingText}
+Vertical Rate: ${verticalRate}
+On Ground: ${onGround}
+Time of report: ${new Date().toLocaleString()}
+Data source: OpenSky Network
+`;
+        downloadContainer.innerHTML = `
+            <button id="downloadReportBtn" style="background:#0f7b3e; border-color:#2aff9e; box-shadow:0 0 5px #2aff9e66;">📥 Download Report (TXT)</button>
+        `;
+        document.getElementById('downloadReportBtn').addEventListener('click', () => {
+            const blob = new Blob([reportText], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${callsignNice}_report.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     }
 
     function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
+    // --------------------------------------------------------------
+    // INITIALISATION & CONTROLS
+    // --------------------------------------------------------------
     function initRadarCanvas() {
         const container = document.querySelector('.radar-container');
         const size = Math.min(container.clientWidth - 40, 700);
@@ -609,7 +743,7 @@ radar_html = """
         if (refreshTimer) clearInterval(refreshTimer);
         let sec = parseInt(refreshSecInput.value);
         if (isNaN(sec)) sec = 60;
-        refreshIntervalSec = Math.min(60, Math.max(3, sec));
+        refreshIntervalSec = Math.min(120, Math.max(10, sec));
         refreshTimer = setInterval(() => refreshRadarData(), refreshIntervalSec * 1000);
     }
 
@@ -630,6 +764,11 @@ radar_html = """
     });
     locateMeBtn.addEventListener('click', getMyLocation);
     refreshSecInput.addEventListener('change', startAutoRefresh);
+    maxRangeInput.addEventListener('change', () => {
+        maxRangeKm = parseFloat(maxRangeInput.value);
+        rangeKmDisplay.innerText = maxRangeKm;
+        refreshRadarData();
+    });
     window.addEventListener('resize', () => {
         setTimeout(() => {
             const container = document.querySelector('.radar-container');
@@ -640,7 +779,10 @@ radar_html = """
         }, 100);
     });
 
-    // initial setup
+    // initial values
+    maxRangeKm = parseFloat(maxRangeInput.value);
+    rangeKmDisplay.innerText = maxRangeKm;
+
     initRadarCanvas();
     startAutoRefresh();
     animate();
@@ -649,4 +791,4 @@ radar_html = """
 </html>
 """
 
-st.components.v1.html(radar_html, height=750, scrolling=False)
+st.components.v1.html(radar_html, height=850, scrolling=False)
