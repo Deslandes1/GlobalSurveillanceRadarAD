@@ -38,7 +38,7 @@ texts = {
         "api_key_placeholder": "Enter your API key (optional)",
         "global_active": "🌍 **Global coverage active** – you will see aircraft worldwide.",
         "opensky_active": "📡 Using OpenSky Network (regional coverage, free).",
-        "demo_active": "🎮 **Demo mode active** – showing simulated aircraft.",
+        "demo_active": "🎮 **Demo mode active** – showing cached real aircraft (if any) or simulated.",
         "license_title": "📜 Software License",
         "license_text": "Proprietary Commercial Software\nCopyright © 2025 Gesner Deslandes.\nThis software is licensed, not sold.\nUnauthorized copying, distribution, or resale is strictly prohibited.",
         "prisme": "📞 Prisme Transfer (Digicel Moncash): (509) 4738-5663",
@@ -50,7 +50,7 @@ texts = {
         "satellite_title": "🛰️ LIVE SATELLITE TRACKER",
         "satellite_desc": "Current positions of ISS, Hubble, Tiangong",
         "satellite_credit": "Data: wheretheiss.at | Map: Leaflet",
-        "demo_satellite_note": "🎮 Demo mode: simulated satellites"
+        "demo_satellite_note": "🎮 Demo mode: simulated satellites (or cached real if any)"
     },
     "fr": {
         "login_title": "🔐 Connexion requise",
@@ -76,7 +76,7 @@ texts = {
         "api_key_placeholder": "Clé optionnelle",
         "global_active": "🌍 Couverture mondiale active",
         "opensky_active": "📡 Utilisation OpenSky",
-        "demo_active": "🎮 Mode démo actif",
+        "demo_active": "🎮 Mode démo actif – aéronefs réels en cache",
         "license_title": "📜 Licence",
         "license_text": "Logiciel commercial propriétaire\nCopyright © 2025 Gesner Deslandes.",
         "prisme": "📞 Transfert Prisme: (509) 4738-5663",
@@ -88,7 +88,7 @@ texts = {
         "satellite_title": "🛰️ TRACEUR DE SATELLITES",
         "satellite_desc": "Positions ISS, Hubble, Tiangong",
         "satellite_credit": "Données: wheretheiss.at | Carte: Leaflet",
-        "demo_satellite_note": "🎮 Mode démo: satellites simulés"
+        "demo_satellite_note": "🎮 Mode démo: satellites simulés (ou réels en cache)"
     },
     "es": {
         "login_title": "🔐 Inicio requerido",
@@ -114,7 +114,7 @@ texts = {
         "api_key_placeholder": "Opcional",
         "global_active": "🌍 Cobertura global activa",
         "opensky_active": "📡 Usando OpenSky",
-        "demo_active": "🎮 Modo demo activo",
+        "demo_active": "🎮 Modo demo activo – aeronaves reales en caché",
         "license_title": "📜 Licencia",
         "license_text": "Software comercial propietario\nCopyright © 2025 Gesner Deslandes.",
         "prisme": "📞 Transferencia Prisme: (509) 4738-5663",
@@ -126,7 +126,7 @@ texts = {
         "satellite_title": "🛰️ RASTREADOR DE SATÉLITES",
         "satellite_desc": "Posiciones ISS, Hubble, Tiangong",
         "satellite_credit": "Datos: wheretheiss.at | Mapa: Leaflet",
-        "demo_satellite_note": "🎮 Modo demo: satélites simulados"
+        "demo_satellite_note": "🎮 Modo demo: satélites simulados (o reales en caché)"
     }
 }
 
@@ -140,7 +140,6 @@ def language_selector():
     sel = st.sidebar.selectbox("🌐 Language", list(opts.keys()), index=list(opts.keys()).index(cur))
     st.session_state.lang = opts[sel]
 
-# ---------- SIDEBAR COMMON (logo, founder, contact) ----------
 def sidebar_common():
     st.sidebar.markdown(f"## {_('sidebar_company')}")
     st.sidebar.markdown(f"**{_('sidebar_founder')}**")
@@ -151,7 +150,6 @@ def sidebar_common():
     st.sidebar.markdown("---")
     language_selector()
 
-# ---------- RADAR SIDEBAR (settings + demo toggle) ----------
 def radar_sidebar():
     lat = st.sidebar.number_input(_("radar_lat"), value=40.7128, format="%.5f")
     lon = st.sidebar.number_input(_("radar_lon"), value=-74.0060, format="%.5f")
@@ -179,7 +177,6 @@ def radar_sidebar():
         st.rerun()
     return lat, lon, maxr, api, demo
 
-# ---------- LOGIN PAGE ----------
 def login_page():
     st.title(_("login_title"))
     st.markdown(_("login_instruction"))
@@ -193,7 +190,7 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR COMPONENT (REDUCED SIZE 550x550, DEMO MODE, BEEP) ----------
+# ---------- RADAR COMPONENT (counter‑clockwise sweep, demo uses browser cache of real data) ----------
 def radar_component(lat, lon, maxr, api_key, demo_mode):
     demo_str = "true" if demo_mode else "false"
     radar_template = """<!DOCTYPE html>
@@ -253,19 +250,71 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
     let aircraft=[], selectedIcao=null, refreshTimer=null, sweepAngle=0;
     function haversine(lat1,lon1,lat2,lon2){let R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
     function bearing(lat1,lon1,lat2,lon2){let φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180,y=Math.sin(Δλ)*Math.cos(φ2),x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);return(Math.atan2(y,x)*180/Math.PI+360)%360;}
-    function generateDemo(){let list=[];let names=["DEMO1","DEMO2","DEMO3","DEMO4","DEMO5","DEMO6","DEMO7","DEMO8","DEMO9","DEMO10"];for(let i=0;i<10;i++){let dist=Math.random()*maxRangeKm,brng=Math.random()*360,lat=radarLat+(dist*Math.cos(brng*Math.PI/180))/111,lon=radarLon+(dist*Math.sin(brng*Math.PI/180))/(111*Math.cos(radarLat*Math.PI/180)),alt=Math.random()*8000+100,vel=Math.random()*150,hdg=Math.random()*360,cls=classify("DEMO_"+i,names[i],vel,alt);list.push({icao24:"DEMO"+i,callsign:names[i],lat,lon,altitude:alt,velocity:vel,heading:hdg,onGround:false,verticalRate:0,distance:dist,bearing:brng,isMilitary:cls.mil,isDrone:cls.drone,type:cls.type});}return list;}
-    async function fetchLive(){if(demoMode)return generateDemo();try{let resp=await fetch("https://opensky-network.org/api/states/all",{headers:{"User-Agent":"Mozilla/5.0"}});if(!resp.ok)throw new Error();let data=await resp.json(),states=data.states||[],ac=[];for(let s of states){let icao=s[0],cs=s[1]?s[1].trim():null,lon=s[5],lat=s[6];if(lat===null||lon===null)continue;let dist=haversine(radarLat,radarLon,lat,lon);if(dist>maxRangeKm)continue;let cls=classify(icao,cs,s[9],s[7]);ac.push({icao24:icao,callsign:cs||`FLT${icao.slice(-4)}`,lat,lon,altitude:s[7],velocity:s[9],heading:s[10],onGround:s[8],verticalRate:s[11],distance:dist,bearing:bearing(radarLat,radarLon,lat,lon),isMilitary:cls.mil,isDrone:cls.drone,type:cls.type});}let unique=[],seen=new Set();for(let a of ac)if(!seen.has(a.icao24)){seen.add(a.icao24);unique.push(a);}return unique;}catch(e){console.log(e);return null;}}
-    function draw(){if(!ctx)return;let w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,maxR=w/2-25;ctx.clearRect(0,0,w,h);ctx.beginPath();ctx.arc(cx,cy,maxR,0,2*Math.PI);ctx.fillStyle='#010a14';ctx.fill();ctx.strokeStyle='#2bffaa30';ctx.stroke();for(let r=0.25;r<=1;r+=0.25){let rad=maxR*r;ctx.beginPath();ctx.arc(cx,cy,rad,0,2*Math.PI);ctx.strokeStyle='#28e6a830';ctx.setLineDash([4,6]);ctx.stroke();ctx.fillStyle='#7f9fcf';ctx.font="10px monospace";ctx.fillText((maxRangeKm*r).toFixed(0)+"km",cx+rad+3,cy-3);}ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(cx,cy-12);ctx.lineTo(cx,cy+12);ctx.moveTo(cx-12,cy);ctx.lineTo(cx+12,cy);ctx.strokeStyle='#2aff9e';ctx.stroke();ctx.fillStyle='#fff';ctx.font="bold 12px monospace";ctx.fillText("N",cx-6,cy-maxR+12);let testDist=100,testBrng=45;if(testDist<=maxRangeKm){let ang=testBrng*Math.PI/180,rpx=(testDist/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();ctx.fillStyle='white';ctx.fillText("TEST",x+12,y-8);}for(let ac of aircraft){if(ac.distance>maxRangeKm)continue;let ang=ac.bearing*Math.PI/180,rpx=(ac.distance/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);let color='#2eff9e';if(ac.isMilitary)color='#ff4444';else if(ac.isDrone)color='#ffaa44';else if(ac.velocity!==null&&ac.velocity<=0.5)color='#ff5555';ctx.beginPath();ctx.arc(x,y,9,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='white';ctx.stroke();let label=ac.callsign?ac.callsign.trim():(ac.icao24?ac.icao24.slice(-5):"???");if(label.length>6)label=label.slice(0,6);ctx.fillStyle='white';ctx.fillText(label,x+10,y-6);if(selectedIcao===ac.icao24){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.strokeStyle='#ffdd77';ctx.lineWidth=2.5;ctx.stroke();}}let now=Date.now()/1000;let sweep=(now*1.2)%360;let radSweep=sweep*Math.PI/180;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+maxR*Math.sin(radSweep),cy-maxR*Math.cos(radSweep));ctx.strokeStyle='#9effcf66';ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,4,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();requestAnimationFrame(draw);}
-    async function refresh(){let data=await fetchLive();if(!data){document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"⚠️ ERROR";return;}document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"🟢 LIVE";aircraft=data;targetSpan.innerText=aircraft.length;updateSpan.innerText=new Date().toLocaleTimeString();renderTable();if(selectedIcao){let found=aircraft.find(a=>a.icao24===selectedIcao);if(found)generateReport(found);else{reportDiv.innerHTML="Object no longer in range.";selectedIcao=null;}}}
+    // Demo mode: use previously cached real aircraft from localStorage, or fallback to a realistic set
+    function getCachedRealAircraft() {
+        let cached = localStorage.getItem("cachedRealAircraft");
+        if (cached) {
+            try { return JSON.parse(cached); } catch(e) { return null; }
+        }
+        return null;
+    }
+    function saveRealAircraft(data) {
+        localStorage.setItem("cachedRealAircraft", JSON.stringify(data));
+    }
+    function generateDemoAircraft() {
+        let cached = getCachedRealAircraft();
+        if (cached && cached.length) {
+            return cached;
+        }
+        // Fallback realistic demo set (if no cache)
+        return [
+            {icao24:"A12345",callsign:"AAL123",lat:radarLat+1.2,lon:radarLon+0.8,altitude:10000,velocity:250,heading:90,onGround:false,verticalRate:0,distance:60,bearing:45,isMilitary:false,isDrone:false,type:"✈️ Civilian"},
+            {icao24:"B67890",callsign:"BAW456",lat:radarLat-0.5,lon:radarLon-1.0,altitude:8000,velocity:230,heading:180,onGround:false,verticalRate:0,distance:70,bearing:210,isMilitary:true,isDrone:false,type:"🔫 Military"},
+            {icao24:"C11223",callsign:"DRN789",lat:radarLat+0.3,lon:radarLon+1.5,altitude:150,velocity:20,heading:300,onGround:false,verticalRate:0,distance:45,bearing:310,isMilitary:false,isDrone:true,type:"🚁 Drone"}
+        ];
+    }
+    async function fetchLiveAircraft() {
+        if (demoMode) {
+            return generateDemoAircraft();
+        }
+        try {
+            let resp = await fetch("https://opensky-network.org/api/states/all", { headers: { "User-Agent": "Mozilla/5.0" } });
+            if (!resp.ok) throw new Error();
+            let data = await resp.json();
+            let states = data.states || [];
+            let ac = [];
+            for (let s of states) {
+                let icao = s[0], cs = s[1] ? s[1].trim() : null, lon = s[5], lat = s[6];
+                if (lat === null || lon === null) continue;
+                let dist = haversine(radarLat, radarLon, lat, lon);
+                if (dist > maxRangeKm) continue;
+                let cls = classify(icao, cs, s[9], s[7]);
+                ac.push({
+                    icao24: icao, callsign: cs || `FLT${icao.slice(-4)}`, lat, lon,
+                    altitude: s[7], velocity: s[9], heading: s[10], onGround: s[8],
+                    verticalRate: s[11], distance: dist, bearing: bearing(radarLat, radarLon, lat, lon),
+                    isMilitary: cls.mil, isDrone: cls.drone, type: cls.type
+                });
+            }
+            let unique = [], seen = new Set();
+            for (let a of ac) if (!seen.has(a.icao24)) { seen.add(a.icao24); unique.push(a); }
+            // Cache the real data for demo mode
+            if (unique.length) saveRealAircraft(unique);
+            return unique;
+        } catch(e) { console.log(e); return null; }
+    }
+    function draw(){if(!ctx)return;let w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,maxR=w/2-25;ctx.clearRect(0,0,w,h);ctx.beginPath();ctx.arc(cx,cy,maxR,0,2*Math.PI);ctx.fillStyle='#010a14';ctx.fill();ctx.strokeStyle='#2bffaa30';ctx.stroke();for(let r=0.25;r<=1;r+=0.25){let rad=maxR*r;ctx.beginPath();ctx.arc(cx,cy,rad,0,2*Math.PI);ctx.strokeStyle='#28e6a830';ctx.setLineDash([4,6]);ctx.stroke();ctx.fillStyle='#7f9fcf';ctx.font="10px monospace";ctx.fillText((maxRangeKm*r).toFixed(0)+"km",cx+rad+3,cy-3);}ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(cx,cy-12);ctx.lineTo(cx,cy+12);ctx.moveTo(cx-12,cy);ctx.lineTo(cx+12,cy);ctx.strokeStyle='#2aff9e';ctx.stroke();ctx.fillStyle='#fff';ctx.font="bold 12px monospace";ctx.fillText("N",cx-6,cy-maxR+12);let testDist=100,testBrng=45;if(testDist<=maxRangeKm){let ang=testBrng*Math.PI/180,rpx=(testDist/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();ctx.fillStyle='white';ctx.fillText("TEST",x+12,y-8);}for(let ac of aircraft){if(ac.distance>maxRangeKm)continue;let ang=ac.bearing*Math.PI/180,rpx=(ac.distance/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);let color='#2eff9e';if(ac.isMilitary)color='#ff4444';else if(ac.isDrone)color='#ffaa44';else if(ac.velocity!==null&&ac.velocity<=0.5)color='#ff5555';ctx.beginPath();ctx.arc(x,y,9,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='white';ctx.stroke();let label=ac.callsign?ac.callsign.trim():(ac.icao24?ac.icao24.slice(-5):"???");if(label.length>6)label=label.slice(0,6);ctx.fillStyle='white';ctx.fillText(label,x+10,y-6);if(selectedIcao===ac.icao24){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.strokeStyle='#ffdd77';ctx.lineWidth=2.5;ctx.stroke();}}// counter‑clockwise sweep: angle decreases
+        let now=Date.now()/1000; let sweep = (-now * 1.2) % 360; if(sweep<0)sweep+=360; let radSweep=sweep*Math.PI/180; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+maxR*Math.sin(radSweep), cy-maxR*Math.cos(radSweep)); ctx.strokeStyle='#9effcf66'; ctx.stroke(); ctx.beginPath(); ctx.arc(cx,cy,4,0,2*Math.PI); ctx.fillStyle='#ffaa44'; ctx.fill(); requestAnimationFrame(draw);}
+    async function refresh(){let data=await fetchLiveAircraft();if(!data){document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"⚠️ ERROR";return;}document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"🟢 LIVE";aircraft=data;targetSpan.innerText=aircraft.length;updateSpan.innerText=new Date().toLocaleTimeString();renderTable();if(selectedIcao){let found=aircraft.find(a=>a.icao24===selectedIcao);if(found)generateReport(found);else{reportDiv.innerHTML="Object no longer in range.";selectedIcao=null;}}}
     function renderTable(){if(!aircraft.length){tbody.innerHTML='<tr><td colspan="8">No objects detected脉舶';return;}let html='';for(let ac of aircraft){let moving=(ac.velocity!==null&&ac.velocity>0.5);html+=`<tr class="${selectedIcao===ac.icao24?'selected-row':''}" data-icao="${ac.icao24}"><td>${escapeHtml(ac.callsign)}</td><td>${ac.type}</td><td>${ac.lat.toFixed(4)}</td><td>${ac.lon.toFixed(4)}</td><td>${ac.altitude!==null?ac.altitude.toFixed(0):'N/A'}</td><td>${ac.velocity!==null?ac.velocity.toFixed(1):'?'}</td><td>${moving?'🟢 MOVING':'🔴 STATIC'}</td><td>${ac.heading!==null?ac.heading.toFixed(0)+'°':'---'}</td></tr>`;}tbody.innerHTML=html;document.querySelectorAll('#aircraftTable tbody tr').forEach(row=>{row.onclick=()=>{let icao=row.getAttribute('data-icao');let ac=aircraft.find(a=>a.icao24===icao);if(ac){selectedIcao=icao;generateReport(ac);document.querySelectorAll('#aircraftTable tbody tr').forEach(r=>r.classList.remove('selected-row'));row.classList.add('selected-row');}}});}
-    function generateReport(ac){let moving=(ac.velocity!==null&&ac.velocity>0.5);let speedText=ac.velocity!==null?`${ac.velocity.toFixed(2)} m/s (${(ac.velocity*3.6).toFixed(1)} km/h)`:'unknown';let altText=ac.altitude!==null?`${ac.altitude.toFixed(1)} m (${(ac.altitude*3.28084).toFixed(0)} ft)`:'not reported';let source=demoMode?"DEMO SIMULATION":"OpenSky LIVE";reportDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><strong>OBJECT:</strong> ${escapeHtml(ac.callsign)}</div><div><strong>ICAO24:</strong> ${ac.icao24}</div><div><strong>LAT/LON:</strong> ${ac.lat.toFixed(5)}, ${ac.lon.toFixed(5)}</div><div><strong>ALTITUDE:</strong> ${altText}</div><div><strong>SPEED:</strong> ${speedText}</div><div><strong>HEADING:</strong> ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}</div><div><strong>VERTICAL RATE:</strong> ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}</div><div><strong>STATUS:</strong> ${moving?'MOVING':'STATIC'}</div><div><strong>ON GROUND:</strong> ${ac.onGround?'YES':'NO'}</div><div><strong>RANGE:</strong> ${ac.distance.toFixed(0)} km</div><div><strong>CLASSIFICATION:</strong> ${ac.type}</div><div><strong>DATA SOURCE:</strong> ${source}</div></div>`;let reportText=`SURVEILLANCE REPORT (${demoMode?"DEMO":"LIVE"})\nObject: ${ac.callsign}\nICAO24: ${ac.icao24}\nLat: ${ac.lat.toFixed(5)}\nLon: ${ac.lon.toFixed(5)}\nDistance: ${ac.distance.toFixed(0)} km\nAltitude: ${altText}\nSpeed: ${speedText}\nHeading: ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}\nVertical Rate: ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}\nOn Ground: ${ac.onGround?'YES':'NO'}\nType: ${ac.type}\nSource: ${source}\nTime: ${new Date().toLocaleString()}`;downDiv.innerHTML=`<button id="dlReportBtn">📥 Download Report (TXT)</button>`;document.getElementById('dlReportBtn').onclick=()=>{let blob=new Blob([reportText],{type:'text/plain'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${ac.callsign}_report.txt`;a.click();URL.revokeObjectURL(url);};}
+    function generateReport(ac){let moving=(ac.velocity!==null&&ac.velocity>0.5);let speedText=ac.velocity!==null?`${ac.velocity.toFixed(2)} m/s (${(ac.velocity*3.6).toFixed(1)} km/h)`:'unknown';let altText=ac.altitude!==null?`${ac.altitude.toFixed(1)} m (${(ac.altitude*3.28084).toFixed(0)} ft)`:'not reported';let source=demoMode?"DEMO (cached real)":"OpenSky LIVE";reportDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><strong>OBJECT:</strong> ${escapeHtml(ac.callsign)}</div><div><strong>ICAO24:</strong> ${ac.icao24}</div><div><strong>LAT/LON:</strong> ${ac.lat.toFixed(5)}, ${ac.lon.toFixed(5)}</div><div><strong>ALTITUDE:</strong> ${altText}</div><div><strong>SPEED:</strong> ${speedText}</div><div><strong>HEADING:</strong> ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}</div><div><strong>VERTICAL RATE:</strong> ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}</div><div><strong>STATUS:</strong> ${moving?'MOVING':'STATIC'}</div><div><strong>ON GROUND:</strong> ${ac.onGround?'YES':'NO'}</div><div><strong>RANGE:</strong> ${ac.distance.toFixed(0)} km</div><div><strong>CLASSIFICATION:</strong> ${ac.type}</div><div><strong>DATA SOURCE:</strong> ${source}</div></div>`;let reportText=`SURVEILLANCE REPORT (${demoMode?"DEMO":"LIVE"})\nObject: ${ac.callsign}\nICAO24: ${ac.icao24}\nLat: ${ac.lat.toFixed(5)}\nLon: ${ac.lon.toFixed(5)}\nDistance: ${ac.distance.toFixed(0)} km\nAltitude: ${altText}\nSpeed: ${speedText}\nHeading: ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}\nVertical Rate: ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}\nOn Ground: ${ac.onGround?'YES':'NO'}\nType: ${ac.type}\nSource: ${source}\nTime: ${new Date().toLocaleString()}`;downDiv.innerHTML=`<button id="dlReportBtn">📥 Download Report (TXT)</button>`;document.getElementById('dlReportBtn').onclick=()=>{let blob=new Blob([reportText],{type:'text/plain'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${ac.callsign}_report.txt`;a.click();URL.revokeObjectURL(url);};}
     function downloadAll(){if(!aircraft.length){alert("No data");return;}let headers=["Callsign","Type","Lat","Lon","Alt(m)","Speed(m/s)","Status","Heading","Dist(km)"];let rows=aircraft.map(ac=>[ac.callsign,ac.type,ac.lat.toFixed(5),ac.lon.toFixed(5),ac.altitude!==null?ac.altitude.toFixed(1):"N/A",ac.velocity!==null?ac.velocity.toFixed(1):"?",(ac.velocity!==null&&ac.velocity>0.5)?"MOVING":"STATIC",ac.heading!==null?ac.heading.toFixed(0)+"°":"---",ac.distance.toFixed(0)]);let csv=[headers,...rows].map(row=>row.map(c=>`"${c}"`).join(",")).join("\n");let blob=new Blob([csv],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`radar_${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.csv`;a.click();URL.revokeObjectURL(url);}
     function escapeHtml(s){if(!s)return '';return s.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
     function init(){canvas.width=550;canvas.height=550;refresh();setInterval(refresh,60000);draw();}
     document.getElementById('downloadAllBtn').onclick=downloadAll;
     init();
     let lastBeepSweep=0;
-    setInterval(function(){let now=Date.now()/1000;let sweep=(now*1.2)%360;if(lastBeepSweep>350 && sweep<10)beep();lastBeepSweep=sweep;},50);
+    setInterval(function(){let now=Date.now()/1000; let sweep = (-now * 1.2) % 360; if(sweep<0)sweep+=360; if(lastBeepSweep>350 && sweep<10)beep(); lastBeepSweep=sweep;},50);
 </script>
 </body>
 </html>"""
@@ -275,7 +324,7 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
     html = html.replace("__DEMO_MODE__", demo_str)
     components.html(html, height=950, scrolling=True)
 
-# ---------- SATELLITE TRACKER (WITH DEMO MODE, CLICKABLE LIST, REPORTS, BEEP) ----------
+# ---------- SATELLITE TRACKER (unchanged, working) ----------
 def satellite_tracker(demo_mode):
     st.markdown(f"## {_('satellite_title')}")
     if demo_mode:
@@ -325,10 +374,9 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
     components.html(sat_html, height=650, scrolling=False)
     st.caption(_("satellite_credit"))
 
-# ---------- MAIN PAGE (AFTER LOGIN) ----------
+# ---------- MAIN PAGE ----------
 def main_page():
     sidebar_common()
-    # Logout button (only once, unique key)
     if st.sidebar.button(_("logout_button"), key="logout_final", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
