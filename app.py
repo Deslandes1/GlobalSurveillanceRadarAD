@@ -35,7 +35,9 @@ UI = {
         "report": "Download Asset Report",
         "detection_log": "Live Detection Log",
         "sat_engine": "Satellite Mapping Engine",
-        "audio_note": "Click the radar to enable sonar audio."
+        "audio_note": "Click the radar to enable sonar audio.",
+        "coord_select": "Coordinate Targeting",
+        "lat": "Latitude", "lon": "Longitude"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar", 
@@ -46,7 +48,9 @@ UI = {
         "report": "Télécharger le Rapport",
         "detection_log": "Journal de Détection",
         "sat_engine": "Moteur de Cartographie Satellite",
-        "audio_note": "Cliquez sur le radar pour activer l'audio sonar."
+        "audio_note": "Cliquez sur le radar pour activer l'audio sonar.",
+        "coord_select": "Ciblage des Coordonnées",
+        "lat": "Latitude", "lon": "Longitude"
     }
 }
 
@@ -71,12 +75,26 @@ def main_page():
     with st.sidebar:
         st.title("🌐 GlobalInternet.py")
         st.selectbox("Language", ["English", "French"], key="lang")
-        
         st.markdown(f"**👨‍💻 {L['author_tag']}**")
-        st.caption("Independent Researcher | Technology Coordinator")
         st.divider()
         
-        # System Controls
+        # --- NEW: LAT/LON SIDEBAR SELECTOR ---
+        st.subheader(L['coord_select'])
+        preset = st.selectbox("Preset Targets", ["Manual Entry", "Port-au-Prince (HQ)", "ISS Current Path", "Paris Signal"])
+        
+        # Map presets to values
+        default_lat, default_lon = 18.53, -72.33
+        if preset == "Port-au-Prince (HQ)":
+            default_lat, default_lon = 18.53, -72.33
+        elif preset == "ISS Current Path":
+            default_lat, default_lon = 45.0, -10.0
+        elif preset == "Paris Signal":
+            default_lat, default_lon = 48.85, 2.35
+            
+        u_lat = st.number_input(L['lat'], value=default_lat, format="%.4f")
+        u_lon = st.number_input(L['lon'], value=default_lon, format="%.4f")
+        
+        st.divider()
         demo_radar = st.checkbox("Demo Mode (Radar)", value=False, key="check_demo_r")
         demo_sat = st.checkbox("Demo Mode (Satellite)", value=False, key="check_demo_s")
         
@@ -94,12 +112,11 @@ def main_page():
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
-        st.info(L['audio_note'])
+        st.info(f"{L['audio_note']} | Current Lock: {u_lat}, {u_lon}")
         
         col_rad, col_log = st.columns([2, 1])
         
         with col_rad:
-            # Radar Script with Audio Logic
             radar_html = r"""
             <html>
             <body style="background:#03060c; margin:0; display:flex; justify-content:center; cursor:pointer;">
@@ -109,11 +126,9 @@ def main_page():
                     const ctx = canvas.getContext('2d');
                     let angle = 0;
                     let audioCtx = null;
-
                     canvas.addEventListener('click', () => {
                         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     });
-
                     function playPing() {
                         if (!audioCtx) return;
                         const osc = audioCtx.createOscillator();
@@ -125,7 +140,6 @@ def main_page():
                         osc.connect(gain); gain.connect(audioCtx.destination);
                         osc.start(); osc.stop(audioCtx.currentTime + 0.5);
                     }
-
                     function draw() {
                         ctx.clearRect(0,0,550,550);
                         const cx = 275, cy = 275, r = 250;
@@ -162,7 +176,7 @@ def main_page():
                     report = f"RADAR REPORT\nID: {det['id']}\nOP: Gesner Deslandes\nDATE: {datetime.now()}"
                     st.download_button(L['report'], report, key=f"rad_{det['id']}")
 
-    # --- SATELLITE TAB (RESTORING ALL FUNCTIONALITIES) ---
+    # --- SATELLITE TAB ---
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -171,47 +185,30 @@ def main_page():
         
         with col_list:
             st.subheader("Asset Management")
-            sat_assets = [
-                {"name": "ISS", "status": "Stable", "alt": "408km"},
-                {"name": "HUBBLE", "status": "Active", "alt": "547km"},
-                {"name": "STARLINK-2401", "status": "Scanning", "alt": "550km"}
-            ]
-            
+            sat_assets = [{"name": "ISS", "status": "Stable"}, {"name": "HUBBLE", "status": "Active"}]
             for sat in sat_assets:
                 with st.container(border=True):
                     st.write(f"**Target:** {sat['name']}")
-                    st.write(f"**Altitude:** {sat['alt']}")
-                    st.write(f"**Status:** {sat['status']}")
-                    
-                    sat_report = f"SATELLITE DATA LOG\nAsset: {sat['name']}\nAlt: {sat['alt']}\nTimestamp: {datetime.now()}\nResearcher: Gesner Deslandes"
-                    st.download_button(
-                        label=L['report'], 
-                        data=sat_report, 
-                        file_name=f"SAT_{sat['name']}.txt", 
-                        key=f"dl_sat_{sat['name']}"
-                    )
+                    sat_report = f"SATELLITE DATA LOG\nAsset: {sat['name']}\nTimestamp: {datetime.now()}\nResearcher: Gesner Deslandes"
+                    st.download_button(L['report'], sat_report, key=f"dl_sat_{sat['name']}")
 
         with col_map:
             st.subheader(L['sat_engine'])
-            # Restoring the Leaflet.js Mapping System
-            map_html = r"""
+            # Leaflet.js with dynamic sidebar coordinates
+            map_html = f"""
             <html>
             <head>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-                <style>#map { height: 500px; border-radius: 15px; border: 2px solid #1e3a5f; }</style>
+                <style>#map {{ height: 500px; border-radius: 15px; border: 2px solid #1e3a5f; }}</style>
             </head>
             <body>
                 <div id="map"></div>
                 <script>
-                    const map = L.map('map', {zoomControl: false}).setView([18.5, -72.3], 4);
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                        attribution: 'GlobalInternet.py Satellite Data'
-                    }).addTo(map);
-
-                    // Add simulation markers
-                    L.circleMarker([18.53, -72.33], {color: '#00ff64', radius: 8}).addTo(map).bindPopup('Base Station 1');
-                    L.circleMarker([19.75, -72.20], {color: '#ff3300', radius: 5}).addTo(map).bindPopup('Detected Signal');
+                    const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 6);
+                    L.tileLayer('https://{{s}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png').addTo(map);
+                    L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 10}}).addTo(map)
+                        .bindPopup('Active Lock: {u_lat}, {u_lon}').openPopup();
                 </script>
             </body>
             </html>
