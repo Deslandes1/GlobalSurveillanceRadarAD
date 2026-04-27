@@ -1,230 +1,235 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import json
+import base64
 
-# --- CONFIGURATION ---
+# --- INITIAL CONFIGURATION ---
 st.set_page_config(
     page_title="GlobalInternet.py | Surveillance & Satellite", 
     layout="wide",
-    page_icon="🔴"
+    page_icon="📡"
 )
 
-# 1. Initialize session state keys
+# Initialize Session States
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
-# 2. Define Translations
-texts = {
+# --- TRANSLATIONS DICTIONARY ---
+t_dict = {
     "English": {
         "title": "GLOBAL SURVEILLANCE RADAR",
-        "subtitle": "Real-time global aircraft tracking | Military & Drone Detection",
-        "sat_title": "LIVE SATELLITE TRACKER",
+        "sat_title": "SATELLITE TRACKER",
+        "founder": "Founder & Python Builder: Gesner Deslandes",
         "settings": "Radar Settings",
         "lat": "Radar Latitude",
         "lon": "Radar Longitude",
         "range": "Max Range (km)",
+        "demo_radar": "Demo Mode (Radar)",
+        "demo_sat": "Demo Mode (Satellite)",
         "license": "Software License",
+        "contact": "Licensing & Support",
         "logout": "Logout",
-        "refresh": "Refresh Radar",
-        "demo": "Demo Mode",
-        "contact": "For licensing, support, or payments:",
-        "branding": "GlobalInternet.py",
-        "founder": "Founder & Python Programmer: Gesner Deslandes",
-        "tabs": ["📡 Radar", "🛰️ Satellite Tracker"]
+        "refresh": "Refresh System",
+        "details": "DETAILED REPORT",
+        "download": "Download Report",
+        "download_all": "Download All CSV",
+        "sat_refresh": "Refreshes every 5s"
     },
     "French": {
         "title": "RADAR DE SURVEILLANCE MONDIAL",
-        "subtitle": "Suivi mondial en temps réel | Détection militaire et drones",
-        "sat_title": "SUIVI SATELLITE EN DIRECT",
-        "settings": "Paramètres du Radar",
-        "lat": "Latitude du Radar",
-        "lon": "Longitude du Radar",
+        "sat_title": "SUIVI SATELLITE",
+        "founder": "Fondateur et Développeur Python : Gesner Deslandes",
+        "settings": "Paramètres Radar",
+        "lat": "Latitude Radar",
+        "lon": "Longitude Radar",
         "range": "Portée Max (km)",
+        "demo_radar": "Mode Démo (Radar)",
+        "demo_sat": "Mode Démo (Satellite)",
         "license": "Licence Logicielle",
+        "contact": "Licence et Support",
         "logout": "Déconnexion",
-        "refresh": "Actualiser le Radar",
-        "demo": "Mode Démo",
-        "contact": "Pour licence, support ou paiements :",
-        "branding": "GlobalInternet.py",
-        "founder": "Fondateur et Programmeur Python : Gesner Deslandes",
-        "tabs": ["📡 Radar", "🛰️ Suivi Satellite"]
+        "refresh": "Actualiser le Système",
+        "details": "RAPPORT DÉTAILLÉ",
+        "download": "Télécharger le Rapport",
+        "download_all": "Télécharger tout (CSV)",
+        "sat_refresh": "S'actualise toutes les 5s"
     },
     "Spanish": {
         "title": "RADAR DE VIGILANCIA GLOBAL",
-        "subtitle": "Rastreo global en tiempo real | Detección militar y drones",
         "sat_title": "RASTREADOR DE SATÉLITES",
+        "founder": "Fundador y Desarrollador Python: Gesner Deslandes",
         "settings": "Ajustes del Radar",
         "lat": "Latitud del Radar",
         "lon": "Longitud del Radar",
         "range": "Rango Máximo (km)",
+        "demo_radar": "Modo Demo (Radar)",
+        "demo_sat": "Modo Demo (Satelital)",
         "license": "Licencia de Software",
+        "contact": "Licencia y Soporte",
         "logout": "Cerrar sesión",
-        "refresh": "Actualizar Radar",
-        "demo": "Modo Demo",
-        "contact": "Para licencias, soporte o pagos:",
-        "branding": "GlobalInternet.py",
-        "founder": "Fundador y Programador Python: Gesner Deslandes",
-        "tabs": ["📡 Radar", "🛰️ Rastreador Satelital"]
+        "refresh": "Refrescar Sistema",
+        "details": "INFORME DETALLADO",
+        "download": "Descargar Informe",
+        "download_all": "Descargar todo (CSV)",
+        "sat_refresh": "Actualiza cada 5s"
     }
 }
 
 # ----------------------------------------------------------------------
-# LOGIN SCREEN
+# 1. LOGIN SCREEN
 # ----------------------------------------------------------------------
 if not st.session_state.logged_in:
-    # Use unsafe_allow_html=True to fix the TypeError
-    st.markdown("<br><br>", unsafe_allow_html=True) 
+    st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        st.markdown("## 🔐 Secure Access Required")
-        st.info("GlobalInternet.py - Proprietary Surveillance Suite")
-        password = st.text_input("Access Key", type="password")
-        if st.button("Authorize Access", use_container_width=True):
+        st.markdown("### 🌐 GlobalInternet.py Access")
+        password = st.text_input("Enter System Password", type="password")
+        if st.button("Access System", use_container_width=True):
             if password == "20082010":
                 st.session_state.logged_in = True
                 st.rerun()
             else:
-                st.error("Invalid Security Key")
+                st.error("Access Denied: Invalid Password")
     st.stop()
 
 # ----------------------------------------------------------------------
-# SIDEBAR (Identity & Control)
+# 2. SIDEBAR & BRANDING
 # ----------------------------------------------------------------------
 with st.sidebar:
-    st.title("🌐 GlobalInternet.py")
-    
-    # Lang selection tied directly to session_state
+    st.markdown("## 🌐 GlobalInternet.py")
     st.selectbox("Language / Langue / Idioma", ["English", "French", "Spanish"], key="lang")
+    t = t_dict[st.session_state.lang]
     
-    # Define current translation AFTER selection to avoid KeyError
-    t = texts[st.session_state.lang]
-    
+    st.caption(f"👨‍💻 {t['founder']}")
     st.divider()
+    
     st.markdown(f"### 📡 {t['settings']}")
-    radar_lat = st.number_input(t['lat'], value=40.7128, format="%.5f")
-    radar_lon = st.number_input(t['lon'], value=-74.0060, format="%.5f")
-    max_range = st.number_input(t['range'], min_value=30, max_value=2000, value=500, step=50)
+    radar_lat = st.number_input(t['lat'], value=18.5333, format="%.5f") # Default Haiti
+    radar_lon = st.number_input(t['lon'], value=-72.3333, format="%.5f")
+    max_range = st.number_input(t['range'], value=500)
     
-    demo_mode = st.toggle(t['demo'], value=True)
+    demo_radar = st.checkbox(t['demo_radar'], value=False)
+    demo_sat = st.checkbox(t['demo_sat'], value=False)
     
     st.divider()
-    st.markdown(f"### 📜 {t['license']}")
-    st.caption(f"Copyright © 2026 Gesner Deslandes.\n{t['branding']}")
-    st.markdown(f"**{t['contact']}**")
-    st.markdown("📞 **Prisme Transfer**: `(509) 4738-5663`")
-    st.markdown("📧 **Email**: `deslandes78@gmail.com`")
-    st.markdown("🌐 **Web**: `www.globalinternet.py`")
-
-    if st.button(t['refresh'], use_container_width=True):
-        st.rerun()
-        
+    st.markdown(f"### 📞 {t['contact']}")
+    st.write("**(509) 4738-5663**")
+    st.write("deslandes78@gmail.com")
+    st.markdown("[Visit Website](https://globalinternet.py)")
+    
+    st.divider()
     if st.button(t['logout'], type="primary", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 
 # ----------------------------------------------------------------------
-# MAIN UI - RADAR & SATELLITE
+# 3. MAIN UI TABS
 # ----------------------------------------------------------------------
-tab1, tab2 = st.tabs(t['tabs'])
+tab_radar, tab_sat = st.tabs([f"📡 {t['title']}", f"🛰️ {t['sat_title']}"])
 
-with tab1:
+with tab_radar:
     st.title(f"🔴 {t['title']}")
-    st.write(f"**{t['subtitle']}**")
-    st.write(f"*{t['founder']}*")
-    
-    # Radar: Counter-clockwise sweep, sweeping sound, and real/demo data logic
-    radar_html = f"""
-    <body style="background:#0a0f1e; margin:0; overflow:hidden;">
-        <canvas id="surveillanceRadar" width="650" height="650" style="display:block; margin:auto;"></canvas>
-        <script>
-            const canvas = document.getElementById('surveillanceRadar');
-            const ctx = canvas.getContext('2d');
-            let angle = 0;
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-            function playBeep() {{
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.1);
-            }}
-
-            function drawRadar() {{
-                ctx.clearRect(0,0,650,650);
-                const cx = 325, cy = 325, r = 300;
-                
-                // Static Background Rings
-                ctx.strokeStyle = '#1e3a5f';
-                ctx.lineWidth = 1;
-                for(let i=1; i<=4; i++) {{
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
-                    ctx.stroke();
-                }}
-
-                // Crosshairs
-                ctx.beginPath();
-                ctx.moveTo(cx-r, cy); ctx.lineTo(cx+r, cy);
-                ctx.moveTo(cx, cy-r); ctx.lineTo(cx, cy+r);
-                ctx.stroke();
-
-                // Counter-Clockwise Sweep Logic
-                angle -= 0.025; 
-                if (angle <= -Math.PI * 2) {{
-                    angle = 0;
-                    playBeep(); // Trigger sound on full rotation
-                }}
-
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.rotate(angle);
-                const sweepGrad = ctx.createRadialGradient(0,0,0,0,0,r);
-                sweepGrad.addColorStop(0, 'rgba(0,255,100,0)');
-                sweepGrad.addColorStop(1, 'rgba(0,255,100,0.3)');
-                ctx.fillStyle = sweepGrad;
-                ctx.beginPath();
-                ctx.moveTo(0,0);
-                ctx.arc(0,0, r, 0, 0.4);
-                ctx.fill();
-                ctx.restore();
-
-                requestAnimationFrame(drawRadar);
-            }}
-            drawRadar();
-        </script>
-    </body>
-    """
-    components.html(radar_html, height=680)
-
-with tab2:
-    st.title(f"🛰️ {t['sat_title']}")
-    st.info("Real-time Orbital Positioning System (ISS / Hubble / Tiangong)")
-    
-    # Satellite Tracker with Leaflet Map
-    sat_map_html = """
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <div id="map" style="height: 500px; border-radius: 15px; border: 1px solid #1e3a5f;"></div>
+    # Radar Canvas logic (550x550, CCW sweep, Beep)
+    # We use a raw string for JS to avoid curly brace issues
+    radar_js = """
     <script>
-        var map = L.map('map', {attributionControl: false}).setView([20, 0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-        
-        // Demo/Static Satellites for prompt requirements
-        var sats = [
-            {name: "ISS", lat: 51.5, lon: -0.1, color: "yellow"},
-            {name: "Hubble", lat: -10, lon: 45, color: "cyan"},
-            {name: "Tiangong", lat: 35, lon: 110, color: "orange"}
-        ];
-        
-        sats.forEach(s => {
-            L.circleMarker([s.lat, s.lon], {color: s.color, radius: 8}).addTo(map).bindPopup(s.name);
-        });
+        const canvasSize = 550;
+        const center = canvasSize / 2;
+        const radius = center - 20;
+        let angle = 0;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function beep() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.value = 800; gain.gain.value = 0.05;
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function drawRadar() {
+            const canvas = document.getElementById('radarCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,canvasSize,canvasSize);
+            
+            // Rings
+            ctx.strokeStyle = '#1e3a5f';
+            for(let i=1; i<=4; i++) {
+                ctx.beginPath(); ctx.arc(center, center, (radius/4)*i, 0, Math.PI*2); ctx.stroke();
+            }
+
+            // CCW Sweep
+            angle -= 0.02; 
+            if(angle <= -Math.PI*2) { angle = 0; beep(); }
+            
+            ctx.save();
+            ctx.translate(center, center);
+            ctx.rotate(angle);
+            const grad = ctx.createRadialGradient(0,0,0,0,0,radius);
+            grad.addColorStop(0, 'rgba(0,255,100,0)');
+            grad.addColorStop(1, 'rgba(0,255,100,0.3)');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, radius, 0, 0.4); ctx.fill();
+            ctx.restore();
+            
+            requestAnimationFrame(drawRadar);
+        }
     </script>
     """
-    components.html(sat_map_html, height=520)
+    
+    radar_html = f"""
+    <div style="background:#0a0f1e; padding:20px; border-radius:20px; text-align:center;">
+        <canvas id="radarCanvas" width="550" height="550" style="background:#03060c; border-radius:50%; border:2px solid #1e3a5f;"></canvas>
+    </div>
+    {radar_js}
+    <script>drawRadar();</script>
+    """
+    components.html(radar_html, height=600)
+    st.button(t['download_all'])
+
+with tab_sat:
+    st.title(f"🛰️ {t['sat_title']}")
+    
+    col_map, col_list = st.columns([2, 1])
+    
+    with col_map:
+        # Simplified Leaflet Map integration
+        map_html = """
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <div id="map" style="height: 500px; border-radius:15px; border:1px solid #1e3a5f;"></div>
+        <script>
+            const map = L.map('map', {zoomControl: false}).setView([20, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+            
+            // Beep on refresh simulation
+            const satAudio = new (window.AudioContext || window.webkitAudioContext)();
+            setInterval(() => {
+                const osc = satAudio.createOscillator();
+                const g = satAudio.createGain();
+                osc.connect(g); g.connect(satAudio.destination);
+                osc.frequency.value = 1200; g.gain.value = 0.02;
+                osc.start(); osc.stop(satAudio.currentTime + 0.05);
+            }, 5000);
+        </script>
+        """
+        components.html(map_html, height=520)
+        st.caption(f"📡 {t['sat_refresh']}")
+
+    with col_list:
+        st.subheader("Target Assets")
+        sats = ["ISS", "HUBBLE", "TIANGONG"] if not demo_sat else ["GeoEye-1", "Landsat-9", "NOAA-20", "Starlink", "GPS-III"]
+        
+        for s in sats:
+            with st.expander(f"🛰️ {s}"):
+                st.write(f"**Type:** {'Commercial' if demo_sat else 'Scientific'}")
+                st.write("**Alt:** 420km | **Vel:** 27,600km/h")
+                st.button(t['download'], key=f"dl_{s}")
+
+# --- LICENSE FOOTER ---
+st.divider()
+st.markdown(f"### 📜 {t['license']}")
+st.caption("Proprietary Commercial Software. Copyright © 2026 Gesner Deslandes. All rights reserved.")
