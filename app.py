@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 from datetime import datetime
+import streamlit.components.v1 as components
 
 # --- 1. CORE CONFIGURATION ---
 st.set_page_config(
@@ -15,21 +16,41 @@ if "authenticated" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
+# Data for Radar Detections
+if "radar_detections" not in st.session_state:
+    st.session_state.radar_detections = [
+        {"id": "SIG-01", "type": "Unidentified Aerial", "coord": "18.5N, 72.3W"},
+        {"id": "SIG-09", "type": "Weather Balloon", "coord": "19.1N, 71.8W"},
+        {"id": "SIG-14", "type": "Commercial Flight", "coord": "18.2N, 73.1W"}
+    ]
+
 # --- 2. TRANSLATION DICTIONARY ---
 UI = {
     "English": {
-        "radar_tab": "📡 Radar Control", "sat_tab": "🛰️ Satellite Tracker",
-        "title": "GLOBAL SURVEILLANCE RADAR", "subtitle": "Built by Gesner Deslandes",
-        "settings": "System Settings", "demo_r": "Demo Mode (Radar)", "demo_s": "Demo Mode (Satellite)",
-        "logout": "Terminate Session", "report": "Download Asset Report",
-        "contact": "Contact & Support"
+        "radar_tab": "📡 Radar Control", 
+        "sat_tab": "🛰️ Satellite Tracker",
+        "title": "GLOBAL SURVEILLANCE RADAR", 
+        "subtitle": "Built by Gesner Deslandes",
+        "settings": "System Settings", 
+        "demo_r": "Demo Mode (Radar)", 
+        "demo_s": "Demo Mode (Satellite)",
+        "logout": "Terminate Session", 
+        "report": "Download Asset Report",
+        "contact": "Contact & Support", 
+        "detection_log": "Live Detection Log"
     },
     "French": {
-        "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite",
-        "title": "RADAR DE SURVEILLANCE MONDIAL", "subtitle": "Conçu par Gesner Deslandes",
-        "settings": "Paramètres Système", "demo_r": "Mode Démo (Radar)", "demo_s": "Mode Démo (Satellite)",
-        "logout": "Déconnexion", "report": "Télécharger le Rapport",
-        "contact": "Contact & Support"
+        "radar_tab": "📡 Contrôle Radar", 
+        "sat_tab": "🛰️ Suivi Satellite",
+        "title": "RADAR DE SURVEILLANCE MONDIAL", 
+        "subtitle": "Conçu par Gesner Deslandes",
+        "settings": "Paramètres Système", 
+        "demo_r": "Mode Démo (Radar)", 
+        "demo_s": "Mode Démo (Satellite)",
+        "logout": "Déconnexion", 
+        "report": "Télécharger le Rapport",
+        "contact": "Contact & Support", 
+        "detection_log": "Journal de Détection"
     }
 }
 
@@ -59,6 +80,7 @@ def main_page():
         st.markdown(f"**👨‍💻 Gesner Deslandes**\nIndependent Researcher")
         st.divider()
         
+        # Checkboxes with unique keys
         demo_radar = st.checkbox(L['demo_r'], value=False, key="check_demo_r")
         demo_sat = st.checkbox(L['demo_s'], value=False, key="check_demo_s")
         
@@ -77,52 +99,69 @@ def main_page():
         st.title(f"🔴 {L['title']}")
         st.subheader(L['subtitle'])
         
-        # Using raw string (r""") to avoid Python f-string SyntaxError with JS
-        radar_html = r"""
-        <html>
-        <body style="background:#03060c; margin:0; display:flex; justify-content:center;">
-            <canvas id="radar" width="550" height="550" style="border:1px solid #1e3a5f; border-radius:50%;"></canvas>
-            <script>
-                const canvas = document.getElementById('radar');
-                const ctx = canvas.getContext('2d');
-                let angle = 0;
-                function draw() {
-                    ctx.clearRect(0,0,550,550);
-                    const cx = 275, cy = 275, r = 250;
-                    ctx.strokeStyle = '#1e3a5f';
-                    for(let i=1; i<=4; i++) {
-                        ctx.beginPath(); ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2); ctx.stroke();
+        col_rad, col_log = st.columns([2, 1])
+        
+        with col_rad:
+            # Using raw string (r""") to avoid Python f-string SyntaxError with JS
+            radar_html = r"""
+            <html>
+            <body style="background:#03060c; margin:0; display:flex; justify-content:center;">
+                <canvas id="radar" width="550" height="550" style="border:1px solid #1e3a5f; border-radius:50%;"></canvas>
+                <script>
+                    const canvas = document.getElementById('radar');
+                    const ctx = canvas.getContext('2d');
+                    let angle = 0;
+                    function draw() {
+                        ctx.clearRect(0,0,550,550);
+                        const cx = 275, cy = 275, r = 250;
+                        ctx.strokeStyle = '#1e3a5f';
+                        for(let i=1; i<=4; i++) {
+                            ctx.beginPath(); ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2); ctx.stroke();
+                        }
+                        angle -= 0.025; // CCW Sweep
+                        ctx.save();
+                        ctx.translate(cx, cy); ctx.rotate(angle);
+                        const g = ctx.createRadialGradient(0,0,0,0,0,r);
+                        g.addColorStop(0, 'rgba(0,255,100,0)');
+                        g.addColorStop(1, 'rgba(0,255,100,0.3)');
+                        ctx.fillStyle = g;
+                        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r, 0, 0.4); ctx.fill();
+                        ctx.restore();
+                        requestAnimationFrame(draw);
                     }
-                    angle -= 0.025; // CCW Sweep
-                    ctx.save();
-                    ctx.translate(cx, cy); ctx.rotate(angle);
-                    const g = ctx.createRadialGradient(0,0,0,0,0,r);
-                    g.addColorStop(0, 'rgba(0,255,100,0)');
-                    g.addColorStop(1, 'rgba(0,255,100,0.3)');
-                    ctx.fillStyle = g;
-                    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r, 0, 0.4); ctx.fill();
-                    ctx.restore();
-                    requestAnimationFrame(draw);
-                }
-                draw();
-            </script>
-        </body>
-        </html>
-        """
-        # FIX: Replaced st.components.v1.html with st.components.v1.iframe per logs
-        st.components.v1.html(radar_html, height=600)
+                    draw();
+                </script>
+            </body>
+            </html>
+            """
+            components.html(radar_html, height=580)
+
+        with col_log:
+            st.subheader(L['detection_log'])
+            for det in st.session_state.radar_detections:
+                with st.expander(f"📡 {det['id']}"):
+                    st.write(f"**Type:** {det['type']}")
+                    st.write(f"**Coordinates:** {det['coord']}")
+                    
+                    radar_report = f"RADAR REPORT\nID: {det['id']}\nTYPE: {det['type']}\nLOC: {det['coord']}\nOP: Gesner Deslandes"
+                    
+                    st.download_button(
+                        label=L['report'],
+                        data=radar_report,
+                        file_name=f"RADAR_{det['id']}.txt",
+                        key=f"dl_radar_{det['id']}"
+                    )
 
     with tab_sat:
         st.title("🛰️ Satellite Tracking Assets")
         col_list, col_map = st.columns([1, 2])
         
         with col_list:
-            # Added unique keys to asset download buttons
             assets = ["ISS", "Hubble", "Tiangong"] if not demo_sat else ["Starlink-14", "GPS-III", "GeoEye-1"]
             for sat in assets:
                 with st.expander(f"Asset: {sat}"):
                     st.write("Status: Active Scanning")
-                    st.download_button(L['report'], f"Report for {sat}", key=f"dl_{sat}")
+                    st.download_button(L['report'], f"Satellite Report: {sat}", key=f"dl_sat_{sat}")
 
         with col_map:
             st.info("Mapping Engine Active")
@@ -135,7 +174,7 @@ def main_page():
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
             </script>
             """
-            st.components.v1.html(map_html, height=450)
+            components.html(map_html, height=450)
 
 # --- 5. EXECUTION ---
 if not st.session_state.authenticated:
