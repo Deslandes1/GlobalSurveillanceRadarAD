@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import random
+import math
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 
@@ -17,33 +18,28 @@ if "authenticated" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
-# --- 2. ADVANCED DATA GENERATOR ---
-def get_simulated_assets(is_demo, lat_base, lon_base):
+# --- 2. RESTORED: MULTI-CLASS DATA GENERATOR ---
+def get_surveillance_data(is_demo, u_lat, u_lon):
     if not is_demo:
         return []
     
-    # Categories of satellites with simulated offsets for prediction
-    categories = [
-        {"id": "SL-5122", "type": "Starlink (Comms)", "color": "#00ff64", "alt": "550km"},
-        {"id": "NAV-GPS", "type": "GPS Block III", "color": "#00bfff", "alt": "20,200km"},
-        {"id": "KH-11", "type": "Keyhole (Spy)", "color": "#ff3300", "alt": "350km"},
-        {"id": "NOAA-19", "type": "Weather/Met", "color": "#ffcc00", "alt": "870km"},
-        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km"}
+    # Aircraft Classes for Radar
+    aircraft = [
+        {"id": "AAL-410", "type": "Commercial", "color": "#00ff64", "alt": "32,000ft", "dist": 0.4},
+        {"id": "F-22-EX", "type": "Military Strike", "color": "#ff3300", "alt": "52,000ft", "dist": 0.8},
+        {"id": "DRN-QC", "type": "Drone/UAV", "color": "#ffcc00", "alt": "800ft", "dist": 0.2},
+        {"id": "UNK-01", "type": "Unidentified", "color": "#ffffff", "alt": "12,000ft", "dist": 0.6}
     ]
     
-    assets = []
-    for i, cat in enumerate(categories):
-        # Create simulated paths based on current location
-        assets.append({
-            "id": cat["id"],
-            "type": cat["type"],
-            "lat": lat_base + (math_offset := random.uniform(-5, 5)),
-            "lon": lon_base + random.uniform(-10, 10),
-            "alt": cat["alt"],
-            "color": cat["color"],
-            "velocity": random.uniform(7.5, 7.8) # km/s for LEO
-        })
-    return assets
+    # Satellite Classes for Prediction
+    satellites = [
+        {"id": "STAR-V2", "type": "Starlink", "color": "#00ff64", "alt": "550km", "inc": 53},
+        {"id": "NAV-GPS", "type": "GPS III", "color": "#00bfff", "alt": "20,200km", "inc": 55},
+        {"id": "KH-11-S", "type": "Spy Satellite", "color": "#ff3300", "alt": "380km", "inc": 97},
+        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km", "inc": 51}
+    ]
+    
+    return aircraft, satellites
 
 # --- 3. TRANSLATION DICTIONARY ---
 UI = {
@@ -53,7 +49,7 @@ UI = {
         "logout": "Terminate Session", "report": "Download Asset Report",
         "detection_log": "Live Detection Log", "sat_engine": "Predictive Mapping Engine",
         "audio_note": "Click radar to enable sonar audio.", "lat": "Latitude", "lon": "Longitude",
-        "predict_btn": "Predict Next Pass", "time_target": "Target Date/Time"
+        "predict_btn": "Calculate Pass", "time_target": "Prediction Target (Date/Time)"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite",
@@ -87,9 +83,10 @@ def main_page():
         st.title("🌐 GlobalInternet.py")
         st.selectbox("Language", ["English", "French"], key="lang")
         st.markdown(f"**👨‍💻 {L['author_tag']}**")
+        st.caption("Independent Researcher | Technology Coordinator")
         st.divider()
         
-        st.subheader("System Configuration")
+        st.subheader("Global Positioning")
         u_lat = st.number_input(L['lat'], value=18.5392, format="%.4f")
         u_lon = st.number_input(L['lon'], value=-72.3364, format="%.4f")
         
@@ -106,49 +103,52 @@ def main_page():
             st.rerun()
 
     tab_radar, tab_sat = st.tabs([L["radar_tab"], L["sat_tab"]])
+    aircraft_data, sat_data = get_surveillance_data(True, u_lat, u_lon)
 
-    # --- RADAR TAB (AIRCRAFT/UAV) ---
+    # --- RADAR TAB (AIRCRAFT RESTORED) ---
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
+        st.info(L['audio_note'])
         
         col_rad, col_log = st.columns([2, 1])
         
         with col_rad:
-            # Simulation of aircraft (Commercial, Military, Drones)
-            aircraft = [
-                {"id": "AAL-102", "type": "Commercial", "color": "#00ff64", "alt": "32k ft"},
-                {"id": "F22-SPT", "type": "Military", "color": "#ff3300", "alt": "55k ft"},
-                {"id": "MQ9-DRN", "type": "Drone/UAV", "color": "#ffcc00", "alt": "15k ft"}
-            ] if demo_radar else []
-            
-            radar_json = json.dumps(aircraft)
+            radar_json = json.dumps(aircraft_data)
             radar_html = r"""
             <html><body style="background:#03060c; margin:0; display:flex; justify-content:center; cursor:pointer;">
-                <canvas id="radar" width="500" height="500" style="border-radius:50%; border:1px solid #1e3a5f;"></canvas>
+                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #1e3a5f;"></canvas>
                 <script>
                     const canvas = document.getElementById('radar');
                     const ctx = canvas.getContext('2d');
                     const data = """ + radar_json + r""";
                     let angle = 0; let audioCtx = null;
-                    canvas.onclick = () => { if(!audioCtx) audioCtx = new AudioContext(); };
+                    canvas.onclick = () => { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); };
                     function ping() {
                         if(!audioCtx) return;
                         let o = audioCtx.createOscillator(); let g = audioCtx.createGain();
                         o.frequency.setValueAtTime(800, audioCtx.currentTime);
+                        o.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
                         g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
                         o.connect(g); g.connect(audioCtx.destination);
-                        o.start(); o.stop(audioCtx.currentTime + 0.3);
+                        o.start(); o.stop(audioCtx.currentTime + 0.5);
                     }
                     function draw() {
-                        ctx.clearRect(0,0,500,500); let cx=250, cy=250, r=240;
+                        ctx.clearRect(0,0,550,550); let cx=275, cy=275, r=250;
                         ctx.strokeStyle='rgba(30,58,95,0.4)';
                         for(let i=1;i<=4;i++){ ctx.beginPath(); ctx.arc(cx,cy,(r/4)*i,0,Math.PI*2); ctx.stroke(); }
+                        
                         data.forEach((d, i) => {
-                            ctx.fillStyle=d.color; ctx.beginPath(); ctx.arc(cx+Math.cos(i)*150, cy+Math.sin(i)*150, 5, 0, 7); ctx.fill();
+                            let dx = cx + Math.cos(i*1.5) * (r * d.dist);
+                            let dy = cy + Math.sin(i*1.5) * (r * d.dist);
+                            ctx.fillStyle=d.color; ctx.shadowBlur=15; ctx.shadowColor=d.color;
+                            ctx.beginPath(); ctx.arc(dx,dy,5,0,7); ctx.fill();
                         });
+
                         let oldA = angle; angle -= 0.03;
                         if(Math.floor(oldA/6.28) !== Math.floor(angle/6.28)) ping();
+                        
                         ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
                         let g=ctx.createRadialGradient(0,0,0,0,0,r);
                         g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,255,100,0.2)');
@@ -159,9 +159,17 @@ def main_page():
                 </script>
             </body></html>
             """
-            components.html(radar_html, height=520)
+            components.html(radar_html, height=580)
 
-    # --- SATELLITE TAB (PREDICTION & TRACKING) ---
+        with col_log:
+            st.subheader(L['detection_log'])
+            for d in aircraft_data:
+                with st.expander(f"📡 {d['id']} [{d['type']}]"):
+                    st.write(f"**Altitude:** {d['alt']}")
+                    st.write(f"**Classification:** {d['type']}")
+                    st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
+
+    # --- SATELLITE TAB (PREDICTION RESTORED) ---
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -169,33 +177,28 @@ def main_page():
         col_ctrl, col_map = st.columns([1, 2])
         
         with col_ctrl:
-            st.subheader("Prediction Logic")
-            target_date = st.date_input(L['time_target'], datetime.now())
-            target_time = st.time_input("Target Time", datetime.now().time())
+            st.subheader("Temporal Prediction")
+            t_date = st.date_input(L['time_target'], datetime.now())
+            t_time = st.time_input("Target Time", datetime.now().time())
+            full_t = datetime.combine(t_date, t_time)
             
-            # Simulated Calculation
-            full_target = datetime.combine(target_date, target_time)
-            st.write(f"Calculating trajectories for: `{full_target}`")
+            diff = (full_t - datetime.now()).total_seconds() / 3600
+            st.info(f"Predicting orbital drift for T+{diff:.1f} hours.")
             
-            sat_assets = get_simulated_assets(demo_sat, u_lat, u_lon)
-            
-            for s in sat_assets:
-                with st.expander(f"🛰️ {s['id']} | {s['type']}"):
-                    st.write(f"**Alt:** {s['alt']}")
-                    # Simple simulation: move satellite based on time difference
-                    diff_hours = (full_target - datetime.now()).total_seconds() / 3600
-                    future_lat = s['lat'] + (diff_hours * 2) # Mock orbital drift
-                    future_lon = s['lon'] + (diff_hours * 15) # Mock Earth rotation factor
-                    
-                    st.success(f"Predicted Pass: {future_lat:.2f}N, {future_lon:.2f}W")
-                    st.download_button(L['report'], f"PREDICTION REPORT\nAsset: {s['id']}\nTime: {full_target}\nLoc: {future_lat}, {future_lon}\nLead: Gesner Deslandes", key=s['id'])
+            for s in sat_data:
+                # Mock math: Longitude shifts ~15 deg/hr due to Earth rotation + orbital velocity
+                pred_lat = u_lat + (math.sin(diff + hash(s['id']) % 10) * 10)
+                pred_lon = u_lon + (diff * 15) % 360 - 180
+                
+                with st.container(border=True):
+                    st.write(f"**Asset:** {s['id']} ({s['type']})")
+                    st.write(f"**Predicted Pass:** {pred_lat:.2f}N, {pred_lon:.2f}W")
+                    st.download_button(L['report'], f"SATELLITE PREDICTION\nAsset: {s['id']}\nTarget: {full_t}\nResearcher: Gesner Deslandes", key=f"sat_{s['id']}")
 
         with col_map:
-            # Mapping future markers
-            markers_js = ""
-            for s in sat_assets:
-                # Add current and predicted path markers
-                markers_js += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color: '{s['color']}', radius: 8}}).addTo(map).bindPopup('Current: {s['id']}');"
+            markers = ""
+            for s in sat_data:
+                markers += f"L.circleMarker([{u_lat + (hash(s['id'])%5)}, {u_lon + (hash(s['id'])%10)}], {{color:'{s['color']}', radius:10}}).addTo(map).bindPopup('{s['id']}');"
             
             map_html = f"""
             <html><head>
@@ -207,7 +210,7 @@ def main_page():
                 <script>
                     const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 3);
                     L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png').addTo(map);
-                    {markers_js}
+                    {markers}
                 </script>
             </body></html>
             """
