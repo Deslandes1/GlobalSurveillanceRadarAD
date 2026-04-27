@@ -231,10 +231,9 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR COMPONENT (FIXED SYNTAX) ----------
+# ---------- RADAR COMPONENT (REDUCED SIZE 550x550) ----------
 def radar_component(radar_lat, radar_lon, max_range, api_key, demo_mode):
     demo_mode_str = "true" if demo_mode else "false"
-    # Use a template with placeholders – no f-string to avoid {} conflicts
     radar_html_template = """
     <!DOCTYPE html>
     <html lang="en">
@@ -529,7 +528,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key, demo_mode):
         }
 
         function renderTable(list) {
-            if (!list.length) { tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.</td></tr>'; return; }
+            if (!list.length) { tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.脉舶'; return; }
             let html = '';
             for (let ac of list) {
                 const moving = (ac.velocity !== null && ac.velocity > 0.5);
@@ -542,7 +541,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key, demo_mode):
                              <td>${ac.velocity !== null ? ac.velocity.toFixed(1) : '?'}</td>
                              <td>${moving ? '🟢 MOVING' : '🔴 STATIC'}</td>
                              <td>${ac.heading !== null ? ac.heading.toFixed(0)+'°' : '---'}</td>
-                         </tr>`;
+                          </tr>`;
             }
             tableBody.innerHTML = html;
             document.querySelectorAll('#aircraftTable tbody tr').forEach(row => {
@@ -624,15 +623,13 @@ def radar_component(radar_lat, radar_lon, max_range, api_key, demo_mode):
     """
     # Replace placeholders
     radar_html = radar_html_template.replace("__RADAR_LAT__", str(radar_lat))
-    radar_html = radar_html_template.replace("__RADAR_LON__", str(radar_lon))
-    radar_html = radar_html_template.replace("__MAX_RANGE__", str(max_range))
-    radar_html = radar_html_template.replace("__API_KEY__", api_key)
-    radar_html = radar_html_template.replace("__DEMO_MODE__", demo_mode_str)
-    # Also replace in the template's range display inside stats
-    radar_html = radar_html.replace("__MAX_RANGE__", str(max_range))  # ensure all occurrences replaced
+    radar_html = radar_html.replace("__RADAR_LON__", str(radar_lon))
+    radar_html = radar_html.replace("__MAX_RANGE__", str(max_range))
+    radar_html = radar_html.replace("__API_KEY__", api_key)
+    radar_html = radar_html.replace("__DEMO_MODE__", demo_mode_str)
     components.html(radar_html, height=950, scrolling=True)
 
-# ---------- SATELLITE TRACKER (with demo mode, clickable list, report) ----------
+# ---------- SATELLITE TRACKER (REDUCED MAP HEIGHT 450px) ----------
 def satellite_tracker(demo_mode_satellite):
     st.markdown(f"## {_('satellite_title')}")
     if demo_mode_satellite:
@@ -823,7 +820,7 @@ def satellite_tracker(demo_mode_satellite):
     </html>
     """
     satellite_html = satellite_html_template.replace("__DEMO_MODE__", demo_flag)
-    components.html(satellite_html, height=800, scrolling=False)
+    components.html(satellite_html, height=650, scrolling=False)
     st.caption(_("satellite_credit"))
 
 # ---------- MAIN PAGE ----------
