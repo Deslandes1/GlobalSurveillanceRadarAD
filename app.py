@@ -78,25 +78,24 @@ def main_page():
         st.markdown(f"**👨‍💻 {L['author_tag']}**")
         st.divider()
         
-        # --- NEW: LAT/LON SIDEBAR SELECTOR ---
+        # --- COORDINATE TARGETING ---
         st.subheader(L['coord_select'])
         preset = st.selectbox("Preset Targets", ["Manual Entry", "Port-au-Prince (HQ)", "ISS Current Path", "Paris Signal"])
         
-        # Map presets to values
-        default_lat, default_lon = 18.53, -72.33
+        default_lat, default_lon = 18.5392, -72.3364
         if preset == "Port-au-Prince (HQ)":
-            default_lat, default_lon = 18.53, -72.33
+            default_lat, default_lon = 18.5392, -72.3364
         elif preset == "ISS Current Path":
             default_lat, default_lon = 45.0, -10.0
         elif preset == "Paris Signal":
-            default_lat, default_lon = 48.85, 2.35
+            default_lat, default_lon = 48.8566, 2.3522
             
         u_lat = st.number_input(L['lat'], value=default_lat, format="%.4f")
         u_lon = st.number_input(L['lon'], value=default_lon, format="%.4f")
         
         st.divider()
-        demo_radar = st.checkbox("Demo Mode (Radar)", value=False, key="check_demo_r")
-        demo_sat = st.checkbox("Demo Mode (Satellite)", value=False, key="check_demo_s")
+        st.checkbox("Demo Mode (Radar)", value=False, key="check_demo_r")
+        st.checkbox("Demo Mode (Satellite)", value=False, key="check_demo_s")
         
         st.divider()
         st.write(f"📞 (509) 4738-5663")
@@ -117,6 +116,7 @@ def main_page():
         col_rad, col_log = st.columns([2, 1])
         
         with col_rad:
+            # CORRECTED: Using r""" for JS and CSS to avoid f-string SyntaxError
             radar_html = r"""
             <html>
             <body style="background:#03060c; margin:0; display:flex; justify-content:center; cursor:pointer;">
@@ -126,9 +126,11 @@ def main_page():
                     const ctx = canvas.getContext('2d');
                     let angle = 0;
                     let audioCtx = null;
+
                     canvas.addEventListener('click', () => {
                         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     });
+
                     function playPing() {
                         if (!audioCtx) return;
                         const osc = audioCtx.createOscillator();
@@ -140,6 +142,7 @@ def main_page():
                         osc.connect(gain); gain.connect(audioCtx.destination);
                         osc.start(); osc.stop(audioCtx.currentTime + 0.5);
                     }
+
                     function draw() {
                         ctx.clearRect(0,0,550,550);
                         const cx = 275, cy = 275, r = 250;
@@ -194,7 +197,8 @@ def main_page():
 
         with col_map:
             st.subheader(L['sat_engine'])
-            # Leaflet.js with dynamic sidebar coordinates
+            # CORRECTED: Using .format() or f-strings carefully to inject u_lat and u_lon
+            # without breaking the Leaflet curly braces.
             map_html = f"""
             <html>
             <head>
@@ -205,9 +209,9 @@ def main_page():
             <body>
                 <div id="map"></div>
                 <script>
-                    const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 6);
-                    L.tileLayer('https://{{s}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png').addTo(map);
-                    L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 10}}).addTo(map)
+                    const map = L.map('map', {{ zoomControl: false }}).setView([{u_lat}, {u_lon}], 6);
+                    L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png').addTo(map);
+                    L.circleMarker([{u_lat}, {u_lon}], {{ color: '#00ff64', radius: 10 }}).addTo(map)
                         .bindPopup('Active Lock: {u_lat}, {u_lon}').openPopup();
                 </script>
             </body>
