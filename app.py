@@ -56,7 +56,7 @@ For licensing, support, or payments:
         "tab_radar": "📡 Radar",
         "tab_satellite": "🛰️ Satellite Tracker",
         "satellite_title": "🛰️ LIVE SATELLITE TRACKER (Real‑time positions)",
-        "satellite_desc": "Current positions of the International Space Station (ISS), Hubble Space Telescope, and other selected satellites.",
+        "satellite_desc": "Current positions of the International Space Station (ISS), Hubble Space Telescope, and Tiangong space station.",
         "satellite_credit": "Data provided by wheretheiss.at API | Map: Leaflet | Built by Gesner Deslandes"
     },
     "fr": {
@@ -101,7 +101,7 @@ Pour les licences, le support ou les paiements :
         "tab_radar": "📡 Radar",
         "tab_satellite": "🛰️ Traceur de satellites",
         "satellite_title": "🛰️ TRACEUR DE SATELLITES EN DIRECT (positions réelles)",
-        "satellite_desc": "Positions actuelles de la Station Spatiale Internationale (ISS), du télescope Hubble et d'autres satellites sélectionnés.",
+        "satellite_desc": "Positions actuelles de la Station Spatiale Internationale (ISS), du télescope Hubble et de la station spatiale Tiangong.",
         "satellite_credit": "Données fournies par l'API wheretheiss.at | Carte : Leaflet | Construit par Gesner Deslandes"
     },
     "es": {
@@ -146,7 +146,7 @@ Para licencias, soporte o pagos:
         "tab_radar": "📡 Radar",
         "tab_satellite": "🛰️ Rastreador de satélites",
         "satellite_title": "🛰️ RASTREADOR DE SATÉLITES EN VIVO (posiciones reales)",
-        "satellite_desc": "Posiciones actuales de la Estación Espacial Internacional (ISS), el telescopio Hubble y otros satélites seleccionados.",
+        "satellite_desc": "Posiciones actuales de la Estación Espacial Internacional (ISS), el telescopio Hubble y la estación espacial Tiangong.",
         "satellite_credit": "Datos proporcionados por la API wheretheiss.at | Mapa: Leaflet | Construido por Gesner Deslandes"
     }
 }
@@ -214,7 +214,7 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR HTML COMPONENT (UNCHANGED FROM YOUR ORIGINAL) ----------
+# ---------- RADAR HTML COMPONENT (ORIGINAL, WITH ADDED BEEP SOUND) ----------
 def radar_component(radar_lat, radar_lon, max_range, api_key):
     radar_html = f"""
     <!DOCTYPE html>
@@ -293,6 +293,24 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
     </div>
 
     <script>
+        // ---------- Web Audio for radar sweep beep ----------
+        let audioCtx = null;
+        function playBeep() {{
+            try {{
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = 880; // high beep
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }} catch(e) {{ console.log("Audio not supported"); }}
+        }}
+
         const MILITARY_ICAO_PREFIXES = [
             "AE","AD","AF","3C","3E","33","34","38","39","40","43","44","45","46","48",
             "4B","4C","4D","4E","4F","50","51","52","53","54","55","56","57","58","59",
@@ -340,6 +358,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         const downloadAllBtn = document.getElementById('downloadAllBtn');
 
         let currentAircraft = [], selectedIcao = null, refreshTimer = null, animationId = null, canvasSize = 700;
+        let lastSweepAngle = 0;
 
         function haversine(lat1, lon1, lat2, lon2) {{
             const R = 6371;
@@ -372,7 +391,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 const ang = testBrng * Math.PI/180, rpx = (testDist/maxRangeKm)*maxR;
                 const x = cx + rpx*Math.sin(ang), y = cy - rpx*Math.cos(ang);
                 ctx.beginPath(); ctx.arc(x, y, 10, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke();
-                ctx.fillStyle = 'white'; ctx.fillText("TEST", x+12, y-8);
+                ctx.fillStyle = 'white'; ctx.font = "bold 10px monospace"; ctx.fillText("TEST", x+12, y-8);
             }}
             for (let ac of aircraftList) {{
                 if (ac.distance > maxRangeKm) continue;
@@ -387,6 +406,11 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 }}
             }}
             const sweep = (nowSeconds * 1.2) % 360, radSweep = sweep * Math.PI/180;
+            // Beep when sweep passes 0° (completes a full rotation)
+            if (lastSweepAngle > 350 && sweep < 10) {{
+                playBeep();
+            }}
+            lastSweepAngle = sweep;
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR*Math.sin(radSweep), cy - maxR*Math.cos(radSweep)); ctx.strokeStyle = '#9effcf66'; ctx.stroke();
             ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill();
         }}
@@ -529,13 +553,10 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
     """
     components.html(radar_html, height=1300, scrolling=True)
 
-# ---------- SATELLITE TRACKER COMPONENT (NEW) ----------
+# ---------- SATELLITE TRACKER COMPONENT (WITH REFRESH BEEP) ----------
 def satellite_tracker():
     st.markdown(f"## {_('satellite_title')}")
     st.markdown(_("satellite_desc"))
-    # Use an iframe to embed a live satellite tracking map from a reliable public source
-    # Option 1: Use a simple Leaflet map with real-time ISS position (open-source)
-    # We'll create a custom HTML/JS map that fetches ISS and other satellites.
     satellite_html = """
     <!DOCTYPE html>
     <html>
@@ -559,6 +580,24 @@ def satellite_tracker():
             <p>📍 Positions update every 5 seconds | Real data via wheretheiss.at</p>
         </div>
         <script>
+            // Beep on refresh (each satellite update)
+            let audioCtx = null;
+            function playBeep() {
+                try {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const now = audioCtx.currentTime;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.frequency.value = 440;
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } catch(e) {}
+            }
+
             var map = L.map('map').setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
@@ -568,6 +607,7 @@ def satellite_tracker():
             }).addTo(map);
             
             var issMarker, hubbleMarker, tiangongMarker;
+            var lastUpdateTime = 0;
             
             function fetchSatellites() {
                 // ISS
@@ -612,6 +652,9 @@ def satellite_tracker():
                             tiangongMarker.getPopup().setContent('<b>Tiangong Space Station</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h');
                         }
                     }).catch(err => console.error("Tiangong error:", err));
+                
+                // Play beep once per batch update
+                playBeep();
             }
             
             fetchSatellites();
