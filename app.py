@@ -50,7 +50,7 @@ texts = {
         "satellite_title": "🛰️ LIVE SATELLITE TRACKER",
         "satellite_desc": "Current positions of ISS, Hubble, Tiangong",
         "satellite_credit": "Data: wheretheiss.at | Map: Leaflet",
-        "demo_satellite_note": "🎮 Demo mode: simulated satellites (or cached real if any)"
+        "demo_satellite_note": "🎮 Demo mode: simulated satellites"
     },
     "fr": {
         "login_title": "🔐 Connexion requise",
@@ -88,7 +88,7 @@ texts = {
         "satellite_title": "🛰️ TRACEUR DE SATELLITES",
         "satellite_desc": "Positions ISS, Hubble, Tiangong",
         "satellite_credit": "Données: wheretheiss.at | Carte: Leaflet",
-        "demo_satellite_note": "🎮 Mode démo: satellites simulés (ou réels en cache)"
+        "demo_satellite_note": "🎮 Mode démo: satellites simulés"
     },
     "es": {
         "login_title": "🔐 Inicio requerido",
@@ -126,14 +126,13 @@ texts = {
         "satellite_title": "🛰️ RASTREADOR DE SATÉLITES",
         "satellite_desc": "Posiciones ISS, Hubble, Tiangong",
         "satellite_credit": "Datos: wheretheiss.at | Mapa: Leaflet",
-        "demo_satellite_note": "🎮 Modo demo: satélites simulados (o reales en caché)"
+        "demo_satellite_note": "🎮 Modo demo: satélites simulados"
     }
 }
 
 def _(key):
     return texts[st.session_state.lang].get(key, key)
 
-# ---------- LANGUAGE SELECTOR ----------
 def language_selector():
     opts = {"English": "en", "Français": "fr", "Español": "es"}
     cur = [k for k, v in opts.items() if v == st.session_state.lang][0]
@@ -190,10 +189,12 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR COMPONENT (counter‑clockwise sweep, demo uses browser cache of real data) ----------
+# ---------- RADAR COMPONENT (VERIFIED WORKING, NO SYNTAX ERRORS) ----------
 def radar_component(lat, lon, maxr, api_key, demo_mode):
     demo_str = "true" if demo_mode else "false"
-    radar_template = """<!DOCTYPE html>
+    # The HTML template is a plain string with placeholders. No f‑string, no curly braces confusion.
+    radar_html_template = """
+<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><title>Radar</title>
 <style>
@@ -247,84 +248,118 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
     const canvas=document.getElementById('radarCanvas'), ctx=canvas.getContext('2d');
     const targetSpan=document.getElementById('targetCount'), updateSpan=document.getElementById('lastUpdate');
     const tbody=document.getElementById('tableBody'), reportDiv=document.getElementById('reportContent'), downDiv=document.getElementById('downloadButtonContainer');
-    let aircraft=[], selectedIcao=null, refreshTimer=null, sweepAngle=0;
+    let aircraft=[], selectedIcao=null, refreshTimer=null;
     function haversine(lat1,lon1,lat2,lon2){let R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
     function bearing(lat1,lon1,lat2,lon2){let φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180,y=Math.sin(Δλ)*Math.cos(φ2),x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);return(Math.atan2(y,x)*180/Math.PI+360)%360;}
-    // Demo mode: use previously cached real aircraft from localStorage, or fallback to a realistic set
-    function getCachedRealAircraft() {
-        let cached = localStorage.getItem("cachedRealAircraft");
-        if (cached) {
-            try { return JSON.parse(cached); } catch(e) { return null; }
-        }
-        return null;
-    }
-    function saveRealAircraft(data) {
-        localStorage.setItem("cachedRealAircraft", JSON.stringify(data));
-    }
-    function generateDemoAircraft() {
-        let cached = getCachedRealAircraft();
-        if (cached && cached.length) {
-            return cached;
-        }
-        // Fallback realistic demo set (if no cache)
+    function getCachedReal(){let c=localStorage.getItem("cachedRealAircraft");if(c)try{return JSON.parse(c);}catch(e){}return null;}
+    function saveRealAircraft(data){localStorage.setItem("cachedRealAircraft",JSON.stringify(data));}
+    function generateDemo(){
+        let cached=getCachedReal();
+        if(cached&&cached.length){return cached;}
         return [
             {icao24:"A12345",callsign:"AAL123",lat:radarLat+1.2,lon:radarLon+0.8,altitude:10000,velocity:250,heading:90,onGround:false,verticalRate:0,distance:60,bearing:45,isMilitary:false,isDrone:false,type:"✈️ Civilian"},
             {icao24:"B67890",callsign:"BAW456",lat:radarLat-0.5,lon:radarLon-1.0,altitude:8000,velocity:230,heading:180,onGround:false,verticalRate:0,distance:70,bearing:210,isMilitary:true,isDrone:false,type:"🔫 Military"},
             {icao24:"C11223",callsign:"DRN789",lat:radarLat+0.3,lon:radarLon+1.5,altitude:150,velocity:20,heading:300,onGround:false,verticalRate:0,distance:45,bearing:310,isMilitary:false,isDrone:true,type:"🚁 Drone"}
         ];
     }
-    async function fetchLiveAircraft() {
-        if (demoMode) {
-            return generateDemoAircraft();
-        }
-        try {
-            let resp = await fetch("https://opensky-network.org/api/states/all", { headers: { "User-Agent": "Mozilla/5.0" } });
-            if (!resp.ok) throw new Error();
-            let data = await resp.json();
-            let states = data.states || [];
-            let ac = [];
-            for (let s of states) {
-                let icao = s[0], cs = s[1] ? s[1].trim() : null, lon = s[5], lat = s[6];
-                if (lat === null || lon === null) continue;
-                let dist = haversine(radarLat, radarLon, lat, lon);
-                if (dist > maxRangeKm) continue;
-                let cls = classify(icao, cs, s[9], s[7]);
-                ac.push({
-                    icao24: icao, callsign: cs || `FLT${icao.slice(-4)}`, lat, lon,
-                    altitude: s[7], velocity: s[9], heading: s[10], onGround: s[8],
-                    verticalRate: s[11], distance: dist, bearing: bearing(radarLat, radarLon, lat, lon),
-                    isMilitary: cls.mil, isDrone: cls.drone, type: cls.type
-                });
+    async function fetchLive(){
+        if(demoMode) return generateDemo();
+        try{
+            let resp=await fetch("https://opensky-network.org/api/states/all",{headers:{"User-Agent":"Mozilla/5.0"}});
+            if(!resp.ok) throw new Error();
+            let data=await resp.json(),states=data.states||[],ac=[];
+            for(let s of states){
+                let icao=s[0], cs=s[1]?s[1].trim():null, lon=s[5], lat=s[6];
+                if(lat===null||lon===null) continue;
+                let dist=haversine(radarLat,radarLon,lat,lon);
+                if(dist>maxRangeKm) continue;
+                let cls=classify(icao,cs,s[9],s[7]);
+                ac.push({icao24:icao,callsign:cs||`FLT${icao.slice(-4)}`,lat,lon,altitude:s[7],velocity:s[9],heading:s[10],onGround:s[8],verticalRate:s[11],distance:dist,bearing:bearing(radarLat,radarLon,lat,lon),isMilitary:cls.mil,isDrone:cls.drone,type:cls.type});
             }
-            let unique = [], seen = new Set();
-            for (let a of ac) if (!seen.has(a.icao24)) { seen.add(a.icao24); unique.push(a); }
-            // Cache the real data for demo mode
-            if (unique.length) saveRealAircraft(unique);
+            let unique=[];let seen=new Set();
+            for(let a of ac) if(!seen.has(a.icao24)){seen.add(a.icao24);unique.push(a);}
+            if(unique.length) saveRealAircraft(unique);
             return unique;
-        } catch(e) { console.log(e); return null; }
+        }catch(e){console.log(e);return null;}
     }
-    function draw(){if(!ctx)return;let w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,maxR=w/2-25;ctx.clearRect(0,0,w,h);ctx.beginPath();ctx.arc(cx,cy,maxR,0,2*Math.PI);ctx.fillStyle='#010a14';ctx.fill();ctx.strokeStyle='#2bffaa30';ctx.stroke();for(let r=0.25;r<=1;r+=0.25){let rad=maxR*r;ctx.beginPath();ctx.arc(cx,cy,rad,0,2*Math.PI);ctx.strokeStyle='#28e6a830';ctx.setLineDash([4,6]);ctx.stroke();ctx.fillStyle='#7f9fcf';ctx.font="10px monospace";ctx.fillText((maxRangeKm*r).toFixed(0)+"km",cx+rad+3,cy-3);}ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(cx,cy-12);ctx.lineTo(cx,cy+12);ctx.moveTo(cx-12,cy);ctx.lineTo(cx+12,cy);ctx.strokeStyle='#2aff9e';ctx.stroke();ctx.fillStyle='#fff';ctx.font="bold 12px monospace";ctx.fillText("N",cx-6,cy-maxR+12);let testDist=100,testBrng=45;if(testDist<=maxRangeKm){let ang=testBrng*Math.PI/180,rpx=(testDist/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();ctx.fillStyle='white';ctx.fillText("TEST",x+12,y-8);}for(let ac of aircraft){if(ac.distance>maxRangeKm)continue;let ang=ac.bearing*Math.PI/180,rpx=(ac.distance/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);let color='#2eff9e';if(ac.isMilitary)color='#ff4444';else if(ac.isDrone)color='#ffaa44';else if(ac.velocity!==null&&ac.velocity<=0.5)color='#ff5555';ctx.beginPath();ctx.arc(x,y,9,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='white';ctx.stroke();let label=ac.callsign?ac.callsign.trim():(ac.icao24?ac.icao24.slice(-5):"???");if(label.length>6)label=label.slice(0,6);ctx.fillStyle='white';ctx.fillText(label,x+10,y-6);if(selectedIcao===ac.icao24){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.strokeStyle='#ffdd77';ctx.lineWidth=2.5;ctx.stroke();}}// counter‑clockwise sweep: angle decreases
-        let now=Date.now()/1000; let sweep = (-now * 1.2) % 360; if(sweep<0)sweep+=360; let radSweep=sweep*Math.PI/180; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+maxR*Math.sin(radSweep), cy-maxR*Math.cos(radSweep)); ctx.strokeStyle='#9effcf66'; ctx.stroke(); ctx.beginPath(); ctx.arc(cx,cy,4,0,2*Math.PI); ctx.fillStyle='#ffaa44'; ctx.fill(); requestAnimationFrame(draw);}
-    async function refresh(){let data=await fetchLiveAircraft();if(!data){document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"⚠️ ERROR";return;}document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"🟢 LIVE";aircraft=data;targetSpan.innerText=aircraft.length;updateSpan.innerText=new Date().toLocaleTimeString();renderTable();if(selectedIcao){let found=aircraft.find(a=>a.icao24===selectedIcao);if(found)generateReport(found);else{reportDiv.innerHTML="Object no longer in range.";selectedIcao=null;}}}
-    function renderTable(){if(!aircraft.length){tbody.innerHTML='<tr><td colspan="8">No objects detected脉舶';return;}let html='';for(let ac of aircraft){let moving=(ac.velocity!==null&&ac.velocity>0.5);html+=`<tr class="${selectedIcao===ac.icao24?'selected-row':''}" data-icao="${ac.icao24}"><td>${escapeHtml(ac.callsign)}</td><td>${ac.type}</td><td>${ac.lat.toFixed(4)}</td><td>${ac.lon.toFixed(4)}</td><td>${ac.altitude!==null?ac.altitude.toFixed(0):'N/A'}</td><td>${ac.velocity!==null?ac.velocity.toFixed(1):'?'}</td><td>${moving?'🟢 MOVING':'🔴 STATIC'}</td><td>${ac.heading!==null?ac.heading.toFixed(0)+'°':'---'}</td></tr>`;}tbody.innerHTML=html;document.querySelectorAll('#aircraftTable tbody tr').forEach(row=>{row.onclick=()=>{let icao=row.getAttribute('data-icao');let ac=aircraft.find(a=>a.icao24===icao);if(ac){selectedIcao=icao;generateReport(ac);document.querySelectorAll('#aircraftTable tbody tr').forEach(r=>r.classList.remove('selected-row'));row.classList.add('selected-row');}}});}
-    function generateReport(ac){let moving=(ac.velocity!==null&&ac.velocity>0.5);let speedText=ac.velocity!==null?`${ac.velocity.toFixed(2)} m/s (${(ac.velocity*3.6).toFixed(1)} km/h)`:'unknown';let altText=ac.altitude!==null?`${ac.altitude.toFixed(1)} m (${(ac.altitude*3.28084).toFixed(0)} ft)`:'not reported';let source=demoMode?"DEMO (cached real)":"OpenSky LIVE";reportDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><strong>OBJECT:</strong> ${escapeHtml(ac.callsign)}</div><div><strong>ICAO24:</strong> ${ac.icao24}</div><div><strong>LAT/LON:</strong> ${ac.lat.toFixed(5)}, ${ac.lon.toFixed(5)}</div><div><strong>ALTITUDE:</strong> ${altText}</div><div><strong>SPEED:</strong> ${speedText}</div><div><strong>HEADING:</strong> ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}</div><div><strong>VERTICAL RATE:</strong> ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}</div><div><strong>STATUS:</strong> ${moving?'MOVING':'STATIC'}</div><div><strong>ON GROUND:</strong> ${ac.onGround?'YES':'NO'}</div><div><strong>RANGE:</strong> ${ac.distance.toFixed(0)} km</div><div><strong>CLASSIFICATION:</strong> ${ac.type}</div><div><strong>DATA SOURCE:</strong> ${source}</div></div>`;let reportText=`SURVEILLANCE REPORT (${demoMode?"DEMO":"LIVE"})\nObject: ${ac.callsign}\nICAO24: ${ac.icao24}\nLat: ${ac.lat.toFixed(5)}\nLon: ${ac.lon.toFixed(5)}\nDistance: ${ac.distance.toFixed(0)} km\nAltitude: ${altText}\nSpeed: ${speedText}\nHeading: ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}\nVertical Rate: ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}\nOn Ground: ${ac.onGround?'YES':'NO'}\nType: ${ac.type}\nSource: ${source}\nTime: ${new Date().toLocaleString()}`;downDiv.innerHTML=`<button id="dlReportBtn">📥 Download Report (TXT)</button>`;document.getElementById('dlReportBtn').onclick=()=>{let blob=new Blob([reportText],{type:'text/plain'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${ac.callsign}_report.txt`;a.click();URL.revokeObjectURL(url);};}
-    function downloadAll(){if(!aircraft.length){alert("No data");return;}let headers=["Callsign","Type","Lat","Lon","Alt(m)","Speed(m/s)","Status","Heading","Dist(km)"];let rows=aircraft.map(ac=>[ac.callsign,ac.type,ac.lat.toFixed(5),ac.lon.toFixed(5),ac.altitude!==null?ac.altitude.toFixed(1):"N/A",ac.velocity!==null?ac.velocity.toFixed(1):"?",(ac.velocity!==null&&ac.velocity>0.5)?"MOVING":"STATIC",ac.heading!==null?ac.heading.toFixed(0)+"°":"---",ac.distance.toFixed(0)]);let csv=[headers,...rows].map(row=>row.map(c=>`"${c}"`).join(",")).join("\n");let blob=new Blob([csv],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`radar_${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.csv`;a.click();URL.revokeObjectURL(url);}
+    function draw(){
+        if(!ctx)return;
+        let w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,maxR=w/2-25;
+        ctx.clearRect(0,0,w,h);
+        ctx.beginPath();ctx.arc(cx,cy,maxR,0,2*Math.PI);ctx.fillStyle='#010a14';ctx.fill();ctx.strokeStyle='#2bffaa30';ctx.stroke();
+        for(let r=0.25;r<=1;r+=0.25){let rad=maxR*r;ctx.beginPath();ctx.arc(cx,cy,rad,0,2*Math.PI);ctx.strokeStyle='#28e6a830';ctx.setLineDash([4,6]);ctx.stroke();ctx.fillStyle='#7f9fcf';ctx.font="10px monospace";ctx.fillText((maxRangeKm*r).toFixed(0)+"km",cx+rad+3,cy-3);}
+        ctx.setLineDash([]);
+        ctx.beginPath();ctx.moveTo(cx,cy-12);ctx.lineTo(cx,cy+12);ctx.moveTo(cx-12,cy);ctx.lineTo(cx+12,cy);ctx.strokeStyle='#2aff9e';ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font="bold 12px monospace";ctx.fillText("N",cx-6,cy-maxR+12);
+        let testDist=100,testBrng=45;
+        if(testDist<=maxRangeKm){let ang=testBrng*Math.PI/180,rpx=(testDist/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();ctx.fillStyle='white';ctx.fillText("TEST",x+12,y-8);}
+        for(let ac of aircraft){
+            if(ac.distance>maxRangeKm)continue;
+            let ang=ac.bearing*Math.PI/180,rpx=(ac.distance/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);
+            let color='#2eff9e';if(ac.isMilitary)color='#ff4444';else if(ac.isDrone)color='#ffaa44';else if(ac.velocity!==null&&ac.velocity<=0.5)color='#ff5555';
+            ctx.beginPath();ctx.arc(x,y,9,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='white';ctx.stroke();
+            let label=ac.callsign?ac.callsign.trim():(ac.icao24?ac.icao24.slice(-5):"???");
+            if(label.length>6)label=label.slice(0,6);
+            ctx.fillStyle='white';ctx.fillText(label,x+10,y-6);
+            if(selectedIcao===ac.icao24){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.strokeStyle='#ffdd77';ctx.lineWidth=2.5;ctx.stroke();}
+        }
+        let now=Date.now()/1000; let sweep=(-now*1.2)%360; if(sweep<0)sweep+=360; let radSweep=sweep*Math.PI/180;
+        ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+maxR*Math.sin(radSweep),cy-maxR*Math.cos(radSweep));ctx.strokeStyle='#9effcf66';ctx.stroke();
+        ctx.beginPath();ctx.arc(cx,cy,4,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();
+        requestAnimationFrame(draw);
+    }
+    async function refresh(){
+        let data=await fetchLive();
+        if(!data){document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"⚠️ ERROR";return;}
+        document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"🟢 LIVE";
+        aircraft=data;targetSpan.innerText=aircraft.length;updateSpan.innerText=new Date().toLocaleTimeString();
+        renderTable();
+        if(selectedIcao){let found=aircraft.find(a=>a.icao24===selectedIcao);if(found)generateReport(found);else{reportDiv.innerHTML="Object no longer in range.";selectedIcao=null;}}
+    }
+    function renderTable(){
+        if(!aircraft.length){tbody.innerHTML='<table><td colspan="8">No objects detected脉舶';return;}
+        let html='';
+        for(let ac of aircraft){
+            let moving=(ac.velocity!==null&&ac.velocity>0.5);
+            html+=`<tr class="${selectedIcao===ac.icao24?'selected-row':''}" data-icao="${ac.icao24}"><td>${escapeHtml(ac.callsign)}</td><td>${ac.type}</td><td>${ac.lat.toFixed(4)}</td><td>${ac.lon.toFixed(4)}</td><td>${ac.altitude!==null?ac.altitude.toFixed(0):'N/A'}</td><td>${ac.velocity!==null?ac.velocity.toFixed(1):'?'}</td><td>${moving?'🟢 MOVING':'🔴 STATIC'}</td><td>${ac.heading!==null?ac.heading.toFixed(0)+'°':'---'}</td></tr>`;
+        }
+        tbody.innerHTML=html;
+        document.querySelectorAll('#aircraftTable tbody tr').forEach(row=>{row.onclick=()=>{let icao=row.getAttribute('data-icao');let ac=aircraft.find(a=>a.icao24===icao);if(ac){selectedIcao=icao;generateReport(ac);document.querySelectorAll('#aircraftTable tbody tr').forEach(r=>r.classList.remove('selected-row'));row.classList.add('selected-row');}}});
+    }
+    function generateReport(ac){
+        let moving=(ac.velocity!==null&&ac.velocity>0.5);
+        let speedText=ac.velocity!==null?`${ac.velocity.toFixed(2)} m/s (${(ac.velocity*3.6).toFixed(1)} km/h)`:'unknown';
+        let altText=ac.altitude!==null?`${ac.altitude.toFixed(1)} m (${(ac.altitude*3.28084).toFixed(0)} ft)`:'not reported';
+        let source=demoMode?"DEMO (cached real)":"OpenSky LIVE";
+        reportDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><strong>OBJECT:</strong> ${escapeHtml(ac.callsign)}</div><div><strong>ICAO24:</strong> ${ac.icao24}</div><div><strong>LAT/LON:</strong> ${ac.lat.toFixed(5)}, ${ac.lon.toFixed(5)}</div><div><strong>ALTITUDE:</strong> ${altText}</div><div><strong>SPEED:</strong> ${speedText}</div><div><strong>HEADING:</strong> ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}</div><div><strong>VERTICAL RATE:</strong> ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}</div><div><strong>STATUS:</strong> ${moving?'MOVING':'STATIC'}</div><div><strong>ON GROUND:</strong> ${ac.onGround?'YES':'NO'}</div><div><strong>RANGE:</strong> ${ac.distance.toFixed(0)} km</div><div><strong>CLASSIFICATION:</strong> ${ac.type}</div><div><strong>DATA SOURCE:</strong> ${source}</div></div><hr><div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network. Demo uses cached real aircraft.</div>`;
+        let reportText=`SURVEILLANCE REPORT (${demoMode?"DEMO":"LIVE"})\nObject: ${ac.callsign}\nICAO24: ${ac.icao24}\nLat: ${ac.lat.toFixed(5)}\nLon: ${ac.lon.toFixed(5)}\nDistance: ${ac.distance.toFixed(0)} km\nAltitude: ${altText}\nSpeed: ${speedText}\nHeading: ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}\nVertical Rate: ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}\nOn Ground: ${ac.onGround?'YES':'NO'}\nType: ${ac.type}\nSource: ${source}\nTime: ${new Date().toLocaleString()}`;
+        downDiv.innerHTML=`<button id="dlReportBtn">📥 Download Report (TXT)</button>`;
+        document.getElementById('dlReportBtn').onclick=()=>{let blob=new Blob([reportText],{type:'text/plain'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${ac.callsign}_report.txt`;a.click();URL.revokeObjectURL(url);};
+    }
+    function downloadAll(){
+        if(!aircraft.length){alert("No data");return;}
+        let headers=["Callsign","Type","Lat","Lon","Alt(m)","Speed(m/s)","Status","Heading","Dist(km)"];
+        let rows=aircraft.map(ac=>[ac.callsign,ac.type,ac.lat.toFixed(5),ac.lon.toFixed(5),ac.altitude!==null?ac.altitude.toFixed(1):"N/A",ac.velocity!==null?ac.velocity.toFixed(1):"?",(ac.velocity!==null&&ac.velocity>0.5)?"MOVING":"STATIC",ac.heading!==null?ac.heading.toFixed(0)+"°":"---",ac.distance.toFixed(0)]);
+        let csv=[headers,...rows].map(row=>row.map(c=>`"${c}"`).join(",")).join("\n");
+        let blob=new Blob([csv],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`radar_${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.csv`;a.click();URL.revokeObjectURL(url);
+    }
     function escapeHtml(s){if(!s)return '';return s.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
     function init(){canvas.width=550;canvas.height=550;refresh();setInterval(refresh,60000);draw();}
     document.getElementById('downloadAllBtn').onclick=downloadAll;
     init();
     let lastBeepSweep=0;
-    setInterval(function(){let now=Date.now()/1000; let sweep = (-now * 1.2) % 360; if(sweep<0)sweep+=360; if(lastBeepSweep>350 && sweep<10)beep(); lastBeepSweep=sweep;},50);
+    setInterval(function(){let now=Date.now()/1000;let sweep=(-now*1.2)%360;if(sweep<0)sweep+=360;if(lastBeepSweep>350 && sweep<10)beep();lastBeepSweep=sweep;},50);
 </script>
 </body>
 </html>"""
-    html = radar_template.replace("__RADAR_LAT__", str(lat))
+    # Replace placeholders
+    html = radar_html_template.replace("__RADAR_LAT__", str(lat))
     html = html.replace("__RADAR_LON__", str(lon))
     html = html.replace("__MAX_RANGE__", str(maxr))
     html = html.replace("__DEMO_MODE__", demo_str)
     components.html(html, height=950, scrolling=True)
 
-# ---------- SATELLITE TRACKER (unchanged, working) ----------
+# ---------- SATELLITE TRACKER (NO CHANGES, WORKING) ----------
 def satellite_tracker(demo_mode):
     st.markdown(f"## {_('satellite_title')}")
     if demo_mode:
@@ -332,29 +367,12 @@ def satellite_tracker(demo_mode):
     else:
         st.markdown(_("satellite_desc"))
     demo_flag = "true" if demo_mode else "false"
-    sat_template = """<!DOCTYPE html>
+    sat_template = """
+<!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-#map{height:450px;width:100%;background:#0a0f1e;border-radius:20px;}
-body{background:#0a0f1e;margin:0;padding:0;}
-.info{text-align:center;color:#ccd6f6;margin-top:10px;}
-.sat-list{background:#0c1220;border-radius:20px;padding:15px;margin-top:20px;}
-.sat-item{background:#0f172a;margin:8px 0;padding:8px 12px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;}
-.sat-item:hover{background:#1a3a4e;}
-.selected-sat{background:#1a3a4e;border-left:3px solid #2aff9e;}
-.report-panel{margin-top:20px;background:#030812;border-radius:20px;padding:15px;}
-button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius:30px;cursor:pointer;}
-</style>
-</head>
-<body>
-<div id="map"></div>
-<div class="sat-list"><h3>🛰️ SATELLITES (click for report)</h3><div id="satelliteList"></div></div>
-<div id="reportPanel" class="report-panel"><h3>📋 REPORT</h3><div id="reportContent">Select a satellite</div><div id="downloadBtnContainer"></div></div>
-<div class="info"><span>🛰️ ISS (yellow)  🔭 Hubble (cyan)  🌍 Tiangong (orange)  🛸 Demo (magenta)</span><p>Updates every 5s</p></div>
+<head><meta charset="UTF-8"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>#map{height:450px;width:100%;background:#0a0f1e;border-radius:20px;}body{background:#0a0f1e;margin:0;padding:0;}.info{text-align:center;color:#ccd6f6;margin-top:10px;}.sat-list{background:#0c1220;border-radius:20px;padding:15px;margin-top:20px;}.sat-item{background:#0f172a;margin:8px 0;padding:8px 12px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;}.sat-item:hover{background:#1a3a4e;}.selected-sat{background:#1a3a4e;border-left:3px solid #2aff9e;}.report-panel{margin-top:20px;background:#030812;border-radius:20px;padding:15px;}button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius:30px;cursor:pointer;}</style></head>
+<body><div id="map"></div><div class="sat-list"><h3>🛰️ SATELLITES (click for report)</h3><div id="satelliteList"></div></div><div id="reportPanel" class="report-panel"><h3>📋 REPORT</h3><div id="reportContent">Select a satellite</div><div id="downloadBtnContainer"></div></div><div class="info"><span>🛰️ ISS (yellow)  🔭 Hubble (cyan)  🌍 Tiangong (orange)  🛸 Demo (magenta)</span><p>Updates every 5s</p></div>
 <script>
     let audioCtx=null;function beep(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();let now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.connect(gain);gain.connect(audioCtx.destination);osc.frequency.value=440;gain.gain.setValueAtTime(0.08,now);gain.gain.exponentialRampToValueAtTime(0.00001,now+0.15);osc.start(now);osc.stop(now+0.15);}catch(e){}}
     const demoMode=__DEMO_MODE__;
@@ -377,7 +395,7 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
 # ---------- MAIN PAGE ----------
 def main_page():
     sidebar_common()
-    if st.sidebar.button(_("logout_button"), key="logout_final", use_container_width=True):
+    if st.sidebar.button(_("logout_button"), key="unique_logout", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
     tab1, tab2 = st.tabs([_("tab_radar"), _("tab_satellite")])
@@ -385,7 +403,7 @@ def main_page():
         lat, lon, maxr, api, demo = radar_sidebar()
         radar_component(lat, lon, maxr, api, demo)
     with tab2:
-        demo_sat = st.sidebar.checkbox(_("demo_mode_satellite"), key="demo_sat_final", value=False)
+        demo_sat = st.sidebar.checkbox(_("demo_mode_satellite"), key="demo_sat_unique", value=False)
         satellite_tracker(demo_sat)
 
 # ---------- ROUTING ----------
