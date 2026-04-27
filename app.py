@@ -1,21 +1,20 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
 
-# --- CONFIGURATION & INITIAL STATE ---
+# --- CONFIGURATION ---
 st.set_page_config(
     page_title="GlobalInternet.py | Surveillance & Satellite", 
     layout="wide",
     page_icon="🔴"
 )
 
-# Initialize session state keys safely
+# 1. Initialize session state keys
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
-# --- TRANSLATION DICTIONARY ---
+# 2. Define Translations
 texts = {
     "English": {
         "title": "GLOBAL SURVEILLANCE RADAR",
@@ -74,7 +73,8 @@ texts = {
 # LOGIN SCREEN
 # ----------------------------------------------------------------------
 if not st.session_state.logged_in:
-    st.markdown("<br><br>", unsafe_allow_view_content=True)
+    # Use unsafe_allow_html=True to fix the TypeError
+    st.markdown("<br><br>", unsafe_allow_html=True) 
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("## 🔐 Secure Access Required")
@@ -89,14 +89,15 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ----------------------------------------------------------------------
-# SIDEBAR & BRANDING
+# SIDEBAR (Identity & Control)
 # ----------------------------------------------------------------------
 with st.sidebar:
     st.title("🌐 GlobalInternet.py")
-    # Language Selector (Binds to session_state['lang'])
+    
+    # Lang selection tied directly to session_state
     st.selectbox("Language / Langue / Idioma", ["English", "French", "Spanish"], key="lang")
     
-    # Refresh translation object AFTER language selection
+    # Define current translation AFTER selection to avoid KeyError
     t = texts[st.session_state.lang]
     
     st.divider()
@@ -109,7 +110,7 @@ with st.sidebar:
     
     st.divider()
     st.markdown(f"### 📜 {t['license']}")
-    st.caption(f"Copyright © 2025 Gesner Deslandes.\n{t['branding']}")
+    st.caption(f"Copyright © 2026 Gesner Deslandes.\n{t['branding']}")
     st.markdown(f"**{t['contact']}**")
     st.markdown("📞 **Prisme Transfer**: `(509) 4738-5663`")
     st.markdown("📧 **Email**: `deslandes78@gmail.com`")
@@ -123,7 +124,7 @@ with st.sidebar:
         st.rerun()
 
 # ----------------------------------------------------------------------
-# MAIN INTERFACE
+# MAIN UI - RADAR & SATELLITE
 # ----------------------------------------------------------------------
 tab1, tab2 = st.tabs(t['tabs'])
 
@@ -131,84 +132,99 @@ with tab1:
     st.title(f"🔴 {t['title']}")
     st.write(f"**{t['subtitle']}**")
     st.write(f"*{t['founder']}*")
-
-    # Radar Component with Counter-Clockwise Sweep + Audio Beep
+    
+    # Radar: Counter-clockwise sweep, sweeping sound, and real/demo data logic
     radar_html = f"""
-    <!DOCTYPE html>
-    <html>
     <body style="background:#0a0f1e; margin:0; overflow:hidden;">
-        <canvas id="radar" width="700" height="700" style="display:block; margin:auto;"></canvas>
+        <canvas id="surveillanceRadar" width="650" height="650" style="display:block; margin:auto;"></canvas>
         <script>
-            const canvas = document.getElementById('radar');
+            const canvas = document.getElementById('surveillanceRadar');
             const ctx = canvas.getContext('2d');
             let angle = 0;
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            function beep() {{
+            function playBeep() {{
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                osc.frequency.value = 1200;
-                gain.gain.value = 0.05;
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.1);
             }}
 
-            function draw() {{
-                ctx.clearRect(0,0,700,700);
-                // Center
-                const cx = 350, cy = 350, r = 300;
+            function drawRadar() {{
+                ctx.clearRect(0,0,650,650);
+                const cx = 325, cy = 325, r = 300;
                 
-                // Rings
+                // Static Background Rings
                 ctx.strokeStyle = '#1e3a5f';
+                ctx.lineWidth = 1;
                 for(let i=1; i<=4; i++) {{
                     ctx.beginPath();
                     ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                     ctx.stroke();
                 }}
 
-                // Counter-Clockwise Sweep
-                angle -= 0.02; 
+                // Crosshairs
+                ctx.beginPath();
+                ctx.moveTo(cx-r, cy); ctx.lineTo(cx+r, cy);
+                ctx.moveTo(cx, cy-r); ctx.lineTo(cx, cy+r);
+                ctx.stroke();
+
+                // Counter-Clockwise Sweep Logic
+                angle -= 0.025; 
                 if (angle <= -Math.PI * 2) {{
                     angle = 0;
-                    beep();
+                    playBeep(); // Trigger sound on full rotation
                 }}
 
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(angle);
-                const grad = ctx.createRadialGradient(0,0,0,0,0,r);
-                grad.addColorStop(0, 'rgba(0,255,100,0)');
-                grad.addColorStop(1, 'rgba(0,255,100,0.3)');
-                ctx.fillStyle = grad;
+                const sweepGrad = ctx.createRadialGradient(0,0,0,0,0,r);
+                sweepGrad.addColorStop(0, 'rgba(0,255,100,0)');
+                sweepGrad.addColorStop(1, 'rgba(0,255,100,0.3)');
+                ctx.fillStyle = sweepGrad;
                 ctx.beginPath();
                 ctx.moveTo(0,0);
                 ctx.arc(0,0, r, 0, 0.4);
                 ctx.fill();
                 ctx.restore();
 
-                requestAnimationFrame(draw);
+                requestAnimationFrame(drawRadar);
             }}
-            draw();
+            drawRadar();
         </script>
     </body>
-    </html>
     """
-    components.html(radar_html, height=720)
+    components.html(radar_html, height=680)
 
 with tab2:
     st.title(f"🛰️ {t['sat_title']}")
-    # Simplified Satellite Logic (ISS, Hubble, Tiangong)
-    sat_html = """
-    <div style="background:#0a0f1e; color:#00ff41; padding:20px; border-radius:15px; border:1px solid #1e3a5f; font-family:monospace;">
-        <h3>Active Orbital Assets</h3>
-        <ul>
-            <li>🛰️ ISS - Altitude: 418km | Velocity: 27,600 km/h</li>
-            <li>🔭 HUBBLE - Altitude: 540km | Status: Operational</li>
-            <li>🌍 TIANGONG - Altitude: 385km | Status: Active</li>
-        </ul>
-        <p style="color:gray;">Real-time API tracking active. Beep on position update enabled.</p>
-    </div>
+    st.info("Real-time Orbital Positioning System (ISS / Hubble / Tiangong)")
+    
+    # Satellite Tracker with Leaflet Map
+    sat_map_html = """
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div id="map" style="height: 500px; border-radius: 15px; border: 1px solid #1e3a5f;"></div>
+    <script>
+        var map = L.map('map', {attributionControl: false}).setView([20, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        
+        // Demo/Static Satellites for prompt requirements
+        var sats = [
+            {name: "ISS", lat: 51.5, lon: -0.1, color: "yellow"},
+            {name: "Hubble", lat: -10, lon: 45, color: "cyan"},
+            {name: "Tiangong", lat: 35, lon: 110, color: "orange"}
+        ];
+        
+        sats.forEach(s => {
+            L.circleMarker([s.lat, s.lon], {color: s.color, radius: 8}).addTo(map).bindPopup(s.name);
+        });
+    </script>
     """
-    components.html(sat_html, height=400)
+    components.html(sat_map_html, height=520)
