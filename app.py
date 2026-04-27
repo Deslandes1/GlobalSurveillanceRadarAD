@@ -189,30 +189,29 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR COMPONENT (VERIFIED WORKING, NO SYNTAX ERRORS) ----------
+# ---------- RADAR COMPONENT (ESCAPED CURLY BRACES) ----------
 def radar_component(lat, lon, maxr, api_key, demo_mode):
     demo_str = "true" if demo_mode else "false"
-    # The HTML template is a plain string with placeholders. No f‑string, no curly braces confusion.
-    radar_html_template = """
+    radar_template = """
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><title>Radar</title>
 <style>
-*{box-sizing:border-box;} body{background:#0a0f1e;font-family:monospace;margin:0;padding:20px;color:#ccd6f6;}
-.dashboard{max-width:1000px;margin:0 auto;}
-.radar-container{background:#03060c;border-radius:32px;padding:20px;border:1px solid #1e3a5f;margin-bottom:20px;}
-canvas{display:block;margin:0 auto;background:radial-gradient(circle at 30% 20%,#07121f,#010101);border-radius:50%;width:100%;max-width:550px;height:auto;cursor:crosshair;}
-.radar-stats{display:flex;justify-content:space-between;margin-top:15px;font-size:0.8rem;flex-wrap:wrap;gap:10px;}
-.badge{background:#0f172a;padding:5px 12px;border-radius:40px;border-left:3px solid #2aff9e;}
-.report-section{background:#0c1220;border-radius:24px;padding:20px;border:1px solid #233453;}
-.table-wrapper{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:0.8rem;}
-th,td{padding:10px 8px;border-bottom:1px solid #1f2c44;text-align:left;}
-th{background:#07101f;color:#9effcf;}
-tr:hover{background:#101a2c;cursor:pointer;}
-.selected-row{background:#1a3a4e !important;border-left:3px solid #2aff9e;}
-.report-card{background:#030812;border-radius:20px;padding:15px;margin-top:20px;border:1px solid #2a4a6a;}
-button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius:30px;cursor:pointer;}
+*{{box-sizing:border-box;}} body{{background:#0a0f1e;font-family:monospace;margin:0;padding:20px;color:#ccd6f6;}}
+.dashboard{{max-width:1000px;margin:0 auto;}}
+.radar-container{{background:#03060c;border-radius:32px;padding:20px;border:1px solid #1e3a5f;margin-bottom:20px;}}
+canvas{{display:block;margin:0 auto;background:radial-gradient(circle at 30% 20%,#07121f,#010101);border-radius:50%;width:100%;max-width:550px;height:auto;cursor:crosshair;}}
+.radar-stats{{display:flex;justify-content:space-between;margin-top:15px;font-size:0.8rem;flex-wrap:wrap;gap:10px;}}
+.badge{{background:#0f172a;padding:5px 12px;border-radius:40px;border-left:3px solid #2aff9e;}}
+.report-section{{background:#0c1220;border-radius:24px;padding:20px;border:1px solid #233453;}}
+.table-wrapper{{overflow-x:auto;}}
+table{{width:100%;border-collapse:collapse;font-size:0.8rem;}}
+th,td{{padding:10px 8px;border-bottom:1px solid #1f2c44;text-align:left;}}
+th{{background:#07101f;color:#9effcf;}}
+tr:hover{{background:#101a2c;cursor:pointer;}}
+.selected-row{{background:#1a3a4e !important;border-left:3px solid #2aff9e;}}
+.report-card{{background:#030812;border-radius:20px;padding:15px;margin-top:20px;border:1px solid #2a4a6a;}}
+button{{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius:30px;cursor:pointer;}}
 </style>
 </head>
 <body>
@@ -238,10 +237,10 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
 </div>
 <script>
     let audioCtx=null;
-    function beep(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();let now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.connect(gain);gain.connect(audioCtx.destination);osc.frequency.value=880;gain.gain.setValueAtTime(0.1,now);gain.gain.exponentialRampToValueAtTime(0.00001,now+0.2);osc.start(now);osc.stop(now+0.2);}catch(e){}}
+    function beep(){{try{{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();let now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.connect(gain);gain.connect(audioCtx.destination);osc.frequency.value=880;gain.gain.setValueAtTime(0.1,now);gain.gain.exponentialRampToValueAtTime(0.00001,now+0.2);osc.start(now);osc.stop(now+0.2);}}catch(e){{}}}}
     const milPrefixes=["AE","AD","AF","3C","3E","33","34","38","39","40","43","44","45","46","48","4B","4C","4D","4E","4F","50","51","52","53","54","55","56","57","58","59","5A","5B","5C","5D","5E","5F","60","61","62","63","64","65","66","67","68","69","6A","6B","6C","6D","6E","6F","70","71","72","73","74","75","76","77","78","79","7A","7B","7C","7D","7E","7F","80","81","82","83","84","85","86","87","88","89","8A","8B","8C","8D","8E","8F","90","91","92","93","94","95","96","97","98","99","9A","9B","9C","9D","9E","9F","A0","A1","A2","A3","A4","A5","A6","A7","A8","A9","AA","AB","AC"];
     const dronePrefixes=["4CAA","4CAB","4CAC","4CAD","4CAE","4CAF","4CB0","4CB1","4CB2","4CB3","4CB4","4CB5","4CB6","4CB7","4CB8","4CB9","4CBA","4CBB","4CBC","4CBD","4CBE","4CBF"];
-    function classify(icao,callsign,vel,alt){let mil=false,drone=false,icaoU=(icao||"").toUpperCase(),csU=(callsign||"").toUpperCase();for(let p of milPrefixes)if(icaoU.startsWith(p)){mil=true;break;}let milKW=["AF","NAVY","ARMY","AIR FORCE","MIL","RAAF","RAF","LUFT","ARMEE"];if(milKW.some(k=>csU.includes(k)))mil=true;for(let p of dronePrefixes)if(icaoU.startsWith(p)){drone=true;break;}let droneKW=["DRONE","UAV","DRON","QUAD","HEXA","OCTO"];if(droneKW.some(k=>csU.includes(k)))drone=true;if(!drone&&!mil&&alt!==null&&alt<500&&vel!==null&&vel<30)drone=true;let type="✈️ Civilian";if(mil)type="🔫 Military";else if(drone)type="🚁 Drone";return{mil,drone,type};}
+    function classify(icao,callsign,vel,alt){{let mil=false,drone=false,icaoU=(icao||"").toUpperCase(),csU=(callsign||"").toUpperCase();for(let p of milPrefixes)if(icaoU.startsWith(p)){{mil=true;break;}}let milKW=["AF","NAVY","ARMY","AIR FORCE","MIL","RAAF","RAF","LUFT","ARMEE"];if(milKW.some(k=>csU.includes(k)))mil=true;for(let p of dronePrefixes)if(icaoU.startsWith(p)){{drone=true;break;}}let droneKW=["DRONE","UAV","DRON","QUAD","HEXA","OCTO"];if(droneKW.some(k=>csU.includes(k)))drone=true;if(!drone&&!mil&&alt!==null&&alt<500&&vel!==null&&vel<30)drone=true;let type="✈️ Civilian";if(mil)type="🔫 Military";else if(drone)type="🚁 Drone";return{{mil,drone,type}};}}
     const radarLat=__RADAR_LAT__, radarLon=__RADAR_LON__;
     let maxRangeKm=__MAX_RANGE__;
     let demoMode=__DEMO_MODE__;
@@ -249,51 +248,51 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
     const targetSpan=document.getElementById('targetCount'), updateSpan=document.getElementById('lastUpdate');
     const tbody=document.getElementById('tableBody'), reportDiv=document.getElementById('reportContent'), downDiv=document.getElementById('downloadButtonContainer');
     let aircraft=[], selectedIcao=null, refreshTimer=null;
-    function haversine(lat1,lon1,lat2,lon2){let R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
-    function bearing(lat1,lon1,lat2,lon2){let φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180,y=Math.sin(Δλ)*Math.cos(φ2),x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);return(Math.atan2(y,x)*180/Math.PI+360)%360;}
-    function getCachedReal(){let c=localStorage.getItem("cachedRealAircraft");if(c)try{return JSON.parse(c);}catch(e){}return null;}
-    function saveRealAircraft(data){localStorage.setItem("cachedRealAircraft",JSON.stringify(data));}
-    function generateDemo(){
+    function haversine(lat1,lon1,lat2,lon2){{let R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}}
+    function bearing(lat1,lon1,lat2,lon2){{let φ1=lat1*Math.PI/180,φ2=lat2*Math.PI/180,Δλ=(lon2-lon1)*Math.PI/180,y=Math.sin(Δλ)*Math.cos(φ2),x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);return(Math.atan2(y,x)*180/Math.PI+360)%360;}}
+    function getCachedReal(){{let c=localStorage.getItem("cachedRealAircraft");if(c)try{{return JSON.parse(c);}}catch(e){{}}return null;}}
+    function saveRealAircraft(data){{localStorage.setItem("cachedRealAircraft",JSON.stringify(data));}}
+    function generateDemo(){{
         let cached=getCachedReal();
-        if(cached&&cached.length){return cached;}
+        if(cached&&cached.length){{return cached;}}
         return [
-            {icao24:"A12345",callsign:"AAL123",lat:radarLat+1.2,lon:radarLon+0.8,altitude:10000,velocity:250,heading:90,onGround:false,verticalRate:0,distance:60,bearing:45,isMilitary:false,isDrone:false,type:"✈️ Civilian"},
-            {icao24:"B67890",callsign:"BAW456",lat:radarLat-0.5,lon:radarLon-1.0,altitude:8000,velocity:230,heading:180,onGround:false,verticalRate:0,distance:70,bearing:210,isMilitary:true,isDrone:false,type:"🔫 Military"},
-            {icao24:"C11223",callsign:"DRN789",lat:radarLat+0.3,lon:radarLon+1.5,altitude:150,velocity:20,heading:300,onGround:false,verticalRate:0,distance:45,bearing:310,isMilitary:false,isDrone:true,type:"🚁 Drone"}
+            {{icao24:"A12345",callsign:"AAL123",lat:radarLat+1.2,lon:radarLon+0.8,altitude:10000,velocity:250,heading:90,onGround:false,verticalRate:0,distance:60,bearing:45,isMilitary:false,isDrone:false,type:"✈️ Civilian"}},
+            {{icao24:"B67890",callsign:"BAW456",lat:radarLat-0.5,lon:radarLon-1.0,altitude:8000,velocity:230,heading:180,onGround:false,verticalRate:0,distance:70,bearing:210,isMilitary:true,isDrone:false,type:"🔫 Military"}},
+            {{icao24:"C11223",callsign:"DRN789",lat:radarLat+0.3,lon:radarLon+1.5,altitude:150,velocity:20,heading:300,onGround:false,verticalRate:0,distance:45,bearing:310,isMilitary:false,isDrone:true,type:"🚁 Drone"}}
         ];
-    }
-    async function fetchLive(){
+    }}
+    async function fetchLive(){{
         if(demoMode) return generateDemo();
-        try{
-            let resp=await fetch("https://opensky-network.org/api/states/all",{headers:{"User-Agent":"Mozilla/5.0"}});
+        try{{
+            let resp=await fetch("https://opensky-network.org/api/states/all",{{headers:{{"User-Agent":"Mozilla/5.0"}}}});
             if(!resp.ok) throw new Error();
             let data=await resp.json(),states=data.states||[],ac=[];
-            for(let s of states){
+            for(let s of states){{
                 let icao=s[0], cs=s[1]?s[1].trim():null, lon=s[5], lat=s[6];
                 if(lat===null||lon===null) continue;
                 let dist=haversine(radarLat,radarLon,lat,lon);
                 if(dist>maxRangeKm) continue;
                 let cls=classify(icao,cs,s[9],s[7]);
-                ac.push({icao24:icao,callsign:cs||`FLT${icao.slice(-4)}`,lat,lon,altitude:s[7],velocity:s[9],heading:s[10],onGround:s[8],verticalRate:s[11],distance:dist,bearing:bearing(radarLat,radarLon,lat,lon),isMilitary:cls.mil,isDrone:cls.drone,type:cls.type});
-            }
+                ac.push({{icao24:icao,callsign:cs||`FLT${{icao.slice(-4)}}`,lat,lon,altitude:s[7],velocity:s[9],heading:s[10],onGround:s[8],verticalRate:s[11],distance:dist,bearing:bearing(radarLat,radarLon,lat,lon),isMilitary:cls.mil,isDrone:cls.drone,type:cls.type}});
+            }}
             let unique=[];let seen=new Set();
-            for(let a of ac) if(!seen.has(a.icao24)){seen.add(a.icao24);unique.push(a);}
+            for(let a of ac) if(!seen.has(a.icao24)){{seen.add(a.icao24);unique.push(a);}}
             if(unique.length) saveRealAircraft(unique);
             return unique;
-        }catch(e){console.log(e);return null;}
-    }
-    function draw(){
+        }}catch(e){{console.log(e);return null;}}
+    }}
+    function draw(){{
         if(!ctx)return;
         let w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,maxR=w/2-25;
         ctx.clearRect(0,0,w,h);
         ctx.beginPath();ctx.arc(cx,cy,maxR,0,2*Math.PI);ctx.fillStyle='#010a14';ctx.fill();ctx.strokeStyle='#2bffaa30';ctx.stroke();
-        for(let r=0.25;r<=1;r+=0.25){let rad=maxR*r;ctx.beginPath();ctx.arc(cx,cy,rad,0,2*Math.PI);ctx.strokeStyle='#28e6a830';ctx.setLineDash([4,6]);ctx.stroke();ctx.fillStyle='#7f9fcf';ctx.font="10px monospace";ctx.fillText((maxRangeKm*r).toFixed(0)+"km",cx+rad+3,cy-3);}
+        for(let r=0.25;r<=1;r+=0.25){{let rad=maxR*r;ctx.beginPath();ctx.arc(cx,cy,rad,0,2*Math.PI);ctx.strokeStyle='#28e6a830';ctx.setLineDash([4,6]);ctx.stroke();ctx.fillStyle='#7f9fcf';ctx.font="10px monospace";ctx.fillText((maxRangeKm*r).toFixed(0)+"km",cx+rad+3,cy-3);}}
         ctx.setLineDash([]);
         ctx.beginPath();ctx.moveTo(cx,cy-12);ctx.lineTo(cx,cy+12);ctx.moveTo(cx-12,cy);ctx.lineTo(cx+12,cy);ctx.strokeStyle='#2aff9e';ctx.stroke();
         ctx.fillStyle='#fff';ctx.font="bold 12px monospace";ctx.fillText("N",cx-6,cy-maxR+12);
         let testDist=100,testBrng=45;
-        if(testDist<=maxRangeKm){let ang=testBrng*Math.PI/180,rpx=(testDist/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();ctx.fillStyle='white';ctx.fillText("TEST",x+12,y-8);}
-        for(let ac of aircraft){
+        if(testDist<=maxRangeKm){{let ang=testBrng*Math.PI/180,rpx=(testDist/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();ctx.fillStyle='white';ctx.fillText("TEST",x+12,y-8);}}
+        for(let ac of aircraft){{
             if(ac.distance>maxRangeKm)continue;
             let ang=ac.bearing*Math.PI/180,rpx=(ac.distance/maxRangeKm)*maxR,x=cx+rpx*Math.sin(ang),y=cy-rpx*Math.cos(ang);
             let color='#2eff9e';if(ac.isMilitary)color='#ff4444';else if(ac.isDrone)color='#ffaa44';else if(ac.velocity!==null&&ac.velocity<=0.5)color='#ff5555';
@@ -301,65 +300,70 @@ button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius
             let label=ac.callsign?ac.callsign.trim():(ac.icao24?ac.icao24.slice(-5):"???");
             if(label.length>6)label=label.slice(0,6);
             ctx.fillStyle='white';ctx.fillText(label,x+10,y-6);
-            if(selectedIcao===ac.icao24){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.strokeStyle='#ffdd77';ctx.lineWidth=2.5;ctx.stroke();}
-        }
+            if(selectedIcao===ac.icao24){{ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.strokeStyle='#ffdd77';ctx.lineWidth=2.5;ctx.stroke();}}
+        }}
         let now=Date.now()/1000; let sweep=(-now*1.2)%360; if(sweep<0)sweep+=360; let radSweep=sweep*Math.PI/180;
         ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+maxR*Math.sin(radSweep),cy-maxR*Math.cos(radSweep));ctx.strokeStyle='#9effcf66';ctx.stroke();
         ctx.beginPath();ctx.arc(cx,cy,4,0,2*Math.PI);ctx.fillStyle='#ffaa44';ctx.fill();
         requestAnimationFrame(draw);
-    }
-    async function refresh(){
+    }}
+    async function refresh(){{
         let data=await fetchLive();
-        if(!data){document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"⚠️ ERROR";return;}
+        if(!data){{document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"⚠️ ERROR";return;}}
         document.getElementById('liveStatus').innerHTML=demoMode?"🎮 DEMO":"🟢 LIVE";
         aircraft=data;targetSpan.innerText=aircraft.length;updateSpan.innerText=new Date().toLocaleTimeString();
         renderTable();
-        if(selectedIcao){let found=aircraft.find(a=>a.icao24===selectedIcao);if(found)generateReport(found);else{reportDiv.innerHTML="Object no longer in range.";selectedIcao=null;}}
-    }
-    function renderTable(){
-        if(!aircraft.length){tbody.innerHTML='<table><td colspan="8">No objects detected脉舶';return;}
+        if(selectedIcao){{let found=aircraft.find(a=>a.icao24===selectedIcao);if(found)generateReport(found);else{{reportDiv.innerHTML="Object no longer in range.";selectedIcao=null;}}}}
+    }}
+    function renderTable(){{
+        if(!aircraft.length){{tbody.innerHTML='<tr><td colspan="8">No objects detected</td></tr>';return;}}
         let html='';
-        for(let ac of aircraft){
+        for(let ac of aircraft){{
             let moving=(ac.velocity!==null&&ac.velocity>0.5);
-            html+=`<tr class="${selectedIcao===ac.icao24?'selected-row':''}" data-icao="${ac.icao24}"><td>${escapeHtml(ac.callsign)}</td><td>${ac.type}</td><td>${ac.lat.toFixed(4)}</td><td>${ac.lon.toFixed(4)}</td><td>${ac.altitude!==null?ac.altitude.toFixed(0):'N/A'}</td><td>${ac.velocity!==null?ac.velocity.toFixed(1):'?'}</td><td>${moving?'🟢 MOVING':'🔴 STATIC'}</td><td>${ac.heading!==null?ac.heading.toFixed(0)+'°':'---'}</td></tr>`;
-        }
+            html+=`<tr class="${{selectedIcao===ac.icao24?'selected-row':''}}" data-icao="${{ac.icao24}}"><td>${{escapeHtml(ac.callsign)}}</td><td>${{ac.type}}</td><td>${{ac.lat.toFixed(4)}}</td><td>${{ac.lon.toFixed(4)}}</td><td>${{ac.altitude!==null?ac.altitude.toFixed(0):'N/A'}}</td><td>${{ac.velocity!==null?ac.velocity.toFixed(1):'?'}}</td><td>${{moving?'🟢 MOVING':'🔴 STATIC'}}</td><td>${{ac.heading!==null?ac.heading.toFixed(0)+'°':'---'}}</td></tr>`;
+        }}
         tbody.innerHTML=html;
-        document.querySelectorAll('#aircraftTable tbody tr').forEach(row=>{row.onclick=()=>{let icao=row.getAttribute('data-icao');let ac=aircraft.find(a=>a.icao24===icao);if(ac){selectedIcao=icao;generateReport(ac);document.querySelectorAll('#aircraftTable tbody tr').forEach(r=>r.classList.remove('selected-row'));row.classList.add('selected-row');}}});
-    }
-    function generateReport(ac){
+        document.querySelectorAll('#aircraftTable tbody tr').forEach(row=>{{
+            row.onclick=()=>{{
+                let icao=row.getAttribute('data-icao');
+                let ac=aircraft.find(a=>a.icao24===icao);
+                if(ac){{selectedIcao=icao;generateReport(ac);document.querySelectorAll('#aircraftTable tbody tr').forEach(r=>r.classList.remove('selected-row'));row.classList.add('selected-row');}}
+            }};
+        }});
+    }}
+    function generateReport(ac){{
         let moving=(ac.velocity!==null&&ac.velocity>0.5);
-        let speedText=ac.velocity!==null?`${ac.velocity.toFixed(2)} m/s (${(ac.velocity*3.6).toFixed(1)} km/h)`:'unknown';
-        let altText=ac.altitude!==null?`${ac.altitude.toFixed(1)} m (${(ac.altitude*3.28084).toFixed(0)} ft)`:'not reported';
+        let speedText=ac.velocity!==null?`${{ac.velocity.toFixed(2)}} m/s (${{(ac.velocity*3.6).toFixed(1)}} km/h)`:'unknown';
+        let altText=ac.altitude!==null?`${{ac.altitude.toFixed(1)}} m (${{(ac.altitude*3.28084).toFixed(0)}} ft)`:'not reported';
         let source=demoMode?"DEMO (cached real)":"OpenSky LIVE";
-        reportDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><strong>OBJECT:</strong> ${escapeHtml(ac.callsign)}</div><div><strong>ICAO24:</strong> ${ac.icao24}</div><div><strong>LAT/LON:</strong> ${ac.lat.toFixed(5)}, ${ac.lon.toFixed(5)}</div><div><strong>ALTITUDE:</strong> ${altText}</div><div><strong>SPEED:</strong> ${speedText}</div><div><strong>HEADING:</strong> ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}</div><div><strong>VERTICAL RATE:</strong> ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}</div><div><strong>STATUS:</strong> ${moving?'MOVING':'STATIC'}</div><div><strong>ON GROUND:</strong> ${ac.onGround?'YES':'NO'}</div><div><strong>RANGE:</strong> ${ac.distance.toFixed(0)} km</div><div><strong>CLASSIFICATION:</strong> ${ac.type}</div><div><strong>DATA SOURCE:</strong> ${source}</div></div><hr><div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network. Demo uses cached real aircraft.</div>`;
-        let reportText=`SURVEILLANCE REPORT (${demoMode?"DEMO":"LIVE"})\nObject: ${ac.callsign}\nICAO24: ${ac.icao24}\nLat: ${ac.lat.toFixed(5)}\nLon: ${ac.lon.toFixed(5)}\nDistance: ${ac.distance.toFixed(0)} km\nAltitude: ${altText}\nSpeed: ${speedText}\nHeading: ${ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}\nVertical Rate: ${ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}\nOn Ground: ${ac.onGround?'YES':'NO'}\nType: ${ac.type}\nSource: ${source}\nTime: ${new Date().toLocaleString()}`;
+        reportDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><strong>OBJECT:</strong> ${{escapeHtml(ac.callsign)}}</div><div><strong>ICAO24:</strong> ${{ac.icao24}}</div><div><strong>LAT/LON:</strong> ${{ac.lat.toFixed(5)}}, ${{ac.lon.toFixed(5)}}</div><div><strong>ALTITUDE:</strong> ${{altText}}</div><div><strong>SPEED:</strong> ${{speedText}}</div><div><strong>HEADING:</strong> ${{ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}}</div><div><strong>VERTICAL RATE:</strong> ${{ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}}</div><div><strong>STATUS:</strong> ${{moving?'MOVING':'STATIC'}}</div><div><strong>ON GROUND:</strong> ${{ac.onGround?'YES':'NO'}}</div><div><strong>RANGE:</strong> ${{ac.distance.toFixed(0)}} km</div><div><strong>CLASSIFICATION:</strong> ${{ac.type}}</div><div><strong>DATA SOURCE:</strong> ${{source}}</div></div><hr><div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network. Demo uses cached real aircraft.</div>`;
+        let reportText=`SURVEILLANCE REPORT (${{demoMode?"DEMO":"LIVE"}})\\nObject: ${{ac.callsign}}\\nICAO24: ${{ac.icao24}}\\nLat: ${{ac.lat.toFixed(5)}}\\nLon: ${{ac.lon.toFixed(5)}}\\nDistance: ${{ac.distance.toFixed(0)}} km\\nAltitude: ${{altText}}\\nSpeed: ${{speedText}}\\nHeading: ${{ac.heading!==null?ac.heading.toFixed(1)+'°':'unknown'}}\\nVertical Rate: ${{ac.verticalRate!==null?ac.verticalRate.toFixed(1)+' m/s':'N/A'}}\\nOn Ground: ${{ac.onGround?'YES':'NO'}}\\nType: ${{ac.type}}\\nSource: ${{source}}\\nTime: ${{new Date().toLocaleString()}}`;
         downDiv.innerHTML=`<button id="dlReportBtn">📥 Download Report (TXT)</button>`;
-        document.getElementById('dlReportBtn').onclick=()=>{let blob=new Blob([reportText],{type:'text/plain'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${ac.callsign}_report.txt`;a.click();URL.revokeObjectURL(url);};
-    }
-    function downloadAll(){
-        if(!aircraft.length){alert("No data");return;}
+        document.getElementById('dlReportBtn').onclick=()=>{{let blob=new Blob([reportText],{{type:'text/plain'}});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${{ac.callsign}}_report.txt`;a.click();URL.revokeObjectURL(url);}};
+    }}
+    function downloadAll(){{
+        if(!aircraft.length){{alert("No data");return;}}
         let headers=["Callsign","Type","Lat","Lon","Alt(m)","Speed(m/s)","Status","Heading","Dist(km)"];
         let rows=aircraft.map(ac=>[ac.callsign,ac.type,ac.lat.toFixed(5),ac.lon.toFixed(5),ac.altitude!==null?ac.altitude.toFixed(1):"N/A",ac.velocity!==null?ac.velocity.toFixed(1):"?",(ac.velocity!==null&&ac.velocity>0.5)?"MOVING":"STATIC",ac.heading!==null?ac.heading.toFixed(0)+"°":"---",ac.distance.toFixed(0)]);
-        let csv=[headers,...rows].map(row=>row.map(c=>`"${c}"`).join(",")).join("\n");
-        let blob=new Blob([csv],{type:"text/csv"});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`radar_${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.csv`;a.click();URL.revokeObjectURL(url);
-    }
-    function escapeHtml(s){if(!s)return '';return s.replace(/[&<>]/g,function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;});}
-    function init(){canvas.width=550;canvas.height=550;refresh();setInterval(refresh,60000);draw();}
+        let csv=[headers,...rows].map(row=>row.map(c=>`"${{c}}"`).join(",")).join("\\n");
+        let blob=new Blob([csv],{{type:"text/csv"}});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`radar_${{new Date().toISOString().slice(0,19).replace(/:/g,"-")}}.csv`;a.click();URL.revokeObjectURL(url);
+    }}
+    function escapeHtml(s){{if(!s)return '';return s.replace(/[&<>]/g,function(m){{if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;}});}}
+    function init(){{canvas.width=550;canvas.height=550;refresh();setInterval(refresh,60000);draw();}}
     document.getElementById('downloadAllBtn').onclick=downloadAll;
     init();
     let lastBeepSweep=0;
-    setInterval(function(){let now=Date.now()/1000;let sweep=(-now*1.2)%360;if(sweep<0)sweep+=360;if(lastBeepSweep>350 && sweep<10)beep();lastBeepSweep=sweep;},50);
+    setInterval(function(){{let now=Date.now()/1000; let sweep=(-now*1.2)%360; if(sweep<0)sweep+=360; if(lastBeepSweep>350 && sweep<10)beep(); lastBeepSweep=sweep;}},50);
 </script>
 </body>
 </html>"""
-    # Replace placeholders
-    html = radar_html_template.replace("__RADAR_LAT__", str(lat))
+    html = radar_template.replace("__RADAR_LAT__", str(lat))
     html = html.replace("__RADAR_LON__", str(lon))
     html = html.replace("__MAX_RANGE__", str(maxr))
     html = html.replace("__DEMO_MODE__", demo_str)
     components.html(html, height=950, scrolling=True)
 
-# ---------- SATELLITE TRACKER (NO CHANGES, WORKING) ----------
+# ---------- SATELLITE TRACKER (ESCAPED CURLY BRACES) ----------
 def satellite_tracker(demo_mode):
     st.markdown(f"## {_('satellite_title')}")
     if demo_mode:
@@ -371,19 +375,23 @@ def satellite_tracker(demo_mode):
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>#map{height:450px;width:100%;background:#0a0f1e;border-radius:20px;}body{background:#0a0f1e;margin:0;padding:0;}.info{text-align:center;color:#ccd6f6;margin-top:10px;}.sat-list{background:#0c1220;border-radius:20px;padding:15px;margin-top:20px;}.sat-item{background:#0f172a;margin:8px 0;padding:8px 12px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;}.sat-item:hover{background:#1a3a4e;}.selected-sat{background:#1a3a4e;border-left:3px solid #2aff9e;}.report-panel{margin-top:20px;background:#030812;border-radius:20px;padding:15px;}button{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius:30px;cursor:pointer;}</style></head>
+<style>#map{{height:450px;width:100%;background:#0a0f1e;border-radius:20px;}}body{{background:#0a0f1e;margin:0;padding:0;}}.info{{text-align:center;color:#ccd6f6;margin-top:10px;}}.sat-list{{background:#0c1220;border-radius:20px;padding:15px;margin-top:20px;}}.sat-item{{background:#0f172a;margin:8px 0;padding:8px 12px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;}}.sat-item:hover{{background:#1a3a4e;}}.selected-sat{{background:#1a3a4e;border-left:3px solid #2aff9e;}}.report-panel{{margin-top:20px;background:#030812;border-radius:20px;padding:15px;}}button{{background:#0f7b3e;border:none;color:white;padding:8px 16px;border-radius:30px;cursor:pointer;}}</style>
+</head>
 <body><div id="map"></div><div class="sat-list"><h3>🛰️ SATELLITES (click for report)</h3><div id="satelliteList"></div></div><div id="reportPanel" class="report-panel"><h3>📋 REPORT</h3><div id="reportContent">Select a satellite</div><div id="downloadBtnContainer"></div></div><div class="info"><span>🛰️ ISS (yellow)  🔭 Hubble (cyan)  🌍 Tiangong (orange)  🛸 Demo (magenta)</span><p>Updates every 5s</p></div>
 <script>
-    let audioCtx=null;function beep(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();let now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.connect(gain);gain.connect(audioCtx.destination);osc.frequency.value=440;gain.gain.setValueAtTime(0.08,now);gain.gain.exponentialRampToValueAtTime(0.00001,now+0.15);osc.start(now);osc.stop(now+0.15);}catch(e){}}
+    let audioCtx=null;function beep(){{try{{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();let now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.connect(gain);gain.connect(audioCtx.destination);osc.frequency.value=440;gain.gain.setValueAtTime(0.08,now);gain.gain.exponentialRampToValueAtTime(0.00001,now+0.15);osc.start(now);osc.stop(now+0.15);}}catch(e){{}}}}
     const demoMode=__DEMO_MODE__;
     let map=L.map('map').setView([0,0],2);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'',subdomains:'abcd',maxZoom:19,minZoom:2}).addTo(map);
-    let markers={},satData=[],selectedId=null;
-    function getDemo(){return[{id:"DEMO1",name:"GeoEye-1",lat:28.6,lng:-80.6,alt:681,vel:7.5,type:"Earth Imaging"},{id:"DEMO2",name:"Landsat-9",lat:45.0,lng:-110.0,alt:705,vel:7.4,type:"Remote Sensing"},{id:"DEMO3",name:"NOAA-20",lat:-15.0,lng:-150.0,alt:824,vel:7.3,type:"Weather"},{id:"DEMO4",name:"Starlink",lat:52.0,lng:-40.0,alt:550,vel:7.6,type:"Comms"},{id:"DEMO5",name:"GPS",lat:12.0,lng:70.0,alt:20200,vel:3.9,type:"Navigation"}];}
-    function fetchReal(){return Promise.all([fetch('https://api.wheretheiss.at/v1/satellites/25544').then(r=>r.json()).then(d=>({id:"ISS",name:"ISS",lat:d.latitude,lng:d.longitude,alt:d.altitude,vel:d.velocity,type:"Manned"})),fetch('https://api.wheretheiss.at/v1/satellites/20580').then(r=>r.json()).then(d=>({id:"HUBBLE",name:"Hubble",lat:d.latitude,lng:d.longitude,alt:d.altitude,vel:d.velocity,type:"Telescope"})),fetch('https://api.wheretheiss.at/v1/satellites/48274').then(r=>r.json()).then(d=>({id:"TIANGONG",name:"Tiangong",lat:d.latitude,lng:d.longitude,alt:d.altitude,vel:d.velocity,type:"Manned"}))]);}
-    function update(){if(demoMode){satData=getDemo();beep();render();}else{fetchReal().then(s=>{satData=s;beep();render();}).catch(console.error);}}
-    function render(){for(let s of satData){if(markers[s.id])markers[s.id].setLatLng([s.lat,s.lng]);else{let icon="🛸";if(s.id==="ISS")icon="🛰️";else if(s.id==="HUBBLE")icon="🔭";else if(s.id==="TIANGONG")icon="🌍";markers[s.id]=L.marker([s.lat,s.lng],{icon:L.divIcon({html:icon,className:"sat-marker",iconSize:[30,30]})}).bindPopup(`<b>${s.name}</b><br>Alt: ${s.alt.toFixed(0)} km`).addTo(map);}}for(let id in markers)if(!satData.find(s=>s.id===id)){map.removeLayer(markers[id]);delete markers[id];}let html='';for(let s of satData){let cls=(selectedId===s.id)?"selected-sat":"";html+=`<div class="sat-item ${cls}" data-id="${s.id}"><span><strong>${s.name}</strong></span><span>📍 ${s.lat.toFixed(2)}, ${s.lng.toFixed(2)}</span><span>📏 ${s.alt.toFixed(0)} km</span></div>`;}document.getElementById('satelliteList').innerHTML=html;document.querySelectorAll('.sat-item').forEach(el=>{el.onclick=()=>{let id=el.getAttribute('data-id');let s=satData.find(x=>x.id===id);if(s){selectedId=id;generateReport(s);document.querySelectorAll('.sat-item').forEach(i=>i.classList.remove('selected-sat'));el.classList.add('selected-sat');}}});}
-    function generateReport(s){let source=demoMode?"DEMO":"LIVE (wheretheiss.at)";document.getElementById('reportContent').innerHTML=`<div><strong>NAME:</strong> ${s.name}<br><strong>ID:</strong> ${s.id}<br><strong>LAT:</strong> ${s.lat.toFixed(5)}<br><strong>LON:</strong> ${s.lng.toFixed(5)}<br><strong>ALT:</strong> ${s.alt.toFixed(1)} km<br><strong>VEL:</strong> ${s.vel.toFixed(1)} km/h<br><strong>TYPE:</strong> ${s.type||"Satellite"}<br><strong>SOURCE:</strong> ${source}</div>`;let txt=`SATELLITE REPORT\nName: ${s.name}\nID: ${s.id}\nLat: ${s.lat.toFixed(5)}\nLon: ${s.lng.toFixed(5)}\nAlt: ${s.alt.toFixed(1)} km\nVel: ${s.vel.toFixed(1)} km/h\nType: ${s.type||"Satellite"}\nSource: ${source}\nTime: ${new Date().toLocaleString()}`;document.getElementById('downloadBtnContainer').innerHTML=`<button id="dlSatBtn">📥 Download Report</button>`;document.getElementById('dlSatBtn').onclick=()=>{let blob=new Blob([txt],{type:'text/plain'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${s.name}_report.txt`;a.click();URL.revokeObjectURL(url);};}
+    L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png',{{attribution:'',subdomains:'abcd',maxZoom:19,minZoom:2}}).addTo(map);
+    let markers={{}},satData=[],selectedId=null;
+    function getDemo(){{return[{{id:"DEMO1",name:"GeoEye-1",lat:28.6,lng:-80.6,alt:681,vel:7.5,type:"Earth Imaging"}},{{id:"DEMO2",name:"Landsat-9",lat:45.0,lng:-110.0,alt:705,vel:7.4,type:"Remote Sensing"}},{{id:"DEMO3",name:"NOAA-20",lat:-15.0,lng:-150.0,alt:824,vel:7.3,type:"Weather"}},{{id:"DEMO4",name:"Starlink",lat:52.0,lng:-40.0,alt:550,vel:7.6,type:"Comms"}},{{id:"DEMO5",name:"GPS",lat:12.0,lng:70.0,alt:20200,vel:3.9,type:"Navigation"}}];}}
+    function fetchReal(){{return Promise.all([fetch('https://api.wheretheiss.at/v1/satellites/25544').then(r=>r.json()).then(d=>({{id:"ISS",name:"ISS",lat:d.latitude,lng:d.longitude,alt:d.altitude,vel:d.velocity,type:"Manned"}})),fetch('https://api.wheretheiss.at/v1/satellites/20580').then(r=>r.json()).then(d=>({{id:"HUBBLE",name:"Hubble",lat:d.latitude,lng:d.longitude,alt:d.altitude,vel:d.velocity,type:"Telescope"}})),fetch('https://api.wheretheiss.at/v1/satellites/48274').then(r=>r.json()).then(d=>({{id:"TIANGONG",name:"Tiangong",lat:d.latitude,lng:d.longitude,alt:d.altitude,vel:d.velocity,type:"Manned"}}))]);}}
+    function update(){{if(demoMode){{satData=getDemo();beep();render();}}else{{fetchReal().then(s=>{{satData=s;beep();render();}}).catch(console.error);}}}}
+    function render(){{for(let s of satData){{if(markers[s.id])markers[s.id].setLatLng([s.lat,s.lng]);else{{let icon="🛸";if(s.id==="ISS")icon="🛰️";else if(s.id==="HUBBLE")icon="🔭";else if(s.id==="TIANGONG")icon="🌍";markers[s.id]=L.marker([s.lat,s.lng],{{icon:L.divIcon({{html:icon,className:"sat-marker",iconSize:[30,30]}})}}).bindPopup(`<b>${{s.name}}</b><br>Alt: ${{s.alt.toFixed(0)}} km`).addTo(map);}}}}
+    for(let id in markers)if(!satData.find(s=>s.id===id)){{map.removeLayer(markers[id]);delete markers[id];}}
+    let html='';for(let s of satData){{let cls=(selectedId===s.id)?"selected-sat":"";html+=`<div class="sat-item ${{cls}}" data-id="${{s.id}}"><span><strong>${{s.name}}</strong></span><span>📍 ${{s.lat.toFixed(2)}}, ${{s.lng.toFixed(2)}}</span><span>📏 ${{s.alt.toFixed(0)}} km</span></div>`;}}
+    document.getElementById('satelliteList').innerHTML=html;document.querySelectorAll('.sat-item').forEach(el=>{{el.onclick=()=>{{let id=el.getAttribute('data-id');let s=satData.find(x=>x.id===id);if(s){{selectedId=id;generateReport(s);document.querySelectorAll('.sat-item').forEach(i=>i.classList.remove('selected-sat'));el.classList.add('selected-sat');}}}}}});}}
+    function generateReport(s){{let source=demoMode?"DEMO":"LIVE (wheretheiss.at)";document.getElementById('reportContent').innerHTML=`<div><strong>NAME:</strong> ${{s.name}}<br><strong>ID:</strong> ${{s.id}}<br><strong>LAT:</strong> ${{s.lat.toFixed(5)}}<br><strong>LON:</strong> ${{s.lng.toFixed(5)}}<br><strong>ALT:</strong> ${{s.alt.toFixed(1)}} km<br><strong>VEL:</strong> ${{s.vel.toFixed(1)}} km/h<br><strong>TYPE:</strong> ${{s.type||"Satellite"}}<br><strong>SOURCE:</strong> ${{source}}</div>`;let txt=`SATELLITE REPORT\\nName: ${{s.name}}\\nID: ${{s.id}}\\nLat: ${{s.lat.toFixed(5)}}\\nLon: ${{s.lng.toFixed(5)}}\\nAlt: ${{s.alt.toFixed(1)}} km\\nVel: ${{s.vel.toFixed(1)}} km/h\\nType: ${{s.type||"Satellite"}}\\nSource: ${{source}}\\nTime: ${{new Date().toLocaleString()}}`;document.getElementById('downloadBtnContainer').innerHTML=`<button id="dlSatBtn">📥 Download Report</button>`;document.getElementById('dlSatBtn').onclick=()=>{{let blob=new Blob([txt],{{type:'text/plain'}});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${{s.name}}_report.txt`;a.click();URL.revokeObjectURL(url);}};}}
     update();setInterval(update,5000);
 </script>
 </body>
@@ -395,7 +403,7 @@ def satellite_tracker(demo_mode):
 # ---------- MAIN PAGE ----------
 def main_page():
     sidebar_common()
-    if st.sidebar.button(_("logout_button"), key="unique_logout", use_container_width=True):
+    if st.sidebar.button(_("logout_button"), key="logout_final", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
     tab1, tab2 = st.tabs([_("tab_radar"), _("tab_satellite")])
@@ -403,7 +411,7 @@ def main_page():
         lat, lon, maxr, api, demo = radar_sidebar()
         radar_component(lat, lon, maxr, api, demo)
     with tab2:
-        demo_sat = st.sidebar.checkbox(_("demo_mode_satellite"), key="demo_sat_unique", value=False)
+        demo_sat = st.sidebar.checkbox(_("demo_mode_satellite"), key="demo_sat_final", value=False)
         satellite_tracker(demo_sat)
 
 # ---------- ROUTING ----------
