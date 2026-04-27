@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 
 # --- 1. CORE CONFIGURATION ---
@@ -17,23 +17,33 @@ if "authenticated" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
-# --- 2. DEMO DATA GENERATOR ---
-def get_radar_data(is_demo):
+# --- 2. ADVANCED DATA GENERATOR ---
+def get_simulated_assets(is_demo, lat_base, lon_base):
     if not is_demo:
-        return [
-            {"id": "CIV-442", "type": "Commercial", "coord": "18.5N, 72.3W", "alt": "32,000ft", "color": "#00ff64"},
-            {"id": "MIL-X9", "type": "Military", "coord": "19.1N, 71.8W", "alt": "45,000ft", "color": "#ff3300"}
-        ]
-    else:
-        # Simulated "Demo" detections across all types
-        return [
-            {"id": "AAL-120", "type": "Commercial Aircraft", "coord": "18.53N, 72.33W", "alt": "30,000ft", "color": "#00ff64"},
-            {"id": "F-35-TAC", "type": "Military Strike", "coord": "18.90N, 72.10W", "alt": "48,000ft", "color": "#ff3300"},
-            {"id": "DJI-PH4", "type": "Civilian Drone", "coord": "18.55N, 72.35W", "alt": "400ft", "color": "#ffcc00"},
-            {"id": "G-STRAT", "type": "Military UAV", "coord": "19.20N, 71.50W", "alt": "65,000ft", "color": "#ff3300"},
-            {"id": "CESS-172", "type": "Private Civil", "coord": "18.40N, 72.60W", "alt": "5,000ft", "color": "#00ff64"},
-            {"id": "UNK-SIG", "type": "Unidentified Object", "coord": "18.72N, 72.45W", "alt": "12,000ft", "color": "#ffffff"}
-        ]
+        return []
+    
+    # Categories of satellites with simulated offsets for prediction
+    categories = [
+        {"id": "SL-5122", "type": "Starlink (Comms)", "color": "#00ff64", "alt": "550km"},
+        {"id": "NAV-GPS", "type": "GPS Block III", "color": "#00bfff", "alt": "20,200km"},
+        {"id": "KH-11", "type": "Keyhole (Spy)", "color": "#ff3300", "alt": "350km"},
+        {"id": "NOAA-19", "type": "Weather/Met", "color": "#ffcc00", "alt": "870km"},
+        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km"}
+    ]
+    
+    assets = []
+    for i, cat in enumerate(categories):
+        # Create simulated paths based on current location
+        assets.append({
+            "id": cat["id"],
+            "type": cat["type"],
+            "lat": lat_base + (math_offset := random.uniform(-5, 5)),
+            "lon": lon_base + random.uniform(-10, 10),
+            "alt": cat["alt"],
+            "color": cat["color"],
+            "velocity": random.uniform(7.5, 7.8) # km/s for LEO
+        })
+    return assets
 
 # --- 3. TRANSLATION DICTIONARY ---
 UI = {
@@ -41,15 +51,17 @@ UI = {
         "radar_tab": "📡 Radar Control", "sat_tab": "🛰️ Satellite Tracker",
         "title": "GLOBAL SURVEILLANCE RADAR", "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session", "report": "Download Asset Report",
-        "detection_log": "Live Detection Log", "sat_engine": "Satellite Mapping Engine",
-        "audio_note": "Click radar to enable sonar audio.", "lat": "Latitude", "lon": "Longitude"
+        "detection_log": "Live Detection Log", "sat_engine": "Predictive Mapping Engine",
+        "audio_note": "Click radar to enable sonar audio.", "lat": "Latitude", "lon": "Longitude",
+        "predict_btn": "Predict Next Pass", "time_target": "Target Date/Time"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite",
         "title": "RADAR DE SURVEILLANCE MONDIAL", "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion", "report": "Télécharger le Rapport",
-        "detection_log": "Journal de Détection", "sat_engine": "Moteur de Cartographie Satellite",
-        "audio_note": "Cliquez sur le radar pour activer l'audio.", "lat": "Latitude", "lon": "Longitude"
+        "detection_log": "Journal de Détection", "sat_engine": "Moteur de Cartographie Prédictive",
+        "audio_note": "Cliquez sur le radar pour l'audio.", "lat": "Latitude", "lon": "Longitude",
+        "predict_btn": "Prédire le Passage", "time_target": "Date/Heure Cible"
     }
 }
 
@@ -77,163 +89,127 @@ def main_page():
         st.markdown(f"**👨‍💻 {L['author_tag']}**")
         st.divider()
         
-        # Coordinate Target
-        st.subheader("Targeting")
+        st.subheader("System Configuration")
         u_lat = st.number_input(L['lat'], value=18.5392, format="%.4f")
         u_lon = st.number_input(L['lon'], value=-72.3364, format="%.4f")
         
         st.divider()
-        demo_radar = st.checkbox("Demo Mode (Radar)", value=True, key="check_demo_r")
-        demo_sat = st.checkbox("Demo Mode (Satellite)", value=True, key="check_demo_s")
+        demo_radar = st.checkbox("Demo Mode (Radar)", value=True)
+        demo_sat = st.checkbox("Demo Mode (Satellite)", value=True)
         
         st.divider()
         st.write(f"📞 (509) 4738-5663")
         st.write(f"✉️ deslandes78@gmail.com")
         
-        if st.button(L['logout'], key="sidebar_logout_btn", type="primary", use_container_width=True):
+        if st.button(L['logout'], type="primary", use_container_width=True):
             st.session_state.authenticated = False
             st.rerun()
 
     tab_radar, tab_sat = st.tabs([L["radar_tab"], L["sat_tab"]])
 
-    # Current detections based on Demo status
-    current_detections = get_radar_data(demo_radar)
-
-    # --- RADAR TAB ---
+    # --- RADAR TAB (AIRCRAFT/UAV) ---
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
-        st.info(f"{L['audio_note']}")
         
         col_rad, col_log = st.columns([2, 1])
         
         with col_rad:
-            # Injecting detections into JS for visual representation
-            detections_json = json.dumps(current_detections)
+            # Simulation of aircraft (Commercial, Military, Drones)
+            aircraft = [
+                {"id": "AAL-102", "type": "Commercial", "color": "#00ff64", "alt": "32k ft"},
+                {"id": "F22-SPT", "type": "Military", "color": "#ff3300", "alt": "55k ft"},
+                {"id": "MQ9-DRN", "type": "Drone/UAV", "color": "#ffcc00", "alt": "15k ft"}
+            ] if demo_radar else []
+            
+            radar_json = json.dumps(aircraft)
             radar_html = r"""
-            <html>
-            <body style="background:#03060c; margin:0; display:flex; justify-content:center; cursor:pointer;">
-                <canvas id="radar" width="550" height="550" style="border:1px solid #1e3a5f; border-radius:50%;"></canvas>
+            <html><body style="background:#03060c; margin:0; display:flex; justify-content:center; cursor:pointer;">
+                <canvas id="radar" width="500" height="500" style="border-radius:50%; border:1px solid #1e3a5f;"></canvas>
                 <script>
                     const canvas = document.getElementById('radar');
                     const ctx = canvas.getContext('2d');
-                    const detections = """ + detections_json + r""";
-                    let angle = 0;
-                    let audioCtx = null;
-
-                    canvas.addEventListener('click', () => {
-                        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    });
-
-                    function playPing() {
-                        if (!audioCtx) return;
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
-                        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+                    const data = """ + radar_json + r""";
+                    let angle = 0; let audioCtx = null;
+                    canvas.onclick = () => { if(!audioCtx) audioCtx = new AudioContext(); };
+                    function ping() {
+                        if(!audioCtx) return;
+                        let o = audioCtx.createOscillator(); let g = audioCtx.createGain();
+                        o.frequency.setValueAtTime(800, audioCtx.currentTime);
+                        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        o.connect(g); g.connect(audioCtx.destination);
+                        o.start(); o.stop(audioCtx.currentTime + 0.3);
                     }
-
                     function draw() {
-                        ctx.clearRect(0,0,550,550);
-                        const cx = 275, cy = 275, r = 250;
-                        
-                        // Rings
-                        ctx.strokeStyle = 'rgba(30, 58, 95, 0.4)';
-                        for(let i=1; i<=4; i++) {
-                            ctx.beginPath(); ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2); ctx.stroke();
-                        }
-
-                        // Detections (Blips)
-                        detections.forEach((d, i) => {
-                            const d_x = cx + Math.cos(i) * (r * 0.6);
-                            const d_y = cy + Math.sin(i) * (r * 0.6);
-                            ctx.fillStyle = d.color;
-                            ctx.beginPath(); ctx.arc(d_x, d_y, 4, 0, Math.PI*2); ctx.fill();
-                            ctx.shadowBlur = 10; ctx.shadowColor = d.color;
+                        ctx.clearRect(0,0,500,500); let cx=250, cy=250, r=240;
+                        ctx.strokeStyle='rgba(30,58,95,0.4)';
+                        for(let i=1;i<=4;i++){ ctx.beginPath(); ctx.arc(cx,cy,(r/4)*i,0,Math.PI*2); ctx.stroke(); }
+                        data.forEach((d, i) => {
+                            ctx.fillStyle=d.color; ctx.beginPath(); ctx.arc(cx+Math.cos(i)*150, cy+Math.sin(i)*150, 5, 0, 7); ctx.fill();
                         });
-
-                        // Sweep
-                        let prevAngle = angle;
-                        angle -= 0.03; 
-                        if (Math.floor(prevAngle / (Math.PI*2)) !== Math.floor(angle / (Math.PI*2))) playPing();
-                        
-                        ctx.save();
-                        ctx.translate(cx, cy); ctx.rotate(angle);
-                        const g = ctx.createRadialGradient(0,0,0,0,0,r);
-                        g.addColorStop(0, 'rgba(0,255,100,0)');
-                        g.addColorStop(1, 'rgba(0,255,100,0.2)');
-                        ctx.fillStyle = g;
-                        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r, 0, 0.4); ctx.fill();
-                        ctx.restore();
-                        requestAnimationFrame(draw);
+                        let oldA = angle; angle -= 0.03;
+                        if(Math.floor(oldA/6.28) !== Math.floor(angle/6.28)) ping();
+                        ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
+                        let g=ctx.createRadialGradient(0,0,0,0,0,r);
+                        g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,255,100,0.2)');
+                        ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,0,0.4); ctx.fill();
+                        ctx.restore(); requestAnimationFrame(draw);
                     }
                     draw();
                 </script>
-            </body>
-            </html>
+            </body></html>
             """
-            components.html(radar_html, height=580)
+            components.html(radar_html, height=520)
 
-        with col_log:
-            st.subheader(L['detection_log'])
-            for det in current_detections:
-                with st.expander(f"📡 {det['id']} ({det['type']})"):
-                    st.write(f"**Status:** Tracking Active")
-                    st.write(f"**Altitude:** {det['alt']}")
-                    st.write(f"**Loc:** {det['coord']}")
-                    report = f"RADAR TRACKING LOG\nID: {det['id']}\nTYPE: {det['type']}\nALT: {det['alt']}\nOP: Gesner Deslandes"
-                    st.download_button(L['report'], report, key=f"rad_{det['id']}")
-
-    # --- SATELLITE TAB ---
+    # --- SATELLITE TAB (PREDICTION & TRACKING) ---
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
         
-        col_list, col_map = st.columns([1, 2])
+        col_ctrl, col_map = st.columns([1, 2])
         
-        with col_list:
-            st.subheader("Simulated Orbital Assets")
-            sat_list = [
-                {"name": "STARLINK-V2", "owner": "SpaceX", "task": "Comms Relay"},
-                {"name": "KH-11", "owner": "NRO", "task": "Imagery"},
-                {"name": "SENTINEL-6", "owner": "ESA", "task": "Topography"}
-            ] if demo_sat else [{"name": "ISS", "owner": "Global", "task": "Research"}]
+        with col_ctrl:
+            st.subheader("Prediction Logic")
+            target_date = st.date_input(L['time_target'], datetime.now())
+            target_time = st.time_input("Target Time", datetime.now().time())
             
-            for s in sat_list:
-                with st.container(border=True):
-                    st.write(f"**Asset:** {s['name']}")
-                    st.caption(f"Operator: {s['owner']} | Task: {s['task']}")
-                    st.download_button(L['report'], f"Telemetry data for {s['name']}", key=f"dl_sat_{s['name']}")
+            # Simulated Calculation
+            full_target = datetime.combine(target_date, target_time)
+            st.write(f"Calculating trajectories for: `{full_target}`")
+            
+            sat_assets = get_simulated_assets(demo_sat, u_lat, u_lon)
+            
+            for s in sat_assets:
+                with st.expander(f"🛰️ {s['id']} | {s['type']}"):
+                    st.write(f"**Alt:** {s['alt']}")
+                    # Simple simulation: move satellite based on time difference
+                    diff_hours = (full_target - datetime.now()).total_seconds() / 3600
+                    future_lat = s['lat'] + (diff_hours * 2) # Mock orbital drift
+                    future_lon = s['lon'] + (diff_hours * 15) # Mock Earth rotation factor
+                    
+                    st.success(f"Predicted Pass: {future_lat:.2f}N, {future_lon:.2f}W")
+                    st.download_button(L['report'], f"PREDICTION REPORT\nAsset: {s['id']}\nTime: {full_target}\nLoc: {future_lat}, {future_lon}\nLead: Gesner Deslandes", key=s['id'])
 
         with col_map:
-            st.subheader(L['sat_engine'])
-            # Leaflet with Demo Markers
+            # Mapping future markers
             markers_js = ""
-            if demo_sat:
-                markers_js = f"L.circleMarker([{u_lat + 0.1}, {u_lon + 0.1}], {{color: '#ff3300', radius: 8}}).addTo(map).bindPopup('Military Signal');"
-                markers_js += f"L.circleMarker([{u_lat - 0.2}, {u_lon + 0.3}], {{color: '#00ff64', radius: 6}}).addTo(map).bindPopup('Civilian Flight');"
-
+            for s in sat_assets:
+                # Add current and predicted path markers
+                markers_js += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color: '{s['color']}', radius: 8}}).addTo(map).bindPopup('Current: {s['id']}');"
+            
             map_html = f"""
-            <html>
-            <head>
+            <html><head>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
                 <style>#map {{ height: 500px; border-radius: 15px; border: 2px solid #1e3a5f; }}</style>
-            </head>
-            <body>
+            </head><body>
                 <div id="map"></div>
                 <script>
-                    const map = L.map('map', {{ zoomControl: false }}).setView([{u_lat}, {u_lon}], 8);
+                    const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 3);
                     L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png').addTo(map);
-                    L.circleMarker([{u_lat}, {u_lon}], {{ color: '#00ff64', radius: 10 }}).addTo(map).bindPopup('Primary Lock');
                     {markers_js}
                 </script>
-            </body>
-            </html>
+            </body></html>
             """
             components.html(map_html, height=550)
 
