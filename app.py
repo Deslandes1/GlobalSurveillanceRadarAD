@@ -31,12 +31,15 @@ texts = {
         "radar_lat": "Radar Latitude",
         "radar_lon": "Radar Longitude",
         "max_range": "Max Range (km)",
+        "demo_mode_radar": "🎲 Demo Mode (Radar)",
+        "demo_mode_satellite": "🛸 Demo Mode (Satellite)",
         "data_source": "🔑 Data Source",
         "data_source_msg": "For global coverage (oceans & remote areas), enter your Flightradar24 API key.",
         "api_key_input": "Flightradar24 API Key",
         "api_key_placeholder": "Enter your API key (optional)",
         "global_active": "🌍 **Global coverage active** – you will see aircraft worldwide.",
         "opensky_active": "📡 Using OpenSky Network (regional coverage, free).",
+        "demo_active": "🎮 **Demo mode active** – showing simulated aircraft.",
         "license_title": "📜 Software License",
         "license_text": """
 **Proprietary Commercial Software**  
@@ -57,7 +60,8 @@ For licensing, support, or payments:
         "tab_satellite": "🛰️ Satellite Tracker",
         "satellite_title": "🛰️ LIVE SATELLITE TRACKER (Real‑time positions)",
         "satellite_desc": "Current positions of the International Space Station (ISS), Hubble Space Telescope, and Tiangong space station.",
-        "satellite_credit": "Data provided by wheretheiss.at API | Map: Leaflet | Built by Gesner Deslandes"
+        "satellite_credit": "Data provided by wheretheiss.at API | Map: Leaflet | Built by Gesner Deslandes",
+        "demo_satellite_note": "🎮 Demo mode: showing simulated satellites (GeoEye, Landsat, etc.)"
     },
     "fr": {
         "app_title": "RADAR DE SURVEILLANCE MONDIAL + TRACEUR DE SATELLITES",
@@ -76,12 +80,15 @@ For licensing, support, or payments:
         "radar_lat": "Latitude du radar",
         "radar_lon": "Longitude du radar",
         "max_range": "Portée max (km)",
+        "demo_mode_radar": "🎲 Mode démo (Radar)",
+        "demo_mode_satellite": "🛸 Mode démo (Satellite)",
         "data_source": "🔑 Source de données",
         "data_source_msg": "Pour une couverture mondiale (océans et zones éloignées), entrez votre clé API Flightradar24.",
         "api_key_input": "Clé API Flightradar24",
         "api_key_placeholder": "Entrez votre clé API (optionnel)",
         "global_active": "🌍 **Couverture mondiale active** – vous verrez des aéronefs du monde entier.",
         "opensky_active": "📡 Utilisation du réseau OpenSky (couverture régionale, gratuit).",
+        "demo_active": "🎮 **Mode démo actif** – simulation d'aéronefs.",
         "license_title": "📜 Licence logicielle",
         "license_text": """
 **Logiciel commercial propriétaire**  
@@ -102,7 +109,8 @@ Pour les licences, le support ou les paiements :
         "tab_satellite": "🛰️ Traceur de satellites",
         "satellite_title": "🛰️ TRACEUR DE SATELLITES EN DIRECT (positions réelles)",
         "satellite_desc": "Positions actuelles de la Station Spatiale Internationale (ISS), du télescope Hubble et de la station spatiale Tiangong.",
-        "satellite_credit": "Données fournies par l'API wheretheiss.at | Carte : Leaflet | Construit par Gesner Deslandes"
+        "satellite_credit": "Données fournies par l'API wheretheiss.at | Carte : Leaflet | Construit par Gesner Deslandes",
+        "demo_satellite_note": "🎮 Mode démo : satellites simulés (GeoEye, Landsat, etc.)"
     },
     "es": {
         "app_title": "RADAR DE VIGILANCIA GLOBAL + RASTREADOR DE SATÉLITES",
@@ -121,12 +129,15 @@ Pour les licences, le support ou les paiements :
         "radar_lat": "Latitud del radar",
         "radar_lon": "Longitud del radar",
         "max_range": "Alcance máximo (km)",
+        "demo_mode_radar": "🎲 Modo demostración (Radar)",
+        "demo_mode_satellite": "🛸 Modo demostración (Satélite)",
         "data_source": "🔑 Fuente de datos",
         "data_source_msg": "Para cobertura global (océanos y áreas remotas), ingrese su clave API de Flightradar24.",
         "api_key_input": "Clave API de Flightradar24",
         "api_key_placeholder": "Ingrese su clave API (opcional)",
         "global_active": "🌍 **Cobertura global activa** – verá aeronaves de todo el mundo.",
         "opensky_active": "📡 Usando la red OpenSky (cobertura regional, gratuita).",
+        "demo_active": "🎮 **Modo demostración activo** – aeronaves simuladas.",
         "license_title": "📜 Licencia de software",
         "license_text": """
 **Software comercial propietario**  
@@ -147,21 +158,22 @@ Para licencias, soporte o pagos:
         "tab_satellite": "🛰️ Rastreador de satélites",
         "satellite_title": "🛰️ RASTREADOR DE SATÉLITES EN VIVO (posiciones reales)",
         "satellite_desc": "Posiciones actuales de la Estación Espacial Internacional (ISS), el telescopio Hubble y la estación espacial Tiangong.",
-        "satellite_credit": "Datos proporcionados por la API wheretheiss.at | Mapa: Leaflet | Construido por Gesner Deslandes"
+        "satellite_credit": "Datos proporcionados por la API wheretheiss.at | Mapa: Leaflet | Construido por Gesner Deslandes",
+        "demo_satellite_note": "🎮 Modo demostración: satélites simulados (GeoEye, Landsat, etc.)"
     }
 }
 
 def _(key):
     return texts[st.session_state.lang].get(key, key)
 
-# ---------- LANGUAGE SELECTOR (always visible in sidebar) ----------
+# ---------- LANGUAGE SELECTOR ----------
 def language_selector():
     lang_options = {"English": "en", "Français": "fr", "Español": "es"}
     current_lang_name = [k for k, v in lang_options.items() if v == st.session_state.lang][0]
     selected = st.sidebar.selectbox("🌐 Language / Idioma", list(lang_options.keys()), index=list(lang_options.keys()).index(current_lang_name))
     st.session_state.lang = lang_options[selected]
 
-# ---------- SIDEBAR COMMON CONTENT ----------
+# ---------- SIDEBAR COMMON ----------
 def sidebar_common():
     st.sidebar.markdown(f"## {_('sidebar_company')}")
     st.sidebar.markdown(f"**{_('sidebar_founder')}**")
@@ -172,20 +184,25 @@ def sidebar_common():
     st.sidebar.markdown("---")
     language_selector()
 
-# ---------- RADAR SIDEBAR SETTINGS ----------
+# ---------- RADAR SIDEBAR SETTINGS (includes demo toggle) ----------
 def radar_sidebar():
     radar_lat = st.sidebar.number_input(_("radar_lat"), value=40.7128, format="%.5f")
     radar_lon = st.sidebar.number_input(_("radar_lon"), value=-74.0060, format="%.5f")
     max_range = st.sidebar.number_input(_("max_range"), min_value=30, max_value=2000, value=500, step=50)
+    demo_mode = st.sidebar.checkbox(_("demo_mode_radar"), value=False)
 
     st.sidebar.divider()
     st.sidebar.markdown(f"## {_('data_source')}")
-    st.sidebar.markdown(_("data_source_msg"))
-    api_key = st.sidebar.text_input(_("api_key_input"), type="password", placeholder=_("api_key_placeholder"))
-    if api_key:
-        st.sidebar.info(_("global_active"))
+    if not demo_mode:
+        st.sidebar.markdown(_("data_source_msg"))
+        api_key = st.sidebar.text_input(_("api_key_input"), type="password", placeholder=_("api_key_placeholder"))
+        if api_key:
+            st.sidebar.info(_("global_active"))
+        else:
+            st.sidebar.info(_("opensky_active"))
     else:
-        st.sidebar.info(_("opensky_active"))
+        st.sidebar.info(_("demo_active"))
+        api_key = ""
 
     st.sidebar.divider()
     st.sidebar.markdown(f"## {_('license_title')}")
@@ -197,7 +214,7 @@ def radar_sidebar():
     if st.sidebar.button(_("refresh_radar"), use_container_width=True):
         st.rerun()
 
-    return radar_lat, radar_lon, max_range, api_key
+    return radar_lat, radar_lon, max_range, api_key, demo_mode
 
 # ---------- LOGIN PAGE ----------
 def login_page():
@@ -214,8 +231,10 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR HTML (REDUCED SIZE: 550px) ----------
-def radar_component(radar_lat, radar_lon, max_range, api_key):
+# ---------- RADAR HTML (with demo mode support) ----------
+def radar_component(radar_lat, radar_lon, max_range, api_key, demo_mode):
+    # Pass demo_mode as a string "true" or "false"
+    demo_mode_str = "true" if demo_mode else "false"
     radar_html = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -252,7 +271,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 <div class="sub">Live global tracking | Military & drone detection | Space‑based coverage</div>
                 <div class="owner">🇭🇹 Owner: Gesner Deslandes | GlobalInternet.py</div>
             </div>
-            <div class="badge" id="liveStatus">🟢 LIVE DATA (OpenSky)</div>
+            <div class="badge" id="liveStatus">🟢 { "DEMO MODE" if demo_mode else "LIVE DATA" }</div>
         </div>
 
         <div class="radar-container">
@@ -279,7 +298,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                         <tr><th>CALLSIGN / ID</th><th>TYPE</th><th>LATITUDE</th><th>LONGITUDE</th><th>ALT (m)</th><th>SPEED (m/s)</th><th>STATUS</th><th>HEADING</th>觼
                     </thead>
                     <tbody id="tableBody">
-                        <tr><td colspan="8">🔄 loading live radar data...<\/td>觼
+                        <td><td colspan="8">🔄 loading radar data...<\/td>觼
                     </tbody>
                 表
             </div>
@@ -289,11 +308,11 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 <div id="downloadButtonContainer" style="margin-top: 15px;"></div>
             </div>
         </div>
-        <footer>⚠️ Real ADS-B data via OpenSky Network. Military detection based on ICAO hex ranges & callsigns. Drone detection includes heuristics (low alt/speed).</footer>
+        <footer>⚠️ Real ADS-B data via OpenSky Network (live mode). Demo mode shows simulated aircraft.</footer>
     </div>
 
     <script>
-        // Web Audio for radar sweep beep
+        // ---------- Audio ----------
         let audioCtx = null;
         function playBeep() {{
             try {{
@@ -311,6 +330,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
             }} catch(e) {{ console.log("Audio not supported"); }}
         }}
 
+        // ---------- Constants ----------
         const MILITARY_ICAO_PREFIXES = [
             "AE","AD","AF","3C","3E","33","34","38","39","40","43","44","45","46","48",
             "4B","4C","4D","4E","4F","50","51","52","53","54","55","56","57","58","59",
@@ -343,10 +363,13 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
             return {{ isMilitary, isDrone, type: typeStr }};
         }}
 
+        // ---------- Radar parameters ----------
         const radarLat = {radar_lat}, radarLon = {radar_lon};
         let maxRangeKm = {max_range};
         let apiKey = "{api_key}";
+        const demoMode = {demo_mode_str};
 
+        // ---------- DOM elements ----------
         const canvas = document.getElementById('radarCanvas');
         const ctx = canvas.getContext('2d');
         const targetCountSpan = document.getElementById('targetCount');
@@ -354,19 +377,18 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         const tableBody = document.getElementById('tableBody');
         const reportDiv = document.getElementById('reportContent');
         const downloadContainer = document.getElementById('downloadButtonContainer');
-        const rangeKmDisplay = document.getElementById('rangeKmDisplay');
         const downloadAllBtn = document.getElementById('downloadAllBtn');
 
         let currentAircraft = [], selectedIcao = null, refreshTimer = null, animationId = null, canvasSize = 550;
         let lastSweepAngle = 0;
 
+        // Geometry helpers
         function haversine(lat1, lon1, lat2, lon2) {{
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI/180, dLon = (lon2 - lon1) * Math.PI/180;
             const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }}
-
         function bearing(lat1, lon1, lat2, lon2) {{
             const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180, Δλ = (lon2-lon1)*Math.PI/180;
             const y = Math.sin(Δλ) * Math.cos(φ2);
@@ -374,47 +396,48 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
             return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
         }}
 
-        function drawRadar(aircraftList, nowSeconds) {{
-            if (!ctx) return;
-            const w = canvasSize, h = canvasSize, cx = w/2, cy = h/2, maxR = w/2 - 25;
-            ctx.clearRect(0, 0, w, h);
-            ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, 2*Math.PI); ctx.fillStyle = '#010a14'; ctx.fill(); ctx.strokeStyle = '#2bffaa30'; ctx.stroke();
-            for (let r = 0.25; r <= 1; r+=0.25) {{
-                let rad = maxR * r; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 2*Math.PI); ctx.strokeStyle = '#28e6a830'; ctx.setLineDash([4,6]); ctx.stroke();
-                ctx.fillStyle = '#7f9fcf'; ctx.font = "10px monospace"; ctx.fillText((maxRangeKm*r).toFixed(0)+"km", cx+rad+3, cy-3);
+        // ---------- Demo aircraft generator (static positions around radar) ----------
+        function generateDemoAircraft() {{
+            const demoList = [];
+            const names = ["DEMO1","DEMO2","DEMO3","DEMO4","DEMO5","DEMO6","DEMO7","DEMO8","DEMO9","DEMO10"];
+            const types = ["🔫 Military","🚁 Drone","✈️ Civilian","🔫 Military","🚁 Drone","✈️ Civilian","✈️ Civilian","🔫 Military","🚁 Drone","✈️ Civilian"];
+            for (let i = 0; i < 10; i++) {{
+                // random position within maxRangeKm
+                const dist = Math.random() * maxRangeKm;
+                const brng = Math.random() * 360;
+                // convert to lat/lon relative to radar center (approximate small angle)
+                const lat = radarLat + (dist * Math.cos(brng * Math.PI/180)) / 111;
+                const lon = radarLon + (dist * Math.sin(brng * Math.PI/180)) / (111 * Math.cos(radarLat * Math.PI/180));
+                const alt = Math.random() * 8000 + 100;
+                const vel = Math.random() * 150;
+                const heading = Math.random() * 360;
+                const classification = classifyAircraft("DEMO_"+i, names[i], vel, alt);
+                const icao24 = "DEMO"+i;
+                demoList.push({{
+                    icao24: icao24,
+                    callsign: names[i],
+                    lat: lat,
+                    lon: lon,
+                    altitude: alt,
+                    velocity: vel,
+                    heading: heading,
+                    onGround: false,
+                    verticalRate: 0,
+                    distance: dist,
+                    bearing: brng,
+                    isMilitary: classification.isMilitary,
+                    isDrone: classification.isDrone,
+                    type: classification.type
+                }});
             }}
-            ctx.setLineDash([]);
-            ctx.beginPath(); ctx.moveTo(cx, cy-12); ctx.lineTo(cx, cy+12); ctx.moveTo(cx-12, cy); ctx.lineTo(cx+12, cy); ctx.strokeStyle = '#2aff9e'; ctx.stroke();
-            ctx.fillStyle = '#ffffff'; ctx.font = "bold 12px monospace"; ctx.fillText("N", cx-6, cy-maxR+12);
-            const testDist = 100, testBrng = 45;
-            if (testDist <= maxRangeKm) {{
-                const ang = testBrng * Math.PI/180, rpx = (testDist/maxRangeKm)*maxR;
-                const x = cx + rpx*Math.sin(ang), y = cy - rpx*Math.cos(ang);
-                ctx.beginPath(); ctx.arc(x, y, 10, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke();
-                ctx.fillStyle = 'white'; ctx.font = "bold 10px monospace"; ctx.fillText("TEST", x+12, y-8);
-            }}
-            for (let ac of aircraftList) {{
-                if (ac.distance > maxRangeKm) continue;
-                const ang = ac.bearing * Math.PI/180, rpx = (ac.distance/maxRangeKm)*maxR;
-                const x = cx + rpx*Math.sin(ang), y = cy - rpx*Math.cos(ang);
-                let color = '#2eff9e'; if (ac.isMilitary) color = '#ff4444'; else if (ac.isDrone) color = '#ffaa44'; else if (ac.velocity !== null && ac.velocity <= 0.5) color = '#ff5555';
-                ctx.beginPath(); ctx.arc(x, y, 9, 0, 2*Math.PI); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke();
-                let label = ac.callsign ? ac.callsign.trim() : (ac.icao24 ? ac.icao24.slice(-5) : "???"); if(label.length>6) label=label.slice(0,6);
-                ctx.fillStyle = 'white'; ctx.fillText(label, x+10, y-6);
-                if (selectedIcao === ac.icao24) {{
-                    ctx.beginPath(); ctx.arc(x, y, 13, 0, 2*Math.PI); ctx.strokeStyle = '#ffdd77'; ctx.lineWidth = 2.5; ctx.stroke();
-                }}
-            }}
-            const sweep = (nowSeconds * 1.2) % 360, radSweep = sweep * Math.PI/180;
-            if (lastSweepAngle > 350 && sweep < 10) playBeep();
-            lastSweepAngle = sweep;
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR*Math.sin(radSweep), cy - maxR*Math.cos(radSweep)); ctx.strokeStyle = '#9effcf66'; ctx.stroke();
-            ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill();
+            return demoList;
         }}
 
-        function animate() {{ drawRadar(currentAircraft, Date.now()/1000); animationId = requestAnimationFrame(animate); }}
-
+        // ---------- Fetch live or demo data ----------
         async function fetchLiveAircraft() {{
+            if (demoMode) {{
+                return generateDemoAircraft();
+            }}
             try {{
                 const url = "https://opensky-network.org/api/states/all";
                 const resp = await fetch(url, {{ headers: {{ "User-Agent": "Mozilla/5.0 (compatible; RadarApp/1.0)" }} }});
@@ -437,13 +460,64 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 const unique = []; const seen = new Set();
                 for (let ac of aircraft) if (!seen.has(ac.icao24)) {{ seen.add(ac.icao24); unique.push(ac); }}
                 return unique;
-            }} catch(err) {{ console.error(err); document.getElementById('liveStatus').innerHTML = "⚠️ API ERROR"; return null; }}
+            }} catch(err) {{
+                console.error(err);
+                document.getElementById('liveStatus').innerHTML = "⚠️ API ERROR";
+                return null;
+            }}
         }}
 
+        // ---------- Drawing functions ----------
+        function drawRadar(aircraftList, nowSeconds) {{
+            if (!ctx) return;
+            const w = canvasSize, h = canvasSize, cx = w/2, cy = h/2, maxR = w/2 - 25;
+            ctx.clearRect(0, 0, w, h);
+            ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, 2*Math.PI); ctx.fillStyle = '#010a14'; ctx.fill(); ctx.strokeStyle = '#2bffaa30'; ctx.stroke();
+            for (let r = 0.25; r <= 1; r+=0.25) {{
+                let rad = maxR * r; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 2*Math.PI); ctx.strokeStyle = '#28e6a830'; ctx.setLineDash([4,6]); ctx.stroke();
+                ctx.fillStyle = '#7f9fcf'; ctx.font = "10px monospace"; ctx.fillText((maxRangeKm*r).toFixed(0)+"km", cx+rad+3, cy-3);
+            }}
+            ctx.setLineDash([]);
+            ctx.beginPath(); ctx.moveTo(cx, cy-12); ctx.lineTo(cx, cy+12); ctx.moveTo(cx-12, cy); ctx.lineTo(cx+12, cy); ctx.strokeStyle = '#2aff9e'; ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.font = "bold 12px monospace"; ctx.fillText("N", cx-6, cy-maxR+12);
+            // test marker
+            const testDist = 100, testBrng = 45;
+            if (testDist <= maxRangeKm) {{
+                const ang = testBrng * Math.PI/180, rpx = (testDist/maxRangeKm)*maxR;
+                const x = cx + rpx*Math.sin(ang), y = cy - rpx*Math.cos(ang);
+                ctx.beginPath(); ctx.arc(x, y, 10, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke();
+                ctx.fillStyle = 'white'; ctx.font = "bold 10px monospace"; ctx.fillText("TEST", x+12, y-8);
+            }}
+            for (let ac of aircraftList) {{
+                if (ac.distance > maxRangeKm) continue;
+                const ang = ac.bearing * Math.PI/180, rpx = (ac.distance/maxRangeKm)*maxR;
+                const x = cx + rpx*Math.sin(ang), y = cy - rpx*Math.cos(ang);
+                let color = '#2eff9e'; if (ac.isMilitary) color = '#ff4444'; else if (ac.isDrone) color = '#ffaa44'; else if (ac.velocity !== null && ac.velocity <= 0.5) color = '#ff5555';
+                ctx.beginPath(); ctx.arc(x, y, 9, 0, 2*Math.PI); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = 'white'; ctx.stroke();
+                let label = ac.callsign ? ac.callsign.trim() : (ac.icao24 ? ac.icao24.slice(-5) : "???");
+                if(label.length>6) label=label.slice(0,6);
+                ctx.fillStyle = 'white'; ctx.fillText(label, x+10, y-6);
+                if (selectedIcao === ac.icao24) {{
+                    ctx.beginPath(); ctx.arc(x, y, 13, 0, 2*Math.PI); ctx.strokeStyle = '#ffdd77'; ctx.lineWidth = 2.5; ctx.stroke();
+                }}
+            }}
+            const sweep = (nowSeconds * 1.2) % 360, radSweep = sweep * Math.PI/180;
+            if (lastSweepAngle > 350 && sweep < 10) playBeep();
+            lastSweepAngle = sweep;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR*Math.sin(radSweep), cy - maxR*Math.cos(radSweep)); ctx.strokeStyle = '#9effcf66'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill();
+        }}
+
+        function animate() {{ drawRadar(currentAircraft, Date.now()/1000); animationId = requestAnimationFrame(animate); }}
+
+        // ---------- UI update ----------
         async function refreshRadarData() {{
             const data = await fetchLiveAircraft();
-            if (!data) {{ document.getElementById('liveStatus').innerHTML = "⚠️ API ERROR (OpenSky)"; return; }}
-            document.getElementById('liveStatus').innerHTML = "🟢 LIVE DATA (OpenSky)";
+            if (!data) {{
+                document.getElementById('liveStatus').innerHTML = demoMode ? "🎮 DEMO MODE" : "⚠️ API ERROR (OpenSky)";
+                return;
+            }}
+            document.getElementById('liveStatus').innerHTML = demoMode ? "🎮 DEMO MODE" : "🟢 LIVE DATA (OpenSky)";
             currentAircraft = data;
             targetCountSpan.innerText = currentAircraft.length;
             lastUpdateSpan.innerText = new Date().toLocaleTimeString();
@@ -456,13 +530,13 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         }}
 
         function renderTable(list) {{
-            if (!list.length) {{ tableBody.innerHTML = '</td><td colspan="8">✈️ No flying objects detected within radar range.脉舶'; return; }}
+            if (!list.length) {{ tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.脉舶'; return; }}
             let html = '';
             for (let ac of list) {{
                 const moving = (ac.velocity !== null && ac.velocity > 0.5);
                 html += `<tr class="${{selectedIcao === ac.icao24 ? 'selected-row' : ''}}" data-icao="${{ac.icao24}}">
                             <td>${{escapeHtml(ac.callsign)}}<\/td><td>${{ac.type}}<\/td><td>${{ac.lat.toFixed(4)}}<\/td>
-                            <tr>${{ac.lon.toFixed(4)}}<\/td><td>${{ac.altitude !== null ? ac.altitude.toFixed(0) : 'N/A'}}<\/td>
+                            <td>${{ac.lon.toFixed(4)}}<\/td><td>${{ac.altitude !== null ? ac.altitude.toFixed(0) : 'N/A'}}<\/td>
                             <td>${{ac.velocity !== null ? ac.velocity.toFixed(1) : '?'}}<\/td><td>${{moving ? '🟢 MOVING' : '🔴 STATIC'}}<\/td>
                             <td>${{ac.heading !== null ? ac.heading.toFixed(0)+'°' : '---'}}<\/td>
                          <\/tr>`;
@@ -484,6 +558,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
             const moving = (ac.velocity !== null && ac.velocity > 0.5);
             const speedText = ac.velocity !== null ? `${{ac.velocity.toFixed(2)}} m/s (${{(ac.velocity*3.6).toFixed(1)}} km/h)` : 'unknown';
             const altText = ac.altitude !== null ? `${{ac.altitude.toFixed(1)}} meters (${{(ac.altitude*3.28084).toFixed(0)}} ft)` : 'not reported';
+            const source = demoMode ? "DEMO MODE (simulated data)" : "OpenSky Network (live ADS‑B)";
             reportDiv.innerHTML = `
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     <div><strong>✈️ OBJECT:</strong> ${{escapeHtml(ac.callsign)}}</div>
@@ -497,11 +572,12 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                     <div><strong>🛬 ON GROUND:</strong> ${{ac.onGround ? 'YES (on ground)' : 'AIRBORNE'}}</div>
                     <div><strong>📡 RADAR RANGE:</strong> ${{maxRangeKm}} km from center</div>
                     <div><strong>🛡️ CLASSIFICATION:</strong> ${{ac.type}}</div>
+                    <div><strong>📊 DATA SOURCE:</strong> ${{source}}</div>
                 </div>
                 <hr style="border-color:#2a4f6e; margin-top:12px;">
-                <div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network. Military detection based on ICAO hex ranges & callsigns. Drone detection includes manufacturer ICAO prefixes and heuristic low‑altitude/speed behaviour.</div>
+                <div style="font-size:0.75rem;">🔍 Real ADS-B data via OpenSky Network (live mode). Demo mode uses simulated objects for testing.</div>
             `;
-            const reportText = `SURVEILLANCE REPORT\\n===================\\nObject: ${{ac.callsign}}\\nICAO24: ${{ac.icao24}}\\nType: ${{ac.type}}\\nLatitude: ${{ac.lat.toFixed(5)}}\\nLongitude: ${{ac.lon.toFixed(5)}}\\nDistance from radar: ${{ac.distance.toFixed(0)}} km\\nAltitude: ${{altText}}\\nSpeed: ${{speedText}}\\nHeading: ${{ac.heading !== null ? ac.heading.toFixed(1)+'°' : 'unknown'}}\\nVertical Rate: ${{ac.verticalRate !== null ? ac.verticalRate.toFixed(1)+' m/s' : 'N/A'}}\\nOn Ground: ${{ac.onGround ? 'YES' : 'NO'}}\\nTime of report: ${{new Date().toLocaleString()}}\\nData source: OpenSky Network`;
+            const reportText = `SURVEILLANCE REPORT (${demoMode ? "DEMO" : "LIVE"})\n===================\nObject: ${{ac.callsign}}\nICAO24: ${{ac.icao24}}\nType: ${{ac.type}}\nLatitude: ${{ac.lat.toFixed(5)}}\nLongitude: ${{ac.lon.toFixed(5)}}\nDistance from radar: ${{ac.distance.toFixed(0)}} km\nAltitude: ${{altText}}\nSpeed: ${{speedText}}\nHeading: ${{ac.heading !== null ? ac.heading.toFixed(1)+'°' : 'unknown'}}\nVertical Rate: ${{ac.verticalRate !== null ? ac.verticalRate.toFixed(1)+' m/s' : 'N/A'}}\nOn Ground: ${{ac.onGround ? 'YES' : 'NO'}}\nData source: ${{source}}\nTime of report: ${{new Date().toLocaleString()}}`;
             downloadContainer.innerHTML = `<button id="downloadReportBtn" style="background:#0f7b3e; border-color:#2aff9e;">📥 Download Report (TXT)</button>`;
             document.getElementById('downloadReportBtn').addEventListener('click', () => {{
                 const blob = new Blob([reportText], {{type: 'text/plain'}});
@@ -530,13 +606,11 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         function escapeHtml(str) {{ if(!str) return ''; return str.replace(/[&<>]/g, function(m){{if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}}); }}
 
         function init() {{
-            const container = document.querySelector('.radar-container');
             canvas.width = 550; canvas.height = 550; canvasSize = 550;
             refreshRadarData();
             refreshTimer = setInterval(() => refreshRadarData(), 60000);
         }}
         downloadAllBtn.addEventListener('click', downloadAllCSV);
-        window.addEventListener('resize', () => {{}});
         init();
         animate();
     </script>
@@ -545,11 +619,16 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
     """
     components.html(radar_html, height=950, scrolling=True)
 
-# ---------- SATELLITE TRACKER (REDUCED MAP HEIGHT: 450px) ----------
-def satellite_tracker():
+# ---------- SATELLITE TRACKER (with demo mode, clickable list, report download) ----------
+def satellite_tracker(demo_mode_satellite):
     st.markdown(f"## {_('satellite_title')}")
-    st.markdown(_("satellite_desc"))
-    satellite_html = """
+    if demo_mode_satellite:
+        st.info(_("demo_satellite_note"))
+    else:
+        st.markdown(_("satellite_desc"))
+    # Build satellite HTML with demo flag and report download logic
+    demo_flag = "true" if demo_mode_satellite else "false"
+    satellite_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -557,24 +636,42 @@ def satellite_tracker():
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-            #map { height: 450px; width: 100%; background: #0a0f1e; border-radius: 20px; margin-bottom: 20px; }
-            body { background: #0a0f1e; margin: 0; padding: 0; }
-            .info { text-align: center; color: #ccd6f6; font-family: monospace; margin-top: 10px; }
-            .satellite-badge { background: #1e3a5f; padding: 5px 12px; border-radius: 20px; display: inline-block; margin: 5px; }
+            #map {{ height: 450px; width: 100%; background: #0a0f1e; border-radius: 20px; margin-bottom: 20px; }}
+            body {{ background: #0a0f1e; margin: 0; padding: 0; }}
+            .info {{ text-align: center; color: #ccd6f6; font-family: monospace; margin-top: 10px; }}
+            .satellite-badge {{ background: #1e3a5f; padding: 5px 12px; border-radius: 20px; display: inline-block; margin: 5px; }}
+            .sat-list {{ background: #0c1220; border-radius: 20px; padding: 15px; margin-top: 20px; border: 1px solid #233453; }}
+            .sat-list h3 {{ margin: 0 0 10px 0; color: #9effcf; }}
+            .sat-item {{ background: #0f172a; margin: 8px 0; padding: 8px 12px; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; }}
+            .sat-item:hover {{ background: #1a3a4e; }}
+            .selected-sat {{ background: #1a3a4e; border-left: 3px solid #2aff9e; }}
+            .report-panel {{ margin-top: 20px; background: #030812; border-radius: 20px; padding: 15px; border: 1px solid #2a4a6a; }}
+            button {{ background: #0f7b3e; border: none; color: white; padding: 8px 16px; border-radius: 30px; cursor: pointer; margin-top: 10px; }}
         </style>
     </head>
     <body>
         <div id="map"></div>
+        <div class="sat-list">
+            <h3>🛰️ DETECTED SATELLITES (click to generate report)</h3>
+            <div id="satelliteList"></div>
+        </div>
+        <div id="reportPanel" class="report-panel">
+            <h3>📋 SATELLITE REPORT</h3>
+            <div id="reportContent">Select a satellite from the list to generate a detailed report.</div>
+            <div id="downloadBtnContainer"></div>
+        </div>
         <div class="info">
             <span class="satellite-badge">🛰️ ISS (yellow)</span>
             <span class="satellite-badge">🔭 Hubble (cyan)</span>
             <span class="satellite-badge">🌍 Tiangong (orange)</span>
-            <p>📍 Positions update every 5 seconds | Real data via wheretheiss.at</p>
+            <span class="satellite-badge">🛸 Demo sats (magenta)</span>
+            <p>📍 Positions update every 5 seconds | Data: wheretheiss.at (live) or simulated (demo)</p>
         </div>
+
         <script>
             let audioCtx = null;
-            function playBeep() {
-                try {
+            function playBeep() {{
+                try {{
                     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const now = audioCtx.currentTime;
                     const osc = audioCtx.createOscillator();
@@ -586,73 +683,142 @@ def satellite_tracker():
                     gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.15);
                     osc.start(now);
                     osc.stop(now + 0.15);
-                } catch(e) {}
-            }
+                }} catch(e) {{}}
+            }}
 
+            const demoMode = {demo_flag};
             var map = L.map('map').setView([0, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
                 subdomains: 'abcd',
                 maxZoom: 19,
                 minZoom: 2
-            }).addTo(map);
+            }}).addTo(map);
             
-            var issMarker, hubbleMarker, tiangongMarker;
-            
-            function fetchSatellites() {
-                fetch('https://api.wheretheiss.at/v1/satellites/25544')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (!issMarker) {
-                            issMarker = L.marker([data.latitude, data.longitude], {
-                                icon: L.divIcon({ html: '🛰️', className: 'iss-icon', iconSize: [30,30] })
-                            }).bindPopup('<b>ISS (International Space Station)</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h').addTo(map);
-                        } else {
-                            issMarker.setLatLng([data.latitude, data.longitude]);
-                            issMarker.getPopup().setContent('<b>ISS (International Space Station)</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h');
-                        }
-                        map.setView([data.latitude, data.longitude], 3);
-                    }).catch(err => console.error("ISS error:", err));
-                
-                fetch('https://api.wheretheiss.at/v1/satellites/20580')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (!hubbleMarker) {
-                            hubbleMarker = L.marker([data.latitude, data.longitude], {
-                                icon: L.divIcon({ html: '🔭', className: 'hubble-icon', iconSize: [30,30] })
-                            }).bindPopup('<b>Hubble Space Telescope</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h').addTo(map);
-                        } else {
-                            hubbleMarker.setLatLng([data.latitude, data.longitude]);
-                            hubbleMarker.getPopup().setContent('<b>Hubble Space Telescope</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h');
-                        }
-                    }).catch(err => console.error("Hubble error:", err));
-                
-                fetch('https://api.wheretheiss.at/v1/satellites/48274')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (!tiangongMarker) {
-                            tiangongMarker = L.marker([data.latitude, data.longitude], {
-                                icon: L.divIcon({ html: '🌍', className: 'tiangong-icon', iconSize: [30,30] })
-                            }).bindPopup('<b>Tiangong Space Station</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h').addTo(map);
-                        } else {
-                            tiangongMarker.setLatLng([data.latitude, data.longitude]);
-                            tiangongMarker.getPopup().setContent('<b>Tiangong Space Station</b><br>Altitude: ' + data.altitude.toFixed(0) + ' km<br>Velocity: ' + data.velocity.toFixed(0) + ' km/h');
-                        }
-                    }).catch(err => console.error("Tiangong error:", err));
-                
-                playBeep();
-            }
-            
-            fetchSatellites();
-            setInterval(fetchSatellites, 5000);
+            var markers = {{}};  // store marker objects by id
+            var satelliteData = []; // store current satellite objects
+            var selectedSatId = null;
+            var updateInterval = null;
+
+            // Demo satellite data (static positions for demonstration)
+            function getDemoSatellites() {{
+                return [
+                    {{ id: "DEMO1", name: "GeoEye-1", lat: 28.6, lng: -80.6, alt: 681, vel: 7.5, type: "🌍 Earth Imaging" }},
+                    {{ id: "DEMO2", name: "Landsat-9", lat: 45.0, lng: -110.0, alt: 705, vel: 7.4, type: "📸 Remote Sensing" }},
+                    {{ id: "DEMO3", name: "NOAA-20", lat: -15.0, lng: -150.0, alt: 824, vel: 7.3, type: "🌦️ Weather" }},
+                    {{ id: "DEMO4", name: "Starlink-1234", lat: 52.0, lng: -40.0, alt: 550, vel: 7.6, type: "📡 Communications" }},
+                    {{ id: "DEMO5", name: "GPS BIIF-10", lat: 12.0, lng: 70.0, alt: 20200, vel: 3.9, type: "🛰️ Navigation" }}
+                ];
+            }}
+
+            function fetchRealSatellites() {{
+                return Promise.all([
+                    fetch('https://api.wheretheiss.at/v1/satellites/25544').then(r => r.json()).then(data => ({{ id: "ISS", name: "ISS (International Space Station)", lat: data.latitude, lng: data.longitude, alt: data.altitude, vel: data.velocity, type: "🛰️ Manned" }})),
+                    fetch('https://api.wheretheiss.at/v1/satellites/20580').then(r => r.json()).then(data => ({{ id: "HUBBLE", name: "Hubble Space Telescope", lat: data.latitude, lng: data.longitude, alt: data.altitude, vel: data.velocity, type: "🔭 Telescope" }})),
+                    fetch('https://api.wheretheiss.at/v1/satellites/48274').then(r => r.json()).then(data => ({{ id: "TIANGONG", name: "Tiangong Space Station", lat: data.latitude, lng: data.longitude, alt: data.altitude, vel: data.velocity, type: "🛰️ Manned" }}))
+                ]);
+            }}
+
+            function updateSatellites() {{
+                if (demoMode) {{
+                    satelliteData = getDemoSatellites();
+                    playBeep();
+                    renderSatellites();
+                }} else {{
+                    fetchRealSatellites().then(sats => {{
+                        satelliteData = sats;
+                        playBeep();
+                        renderSatellites();
+                    }}).catch(err => console.error("Satellite fetch error:", err));
+                }}
+            }}
+
+            function renderSatellites() {{
+                // Update map markers
+                for (let sat of satelliteData) {{
+                    if (markers[sat.id]) {{
+                        markers[sat.id].setLatLng([sat.lat, sat.lng]);
+                    }} else {{
+                        let iconColor = "#2eff9e";
+                        if (sat.id === "ISS") iconColor = "#ffaa44";
+                        else if (sat.id === "HUBBLE") iconColor = "#44aaff";
+                        else if (sat.id === "TIANGONG") iconColor = "#ff8844";
+                        else iconColor = "#ff44ff";
+                        markers[sat.id] = L.marker([sat.lat, sat.lng], {{
+                            icon: L.divIcon({{ html: sat.id === "ISS" ? "🛰️" : (sat.id === "HUBBLE" ? "🔭" : (sat.id === "TIANGONG" ? "🌍" : "🛸")), className: "sat-marker", iconSize: [30,30] }})
+                        }}).bindPopup(`<b>${{sat.name}}</b><br>Alt: ${{sat.alt.toFixed(0)}} km<br>Vel: ${{sat.vel.toFixed(0)}} km/h`).addTo(map);
+                    }}
+                }}
+                // Remove markers not present
+                for (let id in markers) {{
+                    if (!satelliteData.find(s => s.id === id)) {{
+                        map.removeLayer(markers[id]);
+                        delete markers[id];
+                    }}
+                }}
+                // Update satellite list
+                const listContainer = document.getElementById('satelliteList');
+                let html = '';
+                for (let sat of satelliteData) {{
+                    const cls = (selectedSatId === sat.id) ? "selected-sat" : "";
+                    html += `<div class="sat-item ${{cls}}" data-id="${{sat.id}}">
+                                <span><strong>${{sat.name}}</strong></span>
+                                <span>📍 ${{sat.lat.toFixed(2)}}, ${{sat.lng.toFixed(2)}}</span>
+                                <span>📏 ${{sat.alt.toFixed(0)}} km</span>
+                            </div>`;
+                }}
+                listContainer.innerHTML = html;
+                document.querySelectorAll('.sat-item').forEach(el => {{
+                    el.addEventListener('click', () => {{
+                        const id = el.getAttribute('data-id');
+                        const sat = satelliteData.find(s => s.id === id);
+                        if (sat) {{
+                            selectedSatId = id;
+                            generateSatelliteReport(sat);
+                            document.querySelectorAll('.sat-item').forEach(i => i.classList.remove('selected-sat'));
+                            el.classList.add('selected-sat');
+                        }}
+                    }});
+                }});
+            }}
+
+            function generateSatelliteReport(sat) {{
+                const source = demoMode ? "DEMO MODE (simulated)" : "wheretheiss.at API (live)";
+                const reportDiv = document.getElementById('reportContent');
+                reportDiv.innerHTML = `
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div><strong>🛰️ NAME:</strong> ${{sat.name}}</div>
+                        <div><strong>🆔 ID:</strong> ${{sat.id}}</div>
+                        <div><strong>📍 LATITUDE:</strong> ${{sat.lat.toFixed(5)}}</div>
+                        <div><strong>📍 LONGITUDE:</strong> ${{sat.lng.toFixed(5)}}</div>
+                        <div><strong>📏 ALTITUDE:</strong> ${{sat.alt.toFixed(1)}} km</div>
+                        <div><strong>💨 VELOCITY:</strong> ${{sat.vel.toFixed(1)}} km/h</div>
+                        <div><strong>📡 TYPE:</strong> ${{sat.type || "Satellite"}}</div>
+                        <div><strong>📊 DATA SOURCE:</strong> ${{source}}</div>
+                    </div>
+                    <hr style="border-color:#2a4f6e; margin-top:12px;">
+                    <div style="font-size:0.75rem;">🔍 Live data from wheretheiss.at or demo simulation.</div>
+                `;
+                const reportText = `SATELLITE REPORT (${demoMode ? "DEMO" : "LIVE"})\n===================\nName: ${{sat.name}}\nID: ${{sat.id}}\nLatitude: ${{sat.lat.toFixed(5)}}\nLongitude: ${{sat.lng.toFixed(5)}}\nAltitude: ${{sat.alt.toFixed(1)}} km\nVelocity: ${{sat.vel.toFixed(1)}} km/h\nType: ${{sat.type || "Satellite"}}\nData source: ${{source}}\nTime of report: ${{new Date().toLocaleString()}}`;
+                const btnContainer = document.getElementById('downloadBtnContainer');
+                btnContainer.innerHTML = `<button id="downloadSatReportBtn">📥 Download Report (TXT)</button>`;
+                document.getElementById('downloadSatReportBtn').addEventListener('click', () => {{
+                    const blob = new Blob([reportText], {{type: 'text/plain'}});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `${{sat.name.replace(/ /g, "_")}}_report.txt`; a.click(); URL.revokeObjectURL(url);
+                }});
+            }}
+
+            updateSatellites();
+            updateInterval = setInterval(updateSatellites, 5000);
         </script>
     </body>
     </html>
     """
-    components.html(satellite_html, height=550, scrolling=False)
+    components.html(satellite_html, height=800, scrolling=False)
     st.caption(_("satellite_credit"))
 
-# ---------- MAIN PAGE (AFTER LOGIN) ----------
+# ---------- MAIN PAGE ----------
 def main_page():
     sidebar_common()
     # Logout button in sidebar (once)
@@ -660,15 +826,16 @@ def main_page():
         st.session_state.authenticated = False
         st.rerun()
 
-    # Create tabs for Radar and Satellite Tracker
+    # Create tabs
     tab1, tab2 = st.tabs([_("tab_radar"), _("tab_satellite")])
     with tab1:
-        radar_lat, radar_lon, max_range, api_key = radar_sidebar()
-        radar_component(radar_lat, radar_lon, max_range, api_key)
+        radar_lat, radar_lon, max_range, api_key, demo_mode = radar_sidebar()
+        radar_component(radar_lat, radar_lon, max_range, api_key, demo_mode)
     with tab2:
-        satellite_tracker()
+        demo_sat = st.sidebar.checkbox(_("demo_mode_satellite"), value=False)
+        satellite_tracker(demo_sat)
 
-# ---------- PAGE ROUTING ----------
+# ---------- ROUTING ----------
 if not st.session_state.authenticated:
     login_page()
 else:
