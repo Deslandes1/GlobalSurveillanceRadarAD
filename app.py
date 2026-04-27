@@ -172,7 +172,7 @@ def sidebar_common():
     st.sidebar.markdown("---")
     language_selector()
 
-# ---------- RADAR SIDEBAR SETTINGS (shown only when radar is active) ----------
+# ---------- RADAR SIDEBAR SETTINGS ----------
 def radar_sidebar():
     radar_lat = st.sidebar.number_input(_("radar_lat"), value=40.7128, format="%.5f")
     radar_lon = st.sidebar.number_input(_("radar_lon"), value=-74.0060, format="%.5f")
@@ -214,7 +214,7 @@ def login_page():
                 st.error(_("incorrect_password"))
     sidebar_common()
 
-# ---------- RADAR HTML COMPONENT (ORIGINAL, WITH ADDED BEEP SOUND) ----------
+# ---------- RADAR HTML (REDUCED SIZE: 550px) ----------
 def radar_component(radar_lat, radar_lon, max_range, api_key):
     radar_html = f"""
     <!DOCTYPE html>
@@ -226,9 +226,9 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         <style>
             * {{ box-sizing: border-box; user-select: none; }}
             body {{ background: #0a0f1e; font-family: 'Segoe UI', 'Roboto', monospace; margin: 0; padding: 20px; color: #ccd6f6; }}
-            .dashboard {{ max-width: 1400px; margin: 0 auto; }}
+            .dashboard {{ max-width: 1000px; margin: 0 auto; }}
             .radar-container {{ background: #03060c; border-radius: 32px; padding: 20px; box-shadow: 0 20px 35px rgba(0,0,0,0.5); border: 1px solid #1e3a5f; margin-bottom: 20px; }}
-            canvas {{ display: block; margin: 0 auto; background: radial-gradient(circle at 30% 20%, #07121f, #010101); border-radius: 50%; box-shadow: 0 0 0 2px #0e2a3a, 0 0 0 5px #03121f; width: 100%; height: auto; cursor: crosshair; }}
+            canvas {{ display: block; margin: 0 auto; background: radial-gradient(circle at 30% 20%, #07121f, #010101); border-radius: 50%; box-shadow: 0 0 0 2px #0e2a3a, 0 0 0 5px #03121f; width: 100%; max-width: 550px; height: auto; cursor: crosshair; }}
             .radar-stats {{ display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.8rem; font-family: monospace; flex-wrap: wrap; gap: 10px; }}
             .badge {{ background: #0f172a; padding: 5px 12px; border-radius: 40px; border-left: 3px solid #2aff9e; }}
             .report-section {{ background: #0c1220; border-radius: 24px; padding: 20px; border: 1px solid #233453; }}
@@ -256,7 +256,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         </div>
 
         <div class="radar-container">
-            <canvas id="radarCanvas" width="700" height="700" style="width:100%; max-width:700px; height:auto; aspect-ratio:1/1"></canvas>
+            <canvas id="radarCanvas" width="550" height="550" style="width:100%; max-width:550px; height:auto; aspect-ratio:1/1"></canvas>
             <div class="radar-stats">
                 <span>🎯 TARGETS: <strong id="targetCount">0</strong></span>
                 <span>🟢 MOVING | 🔴 STATIC | 🔫 MILITARY | 🚁 DRONE</span>
@@ -293,7 +293,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
     </div>
 
     <script>
-        // ---------- Web Audio for radar sweep beep ----------
+        // Web Audio for radar sweep beep
         let audioCtx = null;
         function playBeep() {{
             try {{
@@ -303,7 +303,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                osc.frequency.value = 880; // high beep
+                osc.frequency.value = 880;
                 gain.gain.setValueAtTime(0.1, now);
                 gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.2);
                 osc.start(now);
@@ -357,7 +357,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         const rangeKmDisplay = document.getElementById('rangeKmDisplay');
         const downloadAllBtn = document.getElementById('downloadAllBtn');
 
-        let currentAircraft = [], selectedIcao = null, refreshTimer = null, animationId = null, canvasSize = 700;
+        let currentAircraft = [], selectedIcao = null, refreshTimer = null, animationId = null, canvasSize = 550;
         let lastSweepAngle = 0;
 
         function haversine(lat1, lon1, lat2, lon2) {{
@@ -406,10 +406,7 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
                 }}
             }}
             const sweep = (nowSeconds * 1.2) % 360, radSweep = sweep * Math.PI/180;
-            // Beep when sweep passes 0° (completes a full rotation)
-            if (lastSweepAngle > 350 && sweep < 10) {{
-                playBeep();
-            }}
+            if (lastSweepAngle > 350 && sweep < 10) playBeep();
             lastSweepAngle = sweep;
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR*Math.sin(radSweep), cy - maxR*Math.cos(radSweep)); ctx.strokeStyle = '#9effcf66'; ctx.stroke();
             ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2*Math.PI); ctx.fillStyle = '#ffaa44'; ctx.fill();
@@ -459,13 +456,13 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
         }}
 
         function renderTable(list) {{
-            if (!list.length) {{ tableBody.innerHTML = '<tr><td colspan="8">✈️ No flying objects detected within radar range.脉舶'; return; }}
+            if (!list.length) {{ tableBody.innerHTML = '</td><td colspan="8">✈️ No flying objects detected within radar range.脉舶'; return; }}
             let html = '';
             for (let ac of list) {{
                 const moving = (ac.velocity !== null && ac.velocity > 0.5);
                 html += `<tr class="${{selectedIcao === ac.icao24 ? 'selected-row' : ''}}" data-icao="${{ac.icao24}}">
                             <td>${{escapeHtml(ac.callsign)}}<\/td><td>${{ac.type}}<\/td><td>${{ac.lat.toFixed(4)}}<\/td>
-                            <td>${{ac.lon.toFixed(4)}}<\/td><td>${{ac.altitude !== null ? ac.altitude.toFixed(0) : 'N/A'}}<\/td>
+                            <tr>${{ac.lon.toFixed(4)}}<\/td><td>${{ac.altitude !== null ? ac.altitude.toFixed(0) : 'N/A'}}<\/td>
                             <td>${{ac.velocity !== null ? ac.velocity.toFixed(1) : '?'}}<\/td><td>${{moving ? '🟢 MOVING' : '🔴 STATIC'}}<\/td>
                             <td>${{ac.heading !== null ? ac.heading.toFixed(0)+'°' : '---'}}<\/td>
                          <\/tr>`;
@@ -534,26 +531,21 @@ def radar_component(radar_lat, radar_lon, max_range, api_key):
 
         function init() {{
             const container = document.querySelector('.radar-container');
-            const size = Math.min(container.clientWidth - 40, 700);
-            canvas.width = size; canvas.height = size; canvasSize = size;
+            canvas.width = 550; canvas.height = 550; canvasSize = 550;
             refreshRadarData();
             refreshTimer = setInterval(() => refreshRadarData(), 60000);
         }}
         downloadAllBtn.addEventListener('click', downloadAllCSV);
-        window.addEventListener('resize', () => setTimeout(() => {{
-            const container = document.querySelector('.radar-container');
-            let newSize = Math.min(container.clientWidth - 40, 700);
-            canvas.width = newSize; canvas.height = newSize; canvasSize = newSize;
-        }}, 100));
+        window.addEventListener('resize', () => {{}});
         init();
         animate();
     </script>
     </body>
     </html>
     """
-    components.html(radar_html, height=1300, scrolling=True)
+    components.html(radar_html, height=950, scrolling=True)
 
-# ---------- SATELLITE TRACKER COMPONENT (WITH REFRESH BEEP) ----------
+# ---------- SATELLITE TRACKER (REDUCED MAP HEIGHT: 450px) ----------
 def satellite_tracker():
     st.markdown(f"## {_('satellite_title')}")
     st.markdown(_("satellite_desc"))
@@ -565,7 +557,7 @@ def satellite_tracker():
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-            #map { height: 600px; width: 100%; background: #0a0f1e; border-radius: 20px; margin-bottom: 20px; }
+            #map { height: 450px; width: 100%; background: #0a0f1e; border-radius: 20px; margin-bottom: 20px; }
             body { background: #0a0f1e; margin: 0; padding: 0; }
             .info { text-align: center; color: #ccd6f6; font-family: monospace; margin-top: 10px; }
             .satellite-badge { background: #1e3a5f; padding: 5px 12px; border-radius: 20px; display: inline-block; margin: 5px; }
@@ -580,7 +572,6 @@ def satellite_tracker():
             <p>📍 Positions update every 5 seconds | Real data via wheretheiss.at</p>
         </div>
         <script>
-            // Beep on refresh (each satellite update)
             let audioCtx = null;
             function playBeep() {
                 try {
@@ -607,10 +598,8 @@ def satellite_tracker():
             }).addTo(map);
             
             var issMarker, hubbleMarker, tiangongMarker;
-            var lastUpdateTime = 0;
             
             function fetchSatellites() {
-                // ISS
                 fetch('https://api.wheretheiss.at/v1/satellites/25544')
                     .then(res => res.json())
                     .then(data => {
@@ -625,7 +614,6 @@ def satellite_tracker():
                         map.setView([data.latitude, data.longitude], 3);
                     }).catch(err => console.error("ISS error:", err));
                 
-                // Hubble (satellite ID 20580)
                 fetch('https://api.wheretheiss.at/v1/satellites/20580')
                     .then(res => res.json())
                     .then(data => {
@@ -639,7 +627,6 @@ def satellite_tracker():
                         }
                     }).catch(err => console.error("Hubble error:", err));
                 
-                // Tiangong (Chinese space station, sat ID 48274)
                 fetch('https://api.wheretheiss.at/v1/satellites/48274')
                     .then(res => res.json())
                     .then(data => {
@@ -653,7 +640,6 @@ def satellite_tracker():
                         }
                     }).catch(err => console.error("Tiangong error:", err));
                 
-                // Play beep once per batch update
                 playBeep();
             }
             
@@ -663,25 +649,24 @@ def satellite_tracker():
     </body>
     </html>
     """
-    components.html(satellite_html, height=700, scrolling=False)
+    components.html(satellite_html, height=550, scrolling=False)
     st.caption(_("satellite_credit"))
 
 # ---------- MAIN PAGE (AFTER LOGIN) ----------
 def main_page():
     sidebar_common()
+    # Logout button in sidebar (once)
+    if st.sidebar.button(_("logout_button"), use_container_width=True):
+        st.session_state.authenticated = False
+        st.rerun()
+
     # Create tabs for Radar and Satellite Tracker
     tab1, tab2 = st.tabs([_("tab_radar"), _("tab_satellite")])
     with tab1:
         radar_lat, radar_lon, max_range, api_key = radar_sidebar()
         radar_component(radar_lat, radar_lon, max_range, api_key)
-        if st.sidebar.button(_("logout_button"), use_container_width=True):
-            st.session_state.authenticated = False
-            st.rerun()
     with tab2:
         satellite_tracker()
-        if st.sidebar.button(_("logout_button"), use_container_width=True):
-            st.session_state.authenticated = False
-            st.rerun()
 
 # ---------- PAGE ROUTING ----------
 if not st.session_state.authenticated:
