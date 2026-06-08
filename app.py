@@ -2,40 +2,31 @@ import streamlit as st
 import json
 import random
 import math
+import requests
 from datetime import datetime
 import streamlit.components.v1 as components
 from groq import Groq
+import pandas as pd
 from PIL import Image
 import numpy as np
 
-# ========== OPTIONAL IMPORTS FOR OBJECT DETECTION ==========
-# They are imported only when the user clicks the Detect button.
-# If the packages are not installed, we show a friendly error.
-
+# ========== OPTIONAL OBJECT DETECTION ==========
+# (only used if user uploads an image; otherwise not needed)
 def run_object_detection(image_bytes):
-    """Run YOLOv8 object detection. If dependencies missing, return error."""
     try:
         from ultralytics import YOLO
         import cv2
         import tempfile
         import os
-
-        # Load model (downloads on first use)
         model = YOLO("yolov8n.pt")
-
-        # Write image to temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp_path = tmp.name
-
         results = model(tmp_path)
         os.unlink(tmp_path)
-
-        # Draw boxes
         img = cv2.imread(tmp_path)
         if img is None:
-            return None, [{"error": "Could not read image file"}]
-
+            return None, [{"error": "Could not read image"}]
         detections = []
         for result in results:
             boxes = result.boxes
@@ -48,12 +39,10 @@ def run_object_detection(image_bytes):
                     detections.append({"label": label, "confidence": f"{conf:.2f}", "bbox": (x1, y1, x2, y2)})
                     cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     cv2.putText(img, f"{label} {conf:.2f}", (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         return img_rgb, detections
-
     except ImportError as e:
-        return None, [{"error": f"Missing dependencies: {e}. Please install 'ultralytics' and 'opencv-python-headless'."}]
+        return None, [{"error": f"Missing dependencies: {e}"}]
     except Exception as e:
         return None, [{"error": str(e)}]
 
@@ -64,34 +53,94 @@ st.set_page_config(
     page_icon="🌐"
 )
 
-# Session state
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
+if "aircraft_cache" not in st.session_state:
+    st.session_state.aircraft_cache = []
+if "last_fetch" not in st.session_state:
+    st.session_state.last_fetch = None
 
-# Groq client (for text AI)
+# Groq client
 if "GROQ_API_KEY" not in st.secrets:
-    st.error("⚠️ Missing Groq API key. Add `GROQ_API_KEY` to your Streamlit secrets.")
+    st.error("Missing Groq API key. Add GROQ_API_KEY to Streamlit secrets.")
     st.stop()
 groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# ========== DEMO DATA (radar + satellites) ==========
-def get_surveillance_data(is_demo, u_lat, u_lon):
-    if not is_demo:
-        return [], []
-    aircraft = [
+# ========== LIVE AIRCRAFT DATA FROM OPENSKY ==========
+def fetch_live_aircraft(ground_lat, ground_lon):
+    """Fetch live aircraft from OpenSky API and compute relative positions."""
+    url = "https://opensky-network.org/api/states/all"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        states = data.get("states", [])
+        if not states:
+            return []
+        # Convert to list of dict with relevant fields
+        aircraft_list = []
+        for s in states:
+            # s[0]=icao24, s[1]=callsign, s[2]=origin_country, s[5]=longitude, s[6]=latitude,
+            # s[7]=altitude, s[8]=on_ground, s[9]=velocity, s[10]=heading, s[13]=geo_altitude
+            lat = s[6]
+            lon = s[5]
+            if lat is None or lon is None:
+                continue
+            # Compute distance (great-circle) in km
+            R = 6371
+            dlat = math.radians(lat - ground_lat)
+            dlon = math.radians(lon - ground_lon)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            dist_km = R * c
+            # Map distance to radar radius (max 300 km displayed as 0.9 of radar circle)
+            max_km = 300
+            dist_norm = min(dist_km / max_km, 0.95)  # 0..0.95
+            # Determine type/color based on altitude or callsign (simple heuristics)
+            alt = s[7] if s[7] is not None else 0
+            if alt > 30000:
+                type_str = "High Altitude"
+                color = "#ffcc00"
+            elif alt > 10000:
+                type_str = "Commercial"
+                color = "#00ff64"
+            else:
+                type_str = "General Aviation"
+                color = "#00bfff"
+            # Try to get callsign, otherwise use ICAO24
+            callsign = s[1].strip() if s[1] else s[0][:6].upper()
+            aircraft_list.append({
+                "id": callsign,
+                "type": type_str,
+                "color": color,
+                "alt": f"{int(alt) if alt else 'N/A'}ft",
+                "dist": dist_norm,
+                "lat": lat,
+                "lon": lon
+            })
+        # Limit to 30 aircraft to keep radar readable
+        return aircraft_list[:30]
+    except Exception as e:
+        st.warning(f"OpenSky API error: {e}")
+        return []
+
+# ========== DEMO DATA (fallback) ==========
+def get_demo_aircraft():
+    return [
         {"id": "AAL-410", "type": "Commercial", "color": "#00ff64", "alt": "32,000ft", "dist": 0.4},
         {"id": "F-22-EX", "type": "Military Strike", "color": "#ff3300", "alt": "52,000ft", "dist": 0.8},
         {"id": "DRN-QC", "type": "Drone/UAV", "color": "#ffcc00", "alt": "800ft", "dist": 0.2}
     ]
-    satellites = [
+
+def get_satellites():
+    return [
         {"id": "STAR-V2", "type": "Starlink", "color": "#00ff64", "alt": "550km"},
         {"id": "NAV-GPS", "type": "GPS III", "color": "#00bfff", "alt": "20,200km"},
         {"id": "KH-11-S", "type": "Spy Satellite", "color": "#ff3300", "alt": "380km"},
         {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km"}
     ]
-    return aircraft, satellites
 
 # ========== TRANSLATIONS ==========
 UI = {
@@ -105,44 +154,40 @@ UI = {
         "aip_key": "AIP Security Key (Aerial Imagery)", "sky_view": "Satellite OpenSky View",
         "ai_question": "Ask about radar contacts or satellite predictions:",
         "ai_analyze": "Analyze Current Threat Level",
-        "ai_thinking": "🤖 AI analyzing surveillance data...",
-        "ai_response": "💡 AI Analyst Report",
-        "security_badge": "🔐 Global Security Shield active",
+        "ai_thinking": "AI analyzing surveillance data...",
+        "ai_response": "AI Analyst Report",
+        "security_badge": "Global Security Shield active",
         "security_caption": "All data is secured and anonymized",
         "detect_title": "Real‑Time Object Detection",
-        "detect_desc": "Upload an image (JPEG, PNG) to detect objects using YOLOv8. The model can recognize 80 common object types (people, vehicles, aircraft, etc.).",
+        "detect_desc": "Upload an image to detect objects using YOLOv8.",
         "upload_label": "Choose an image...",
         "detect_btn": "Detect Objects",
-        "detection_results": "Detected Objects"
+        "detection_results": "Detected Objects",
+        "refresh_btn": "Refresh Live Data"
     },
     "French": {
-        "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite", "ai_tab": "🤖 Analyste IA", "detect_tab": "🕵️ Détection d'objets",
+        "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite", "ai_tab": "🤖 Analyste IA", "detect_tab": "🕵️ Détection",
         "title": "RADAR DE SURVEILLANCE MONDIAL", "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion", "report": "Télécharger le Rapport",
         "detection_log": "Journal de Détection", "sat_engine": "Moteur de Cartographie Prédictive",
         "audio_note": "Cliquez sur le radar pour l'audio.", "lat": "Latitude", "lon": "Longitude",
         "predict_btn": "Prédire le Passage", "time_target": "Date/Heure Cible",
-        "aip_key": "Clé de Sécurité AIP (Imagerie Aérienne)", "sky_view": "Vue Satellite OpenSky",
+        "aip_key": "Clé de Sécurité AIP", "sky_view": "Vue Satellite OpenSky",
         "ai_question": "Posez une question sur les contacts radar ou les prédictions satellite:",
-        "ai_analyze": "Analyser le niveau de menace actuel",
-        "ai_thinking": "🤖 L'IA analyse les données de surveillance...",
-        "ai_response": "💡 Rapport d'analyse IA",
-        "security_badge": "🔐 Bouclier de sécurité global actif",
-        "security_caption": "Toutes les données sont sécurisées et anonymisées",
-        "detect_title": "Détection d'objets en temps réel",
-        "detect_desc": "Téléchargez une image (JPEG, PNG) pour détecter des objets avec YOLOv8. Le modèle reconnaît 80 types d'objets courants (personnes, véhicules, avions, etc.).",
-        "upload_label": "Choisissez une image...",
-        "detect_btn": "Détecter les objets",
-        "detection_results": "Objets détectés"
+        "ai_analyze": "Analyser la menace", "ai_thinking": "L'IA analyse...",
+        "ai_response": "Rapport IA", "security_badge": "Bouclier de sécurité actif",
+        "security_caption": "Toutes les données sont sécurisées",
+        "detect_title": "Détection d'objets", "detect_desc": "Téléchargez une image...",
+        "upload_label": "Choisissez une image...", "detect_btn": "Détecter",
+        "detection_results": "Objets détectés", "refresh_btn": "Actualiser"
     }
 }
 
-# ========== LOGIN PAGE ==========
 def login_page():
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown("### 🌐 GlobalInternet.py Access")
+        st.markdown("### GlobalInternet.py Access")
         pwd = st.text_input("Enter Security Key", type="password")
         if st.button("Initialize System", key="login_btn", use_container_width=True):
             if pwd == "20082010":
@@ -151,9 +196,8 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== AI ANALYSIS (TEXT) ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, question=None):
-    radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']}" for a in aircraft])
+    radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']*300:.0f}km" for a in aircraft])
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     full_prompt = f"""You are an AI surveillance analyst. Use the following real-time data to answer the question or provide a threat assessment. Respond concisely and professionally.
 
@@ -179,35 +223,45 @@ Answer:"""
     except Exception as e:
         return f"AI error: {str(e)}"
 
-# ========== MAIN PAGE ==========
 def main_page():
     L = UI[st.session_state.lang]
     with st.sidebar:
-        st.title("🌐 GlobalInternet.py")
+        st.title("GlobalInternet.py")
         st.selectbox("Language", ["English", "French"], key="lang")
-        st.markdown(f"**👨‍💻 {L['author_tag']}**")
+        st.markdown(f"**{L['author_tag']}**")
         st.divider()
-        st.markdown(f"### 🛡️ {L['security_badge']}")
+        st.markdown(f"### {L['security_badge']}")
         st.markdown(f"<div style='background:#0a192f; border:1px solid #00ebc7; border-radius:30px; padding:8px; text-align:center; color:#00ebc7;'>{L['security_caption']}</div>", unsafe_allow_html=True)
         st.divider()
         u_lat = st.number_input(L['lat'], value=18.5392, format="%.4f")
         u_lon = st.number_input(L['lon'], value=-72.3364, format="%.4f")
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
         st.divider()
-        demo_radar = st.checkbox("Demo Mode (Radar)", value=True)
-        demo_sat = st.checkbox("Demo Mode (Satellite)", value=True)
+        use_demo = st.checkbox("Demo Mode (disable live OpenSky)", value=False)
         st.divider()
-        st.write(f"📞 (509) 4738-5663")
-        st.write(f"✉️ deslandes78@gmail.com")
+        if st.button(L['refresh_btn'], use_container_width=True):
+            st.rerun()
+        st.divider()
+        st.write("📞 (509) 4738-5663")
+        st.write("✉️ deslandes78@gmail.com")
         if st.button(L['logout'], type="primary", use_container_width=True):
             st.session_state.authenticated = False
             st.rerun()
 
-    aircraft_data, sat_data = get_surveillance_data(True, u_lat, u_lon)
+    # Fetch live aircraft if not in demo mode
+    if use_demo:
+        aircraft_data = get_demo_aircraft()
+    else:
+        with st.spinner("Fetching live aircraft data from OpenSky..."):
+            aircraft_data = fetch_live_aircraft(u_lat, u_lon)
+            if not aircraft_data:
+                st.warning("No live aircraft data received. Falling back to demo.")
+                aircraft_data = get_demo_aircraft()
+    sat_data = get_satellites()
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
-    # Radar tab (unchanged)
+    # Radar tab (with live aircraft)
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
@@ -237,10 +291,12 @@ def main_page():
                         ctx.strokeStyle='rgba(30,58,95,0.4)';
                         for(let i=1;i<=4;i++){ ctx.beginPath(); ctx.arc(cx,cy,(r/4)*i,0,Math.PI*2); ctx.stroke(); }
                         data.forEach((d, i) => {
-                            let dx = cx + Math.cos(i*1.5) * (r * d.dist);
-                            let dy = cy + Math.sin(i*1.5) * (r * d.dist);
+                            // Position angle is based on index (could be randomized, but we keep simple)
+                            let angleRad = i * 1.2;
+                            let dx = cx + Math.cos(angleRad) * (r * d.dist);
+                            let dy = cy + Math.sin(angleRad) * (r * d.dist);
                             ctx.fillStyle=d.color; ctx.shadowBlur=15; ctx.shadowColor=d.color;
-                            ctx.beginPath(); ctx.arc(dx,dy,5,0,7); ctx.fill();
+                            ctx.beginPath(); ctx.arc(dx,dy,6,0,7); ctx.fill();
                         });
                         let oldA = angle; angle -= 0.03;
                         if(Math.floor(oldA/6.28) !== Math.floor(angle/6.28)) ping();
@@ -260,9 +316,11 @@ def main_page():
             for d in aircraft_data:
                 with st.expander(f"📡 {d['id']} [{d['type']}]"):
                     st.write(f"**Altitude:** {d['alt']}")
+                    if not use_demo:
+                        st.write(f"**Lat/Lon:** {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}")
                     st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
 
-    # Satellite tab (unchanged)
+    # Satellite tab (unchanged, but using live aircraft positions on map optionally)
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -284,7 +342,12 @@ def main_page():
             st.subheader(L['sky_view'])
             tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
+            # Add live aircraft markers if not in demo mode
             markers = ""
+            if not use_demo:
+                for a in aircraft_data:
+                    if "lat" in a and "lon" in a:
+                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}');"
             for s in sat_data:
                 markers += f"L.circleMarker([{u_lat + (hash(s['id'])%5-2.5)}, {u_lon + (hash(s['id'])%10-5)}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
             map_html = f"""
@@ -307,23 +370,14 @@ def main_page():
     # AI Analyst tab
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
-        st.markdown("Ask questions about radar contacts, satellite assets, or request a threat assessment.")
-        col_q, col_a = st.columns([1, 1])
-        with col_q:
-            user_question = st.text_area(L['ai_question'], height=100)
-            if st.button(L['ai_analyze'], use_container_width=True):
-                with st.spinner(L['ai_thinking']):
-                    response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question if user_question.strip() else None)
-                st.markdown(f"### {L['ai_response']}")
-                st.markdown(response)
-        with col_a:
-            if st.button("🚨 Quick Threat Assessment", use_container_width=True):
-                with st.spinner(L['ai_thinking']):
-                    response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, None)
-                st.markdown(f"### {L['ai_response']}")
-                st.markdown(response)
+        user_question = st.text_area(L['ai_question'], height=100)
+        if st.button(L['ai_analyze'], use_container_width=True):
+            with st.spinner(L['ai_thinking']):
+                response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question if user_question.strip() else None)
+            st.markdown(f"### {L['ai_response']}")
+            st.markdown(response)
 
-    # Object Detection tab (with graceful error handling)
+    # Object Detection tab (unchanged)
     with tab_detect:
         st.title(L['detect_title'])
         st.markdown(L['detect_desc'])
@@ -332,7 +386,7 @@ def main_page():
             img_bytes = uploaded_file.read()
             st.image(img_bytes, caption="Uploaded Image", use_container_width=True)
             if st.button(L['detect_btn']):
-                with st.spinner("Running YOLOv8 object detection... (first run may download model)"):
+                with st.spinner("Running YOLOv8..."):
                     annotated_img, detections = run_object_detection(img_bytes)
                 if annotated_img is not None:
                     st.image(annotated_img, caption="Detected Objects", use_container_width=True)
@@ -341,11 +395,9 @@ def main_page():
                         for d in detections:
                             st.write(f"- {d['label']} (confidence {d['confidence']})")
                     else:
-                        st.warning("No objects detected or error occurred.")
+                        st.warning("No objects detected.")
                 else:
-                    error_msg = detections[0].get("error", "Unknown error")
-                    st.error(f"Detection failed: {error_msg}")
-                    st.info("If you see 'Missing dependencies', please install 'ultralytics' and 'opencv-python-headless' via the terminal:\n\n`pip install ultralytics opencv-python-headless`")
+                    st.error(f"Detection failed: {detections[0].get('error', 'Unknown error')}")
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
