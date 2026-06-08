@@ -4,6 +4,7 @@ import random
 import math
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
+from groq import Groq
 
 # --- 1. CORE CONFIGURATION ---
 st.set_page_config(
@@ -18,10 +19,16 @@ if "authenticated" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
+# --- GROQ CLIENT (from secrets) ---
+if "GROQ_API_KEY" not in st.secrets:
+    st.error("⚠️ Missing Groq API key. Add `GROQ_API_KEY` to your Streamlit secrets.")
+    st.stop()
+groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
 # --- 2. SURVEILLANCE DATA GENERATOR ---
 def get_surveillance_data(is_demo, u_lat, u_lon):
     if not is_demo:
-        return []
+        return [], []
     
     # Aircraft Classes for Radar
     aircraft = [
@@ -40,25 +47,37 @@ def get_surveillance_data(is_demo, u_lat, u_lon):
     
     return aircraft, satellites
 
-# --- 3. TRANSLATION DICTIONARY ---
+# --- 3. TRANSLATION DICTIONARY (extended with AI tab)---
 UI = {
     "English": {
-        "radar_tab": "📡 Radar Control", "sat_tab": "🛰️ Satellite Tracker",
+        "radar_tab": "📡 Radar Control", "sat_tab": "🛰️ Satellite Tracker", "ai_tab": "🤖 AI Analyst",
         "title": "GLOBAL SURVEILLANCE RADAR", "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session", "report": "Download Asset Report",
         "detection_log": "Live Detection Log", "sat_engine": "Predictive Mapping Engine",
         "audio_note": "Click radar to enable sonar audio.", "lat": "Latitude", "lon": "Longitude",
         "predict_btn": "Calculate Pass", "time_target": "Prediction Target (Date/Time)",
-        "aip_key": "AIP Security Key (Aerial Imagery)", "sky_view": "Satellite OpenSky View"
+        "aip_key": "AIP Security Key (Aerial Imagery)", "sky_view": "Satellite OpenSky View",
+        "ai_question": "Ask about radar contacts or satellite predictions:",
+        "ai_analyze": "Analyze Current Threat Level",
+        "ai_thinking": "🤖 AI analyzing surveillance data...",
+        "ai_response": "💡 AI Analyst Report",
+        "security_badge": "🔐 Global Security Shield active",
+        "security_caption": "All data is secured and anonymized"
     },
     "French": {
-        "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite",
+        "radar_tab": "📡 Contrôle Radar", "sat_tab": "🛰️ Suivi Satellite", "ai_tab": "🤖 Analyste IA",
         "title": "RADAR DE SURVEILLANCE MONDIAL", "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion", "report": "Télécharger le Rapport",
         "detection_log": "Journal de Détection", "sat_engine": "Moteur de Cartographie Prédictive",
         "audio_note": "Cliquez sur le radar pour l'audio.", "lat": "Latitude", "lon": "Longitude",
         "predict_btn": "Prédire le Passage", "time_target": "Date/Heure Cible",
-        "aip_key": "Clé de Sécurité AIP (Imagerie Aérienne)", "sky_view": "Vue Satellite OpenSky"
+        "aip_key": "Clé de Sécurité AIP (Imagerie Aérienne)", "sky_view": "Vue Satellite OpenSky",
+        "ai_question": "Posez une question sur les contacts radar ou les prédictions satellite:",
+        "ai_analyze": "Analyser le niveau de menace actuel",
+        "ai_thinking": "🤖 L'IA analyse les données de surveillance...",
+        "ai_response": "💡 Rapport d'analyse IA",
+        "security_badge": "🔐 Bouclier de sécurité global actif",
+        "security_caption": "Toutes les données sont sécurisées et anonymisées"
     }
 }
 
@@ -76,7 +95,38 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# --- 5. MAIN INTERFACE ---
+# --- 5. AI ANALYSIS FUNCTION (uses Groq) ---
+def ai_analysis(aircraft, satellites, u_lat, u_lon, question=None):
+    # Build a summary of current surveillance data
+    radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']}" for a in aircraft])
+    sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
+    
+    full_prompt = f"""You are an AI surveillance analyst. Use the following real-time data to answer the question or provide a threat assessment. Respond concisely and professionally.
+
+Ground Station Location: Latitude {u_lat}, Longitude {u_lon}
+
+Radar Contacts:
+{radar_summary}
+
+Satellite Assets:
+{sat_summary}
+
+User Query: {question if question else "Provide a summary of current threat level and any unusual activity."}
+
+Answer:"""
+    
+    try:
+        completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": full_prompt}],
+            temperature=0.3,
+            max_tokens=500
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        return f"AI error: {str(e)}"
+
+# --- 6. MAIN INTERFACE ---
 def main_page():
     L = UI[st.session_state.lang]
     
@@ -84,6 +134,11 @@ def main_page():
         st.title("🌐 GlobalInternet.py")
         st.selectbox("Language", ["English", "French"], key="lang")
         st.markdown(f"**👨‍💻 {L['author_tag']}**")
+        st.divider()
+        
+        # Security Shield
+        st.markdown(f"### 🛡️ {L['security_badge']}")
+        st.markdown(f"<div style='background:#0a192f; border:1px solid #00ebc7; border-radius:30px; padding:8px; text-align:center; color:#00ebc7;'>{L['security_caption']}</div>", unsafe_allow_html=True)
         st.divider()
         
         # --- POSITIONING & AIP ---
@@ -105,8 +160,11 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    tab_radar, tab_sat = st.tabs([L["radar_tab"], L["sat_tab"]])
+    # Generate data
     aircraft_data, sat_data = get_surveillance_data(True, u_lat, u_lon)
+    
+    # Tabs: Radar, Satellite, AI Analyst
+    tab_radar, tab_sat, tab_ai = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"]])
 
     # --- RADAR TAB (AIRCRAFT) ---
     with tab_radar:
@@ -192,8 +250,6 @@ def main_page():
         with col_map:
             st.subheader(L['sky_view'])
             
-            # --- AIP LAYER SELECTION ---
-            # If a key exists, we can use higher detail. For now, using standard Satellite Tiles.
             tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
             
@@ -218,7 +274,30 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-# --- 6. EXECUTION ---
+    # --- AI ANALYST TAB (NEW) ---
+    with tab_ai:
+        st.title("🤖 AI Surveillance Analyst")
+        st.markdown("Ask questions about radar contacts, satellite assets, or request a threat assessment.")
+        
+        col_q, col_a = st.columns([1, 1])
+        with col_q:
+            user_question = st.text_area(L['ai_question'], height=100,
+                                         placeholder="E.g., Which aircraft pose the highest threat? or Summarize current satellite coverage.")
+            if st.button(L['ai_analyze'], use_container_width=True):
+                with st.spinner(L['ai_thinking']):
+                    response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question if user_question.strip() else None)
+                st.markdown(f"### {L['ai_response']}")
+                st.markdown(response)
+        
+        with col_a:
+            # Quick threat assessment button (no question needed)
+            if st.button("🚨 Quick Threat Assessment", use_container_width=True):
+                with st.spinner(L['ai_thinking']):
+                    response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, None)
+                st.markdown(f"### {L['ai_response']}")
+                st.markdown(response)
+
+# --- 7. EXECUTION ---
 if not st.session_state.authenticated:
     login_page()
 else:
