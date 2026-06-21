@@ -229,6 +229,26 @@ st.markdown("""
         background: rgba(255,255,255,0.1);
         color: #ffffff;
     }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        display: inline-block;
+        margin-bottom: 4px;
+    }
+    .status-live {
+        background: #2ecc71;
+        color: #0a0a0f;
+    }
+    .status-cached {
+        background: #f39c12;
+        color: #0a0a0f;
+    }
+    .status-demo {
+        background: #e74c3c;
+        color: #0a0a0f;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -326,6 +346,14 @@ if "ai_response" not in st.session_state:
 if "ai_question_input" not in st.session_state:
     st.session_state.ai_question_input = ""
 
+# ========== CACHE FOR LIVE DATA ==========
+if "cached_aircraft_data" not in st.session_state:
+    st.session_state.cached_aircraft_data = []
+if "cached_timestamp" not in st.session_state:
+    st.session_state.cached_timestamp = None
+if "api_status" not in st.session_state:
+    st.session_state.api_status = "Initializing"
+
 # ========== IP & LOCATION DETECTION ==========
 def get_real_ip():
     try:
@@ -392,7 +420,6 @@ def get_detected_location():
             if loc:
                 st.session_state.detected_location = loc
                 return loc
-        # Fallback to Haiti
         st.session_state.detected_location = {
             "country": "Haiti",
             "region": "Ouest",
@@ -403,18 +430,13 @@ def get_detected_location():
         }
     return st.session_state.detected_location
 
-# ========== GEOCODING (location name to coordinates) ==========
+# ========== GEOCODING ==========
 def geocode_location(location_name):
-    """Search for a location using Nominatim API and return (lat, lon, display_name)."""
     if not location_name.strip():
         return None, None, None
     try:
         url = "https://nominatim.openstreetmap.org/search"
-        params = {
-            "q": location_name,
-            "format": "json",
-            "limit": 1
-        }
+        params = {"q": location_name, "format": "json", "limit": 1}
         headers = {"User-Agent": "GlobalInternet.py Surveillance Portal"}
         response = requests.get(url, params=params, headers=headers, timeout=10)
         if response.status_code == 200:
@@ -425,7 +447,7 @@ def geocode_location(location_name):
                 display = data[0]["display_name"]
                 return lat, lon, display
         return None, None, None
-    except Exception as e:
+    except Exception:
         return None, None, None
 
 # ========== AIRCRAFT CLASSIFICATION (improved) ==========
@@ -465,52 +487,89 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
-def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
+# ========== IMPROVED LIVE AIRCRAFT DATA FETCH (with exponential backoff and caching) ==========
+def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
+    """
+    Fetch live aircraft from OpenSky with exponential backoff on failure.
+    Returns a tuple: (aircraft_list, status_message)
+    status_message can be 'live', 'cached', 'demo'
+    """
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
-    for attempt in range(retries):
+    
+    for attempt in range(max_retries):
         try:
             response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            states = data.get("states", [])
-            if not states:
-                return []
-            aircraft_list = []
-            for s in states:
-                lat = s[6]
-                lon = s[5]
-                if lat is None or lon is None:
-                    continue
-                R = 6371
-                dlat = math.radians(lat - ground_lat)
-                dlon = math.radians(lon - ground_lon)
-                a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
-                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-                dist_km = R * c
-                max_km = 300
-                dist_norm = min(dist_km / max_km, 0.95)
-                alt = s[7] if s[7] is not None else 0
-                callsign = s[1].strip() if s[1] else s[0][:6].upper()
-                cat, color, label = classify_aircraft(alt, callsign)
-                aircraft_list.append({
-                    "id": callsign,
-                    "type": cat,
-                    "color": color,
-                    "label": label,
-                    "alt": f"{int(alt) if alt else 'N/A'}ft",
-                    "dist": dist_norm,
-                    "lat": lat,
-                    "lon": lon
-                })
-            return aircraft_list[:30]
-        except Exception as e:
-            if attempt == retries - 1:
-                st.warning(f"OpenSky API error after {retries} attempts: {e}")
+            if response.status_code == 200:
+                data = response.json()
+                states = data.get("states", [])
+                if not states:
+                    # No data returned, but not an error
+                    # Return cached if available, else demo
+                    return [], "no_data"
+                aircraft_list = []
+                for s in states:
+                    lat = s[6]
+                    lon = s[5]
+                    if lat is None or lon is None:
+                        continue
+                    R = 6371
+                    dlat = math.radians(lat - ground_lat)
+                    dlon = math.radians(lon - ground_lon)
+                    a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+                    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                    dist_km = R * c
+                    max_km = 300
+                    dist_norm = min(dist_km / max_km, 0.95)
+                    alt = s[7] if s[7] is not None else 0
+                    callsign = s[1].strip() if s[1] else s[0][:6].upper()
+                    cat, color, label = classify_aircraft(alt, callsign)
+                    aircraft_list.append({
+                        "id": callsign,
+                        "type": cat,
+                        "color": color,
+                        "label": label,
+                        "alt": f"{int(alt) if alt else 'N/A'}ft",
+                        "dist": dist_norm,
+                        "lat": lat,
+                        "lon": lon
+                    })
+                # Limit to 30 for performance
+                aircraft_list = aircraft_list[:30]
+                # Update cache
+                st.session_state.cached_aircraft_data = aircraft_list
+                st.session_state.cached_timestamp = datetime.now()
+                st.session_state.api_status = "Live"
+                return aircraft_list, "live"
+            elif response.status_code == 429:
+                # Rate limited – wait longer
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                st.session_state.api_status = f"Rate limited (retry in {wait_time:.1f}s)"
+                time.sleep(wait_time)
+                continue
             else:
-                time.sleep(1)
-    return []
+                # Other HTTP error
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                time.sleep(wait_time)
+                continue
+        except requests.exceptions.Timeout:
+            wait_time = (2 ** attempt) + random.uniform(0, 1)
+            time.sleep(wait_time)
+            continue
+        except Exception as e:
+            wait_time = (2 ** attempt) + random.uniform(0, 1)
+            time.sleep(wait_time)
+            continue
+
+    # If we exhausted retries, use cached data if available
+    if st.session_state.cached_aircraft_data:
+        st.session_state.api_status = "Cached (API unreachable)"
+        return st.session_state.cached_aircraft_data, "cached"
+    else:
+        st.session_state.api_status = "Demo (No cached data)"
+        # Return demo data
+        demo = get_demo_aircraft()
+        return demo, "demo"
 
 def get_demo_aircraft():
     return [
@@ -573,7 +632,14 @@ UI = {
         "location_name_label": "Location Name (override)",
         "search_location": "🔍 Search Location",
         "search_btn": "Search Coordinates",
-        "search_error": "❌ Location not found. Please try again."
+        "search_error": "❌ Location not found. Please try again.",
+        "api_status_label": "📡 Data Source",
+        "status_live": "Live (OpenSky)",
+        "status_cached": "Cached (from previous fetch)",
+        "status_demo": "Demo (simulated)",
+        "status_live_detail": "Live data fetched at {time}",
+        "status_cached_detail": "Cached from {time}",
+        "status_demo_detail": "No live data available – showing demo"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -616,7 +682,14 @@ UI = {
         "location_name_label": "Nom de la localisation (modifiable)",
         "search_location": "🔍 Rechercher un lieu",
         "search_btn": "Rechercher les coordonnées",
-        "search_error": "❌ Lieu introuvable. Veuillez réessayer."
+        "search_error": "❌ Lieu introuvable. Veuillez réessayer.",
+        "api_status_label": "📡 Source de données",
+        "status_live": "En direct (OpenSky)",
+        "status_cached": "Mis en cache",
+        "status_demo": "Démo (simulé)",
+        "status_live_detail": "Données récupérées à {time}",
+        "status_cached_detail": "Mise en cache depuis {time}",
+        "status_demo_detail": "Aucune donnée en direct – démo affichée"
     }
 }
 
@@ -638,7 +711,7 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== AI ANALYSIS – now takes location_name dynamically ==========
+# ========== AI ANALYSIS ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']*300:.0f}km" for a in aircraft])
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
@@ -726,6 +799,32 @@ def main_page():
             st.success("✅ Global Shield API Key active")
         else:
             st.warning("⚠️ Global Shield API Key not configured")
+        
+        # ----- API STATUS INDICATOR -----
+        st.markdown("---")
+        st.markdown(f"### {L['api_status_label']}")
+        status = st.session_state.api_status
+        if "Live" in status:
+            badge_class = "status-live"
+            if st.session_state.cached_timestamp:
+                time_str = st.session_state.cached_timestamp.strftime("%H:%M:%S")
+                detail = L['status_live_detail'].format(time=time_str)
+            else:
+                detail = "Live data"
+        elif "Cached" in status:
+            badge_class = "status-cached"
+            if st.session_state.cached_timestamp:
+                time_str = st.session_state.cached_timestamp.strftime("%H:%M:%S")
+                detail = L['status_cached_detail'].format(time=time_str)
+            else:
+                detail = "Cached data"
+        else:
+            badge_class = "status-demo"
+            detail = L['status_demo_detail']
+        st.markdown(f'<span class="status-badge {badge_class}">{status}</span>', unsafe_allow_html=True)
+        st.caption(detail)
+
+        st.divider()
         st.info(L['live_note'])
         st.divider()
 
@@ -740,17 +839,14 @@ def main_page():
             default_lat = 18.5392
             default_lon = -72.3364
 
-        # Show detected location
         st.info(L['location_detected'].format(location=default_city))
 
-        # Search location
         st.markdown(f"### {L['search_location']}")
         search_input = st.text_input("", placeholder="e.g., Kingston, Jamaica", key="location_search_input")
         if st.button(L['search_btn'], use_container_width=True):
             if search_input.strip():
                 lat, lon, display_name = geocode_location(search_input)
                 if lat is not None:
-                    # Update session state for location name and coordinates
                     st.session_state.location_name = display_name
                     st.session_state.lat_val = lat
                     st.session_state.lon_val = lon
@@ -761,7 +857,6 @@ def main_page():
             else:
                 st.warning("Please enter a location name.")
 
-        # Initialize session state for location name and coords if not set
         if "location_name" not in st.session_state:
             st.session_state.location_name = default_city
         if "lat_val" not in st.session_state:
@@ -769,12 +864,10 @@ def main_page():
         if "lon_val" not in st.session_state:
             st.session_state.lon_val = default_lon
 
-        # Allow override
         location_name = st.text_input(L['location_name_label'], value=st.session_state.location_name, key="loc_name_override")
         u_lat = st.number_input(L['lat'], value=st.session_state.lat_val, format="%.4f", key="lat_override")
         u_lon = st.number_input(L['lon'], value=st.session_state.lon_val, format="%.4f", key="lon_override")
 
-        # If user manually changes the lat/lon or name, update session state
         if location_name != st.session_state.location_name:
             st.session_state.location_name = location_name
         if u_lat != st.session_state.lat_val:
@@ -796,15 +889,14 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    # Fetch live data if not demo
+    # ---- Fetch live or demo data ----
     if use_demo:
         aircraft_data = get_demo_aircraft()
+        st.session_state.api_status = "Demo (User selected)"
     else:
-        with st.spinner("Fetching live aircraft data (30 sec timeout)..."):
-            aircraft_data = fetch_live_aircraft(u_lat, u_lon)
-            if not aircraft_data:
-                st.warning("No live data received. Falling back to demo.")
-                aircraft_data = get_demo_aircraft()
+        # Attempt to fetch live data with backoff
+        aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
+        # status is already stored in session state inside the function
 
     sat_data = get_satellites()
 
@@ -1071,7 +1163,7 @@ def main_page():
             tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
             markers = ""
-            if not use_demo:
+            if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
                 for a in aircraft_data:
                     if "lat" in a and "lon" in a:
                         markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}');"
@@ -1094,7 +1186,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # ========== AI Analyst tab ==========
+    # AI Analyst tab (unchanged)
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
