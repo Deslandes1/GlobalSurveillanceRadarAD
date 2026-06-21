@@ -191,7 +191,7 @@ st.markdown("""
         height: 100px;
         object-fit: cover;
     }
-    /* Legend for object types */
+    /* Legend for object types – real symbol shapes */
     .legend {
         display: flex;
         flex-wrap: wrap;
@@ -209,11 +209,13 @@ st.markdown("""
         color: #d4c9bd;
         font-size: 0.9rem;
     }
-    .legend-color {
+    .legend-shape {
+        display: inline-block;
         width: 16px;
         height: 16px;
-        border-radius: 50%;
-        border: 1px solid rgba(255,255,255,0.2);
+        text-align: center;
+        font-size: 14px;
+        line-height: 16px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -247,9 +249,9 @@ def generate_female_voice_audio():
     
     This advanced surveillance system now features a live radar with a classic fetching sound – just click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
     
-    Objects are automatically classified and colour‑coded for instant visual identification: Public Airplanes appear in green, Military in red, Drones in orange, Cargo in yellow, UFOs in purple, General Aviation in blue, and Other in grey.
+    Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, and civilian aircraft as green or blue circles. Each symbol includes the callsign and altitude for instant identification.
     
-    A live legend is displayed above the radar, so you always know what each colour represents.
+    A live legend is displayed above the radar, so you always know what each shape represents.
     
     The Radar Control tab gives you a 360‑degree view with range rings and contact labels. The Satellite Tracker tab predicts satellite passes and shows an interactive map with both aircraft and satellite overlays.
     
@@ -298,25 +300,32 @@ def classify_aircraft(alt_ft, callsign=""):
 
     callsign = str(callsign).upper()
 
+    # UFO / Unknown
     if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
         return "UFO", "#9b59b6", "🛸 UFO"
 
+    # Military (altitude > 40k or military prefix)
     military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
+    # Drone (low altitude or drone prefix)
     if alt_ft < 1000 or "DRN" in callsign or "UAV" in callsign:
         return "Drone", "#f39c12", "🚁 Drone"
 
+    # Cargo (between 25k and 40k and cargo-like callsign)
     if alt_ft > 25000 and alt_ft <= 40000 and ("C" in callsign or "CLX" in callsign or "FDX" in callsign):
         return "Cargo", "#f1c40f", "📦 Cargo"
 
+    # Public Airplane (10k–30k)
     if 10000 <= alt_ft <= 30000:
         return "Public Airplane", "#2ecc71", "🛩️ Public Airplane"
 
+    # General aviation (below 10k)
     if alt_ft < 10000:
         return "General Aviation", "#3498db", "🛩️ General"
 
+    # Fallback
     return "Other", "#95a5a6", "❓ Unknown"
 
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
@@ -397,9 +406,6 @@ UI = {
         "detection_log": "Live Detection Log",
         "sat_engine": "Predictive Mapping Engine",
         "audio_note": "🖱️ Click the radar screen to enable the fetching sound.",
-        "sound_status": "🔊 Sound: {status}",
-        "sound_enabled": "Enabled (click radar to hear)",
-        "sound_disabled": "Click radar to enable",
         "lat": "Latitude",
         "lon": "Longitude",
         "predict_btn": "Calculate Pass",
@@ -421,7 +427,7 @@ UI = {
         "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
         "voice_female_explain": "🎤 AI Female Voice – Explain App (with new features)",
-        "legend_title": "🟢 Object Type Legend"
+        "legend_title": "🟢 Real NATO‑Style Symbols"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -435,9 +441,6 @@ UI = {
         "detection_log": "Journal de Détection",
         "sat_engine": "Moteur de Cartographie Prédictive",
         "audio_note": "🖱️ Cliquez sur le radar pour activer le son.",
-        "sound_status": "🔊 Son : {status}",
-        "sound_enabled": "Activé (cliquez sur le radar)",
-        "sound_disabled": "Cliquez sur le radar pour activer",
         "lat": "Latitude",
         "lon": "Longitude",
         "predict_btn": "Prédire le Passage",
@@ -459,7 +462,7 @@ UI = {
         "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
         "voice_female_explain": "🎤 Voix IA Femme – Expliquer l'app (nouveautés)",
-        "legend_title": "🟢 Légende des types"
+        "legend_title": "🟢 Symboles militaires réels"
     }
 }
 
@@ -606,22 +609,36 @@ def main_page():
         st.info(L['audio_note'])
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
-            # Legend display above radar
+            # Legend with real symbol shapes
             st.markdown(f"### {L['legend_title']}")
             legend_html = """
             <div class="legend">
-                <span class="legend-item"><span class="legend-color" style="background:#2ecc71;"></span> Public Airplane</span>
-                <span class="legend-item"><span class="legend-color" style="background:#e74c3c;"></span> Military</span>
-                <span class="legend-item"><span class="legend-color" style="background:#f39c12;"></span> Drone</span>
-                <span class="legend-item"><span class="legend-color" style="background:#f1c40f;"></span> Cargo</span>
-                <span class="legend-item"><span class="legend-color" style="background:#9b59b6;"></span> UFO</span>
-                <span class="legend-item"><span class="legend-color" style="background:#3498db;"></span> General Aviation</span>
-                <span class="legend-item"><span class="legend-color" style="background:#95a5a6;"></span> Other</span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#2ecc71;">⬤</span> Public Airplane
+                </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#e74c3c;">▲</span> Military
+                </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#f39c12;">◆</span> Drone
+                </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#f1c40f;">⬛</span> Cargo / Unknown
+                </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#9b59b6;">■</span> UFO
+                </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#3498db;">●</span> General Aviation
+                </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#95a5a6;">◉</span> Other
+                </span>
             </div>
             """
             st.markdown(legend_html, unsafe_allow_html=True)
 
-            # Build radar JSON with full classification data
+            # Radar canvas with real NATO-style symbols
             radar_json = json.dumps(aircraft_data)
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
@@ -634,6 +651,7 @@ def main_page():
                     let audioCtx = null;
                     let soundEnabled = false;
                     
+                    // Enable audio context on user click
                     canvas.addEventListener('click', () => {{
                         if (!audioCtx) {{
                             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -664,9 +682,103 @@ def main_page():
                         }} catch (e) {{}}
                     }}
                     
+                    // Draw a single target with realistic NATO-style symbol
+                    function drawTarget(ctx, x, y, color, type, id, alt, pulse) {{
+                        const size = 9;
+                        ctx.save();
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = color;
+                        
+                        // Choose shape based on type
+                        ctx.fillStyle = color;
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1.2;
+                        
+                        switch(type) {{
+                            case 'Military':
+                                // Triangle (▲)
+                                ctx.beginPath();
+                                ctx.moveTo(x, y - size);
+                                ctx.lineTo(x - size, y + size*0.7);
+                                ctx.lineTo(x + size, y + size*0.7);
+                                ctx.closePath();
+                                ctx.fill();
+                                ctx.stroke();
+                                break;
+                            case 'Drone':
+                                // Diamond (◆)
+                                ctx.beginPath();
+                                ctx.moveTo(x, y - size);
+                                ctx.lineTo(x + size, y);
+                                ctx.lineTo(x, y + size);
+                                ctx.lineTo(x - size, y);
+                                ctx.closePath();
+                                ctx.fill();
+                                ctx.stroke();
+                                break;
+                            case 'UFO':
+                                // Square (■)
+                                ctx.fillRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
+                                ctx.strokeRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
+                                break;
+                            case 'Public Airplane':
+                                // Large circle (●)
+                                ctx.beginPath();
+                                ctx.arc(x, y, size*0.7, 0, 2*Math.PI);
+                                ctx.fill();
+                                ctx.stroke();
+                                break;
+                            case 'General Aviation':
+                                // Small circle (○)
+                                ctx.beginPath();
+                                ctx.arc(x, y, size*0.5, 0, 2*Math.PI);
+                                ctx.fill();
+                                ctx.stroke();
+                                break;
+                            case 'Cargo':
+                                // Filled rectangle (■) with border
+                                ctx.fillRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
+                                ctx.strokeRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
+                                break;
+                            default:
+                                // Small circle for Other
+                                ctx.beginPath();
+                                ctx.arc(x, y, size*0.4, 0, 2*Math.PI);
+                                ctx.fill();
+                                ctx.stroke();
+                        }}
+                        
+                        ctx.shadowBlur = 0;
+                        // Pulsing ring for high-priority (Military, UFO)
+                        if (type === 'Military' || type === 'UFO') {{
+                            const pulseRadius = 12 + 3 * Math.sin(pulse);
+                            ctx.shadowBlur = 30;
+                            ctx.shadowColor = '#ff4444';
+                            ctx.strokeStyle = 'rgba(255,68,68,0.4)';
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.arc(x, y, pulseRadius, 0, 2*Math.PI);
+                            ctx.stroke();
+                        }}
+                        
+                        ctx.restore();
+                        
+                        // Callsign label (top right)
+                        ctx.fillStyle = '#e8ddd0';
+                        ctx.font = '9px monospace';
+                        ctx.shadowBlur = 0;
+                        ctx.fillText(id, x + 14, y - 4);
+                        
+                        // Altitude label (bottom right)
+                        ctx.fillStyle = 'rgba(200,200,200,0.6)';
+                        ctx.font = '7px monospace';
+                        ctx.fillText(alt, x + 14, y + 10);
+                    }}
+                    
                     function draw() {{
                         ctx.clearRect(0,0,550,550);
                         const cx = 275, cy = 275, r = 250;
+                        // Range rings
                         ctx.strokeStyle = 'rgba(40,30,20,0.6)';
                         ctx.lineWidth = 1;
                         for(let i = 1; i <= 4; i++) {{
@@ -674,6 +786,7 @@ def main_page():
                             ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                             ctx.stroke();
                         }}
+                        // Crosshairs
                         ctx.strokeStyle = 'rgba(40,30,20,0.3)';
                         ctx.lineWidth = 0.5;
                         ctx.beginPath();
@@ -683,31 +796,16 @@ def main_page():
                         ctx.lineTo(cx, cy + r);
                         ctx.stroke();
                         
+                        const pulse = Date.now() / 300;
+                        // Draw all contacts
                         data.forEach((d, i) => {{
                             const angleRad = i * 1.2;
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
                             const dy = cy + Math.sin(angleRad) * (r * d.dist);
-                            ctx.shadowBlur = 20;
-                            ctx.shadowColor = d.color;
-                            ctx.fillStyle = d.color;
-                            ctx.beginPath();
-                            ctx.arc(dx, dy, 8, 0, 2*Math.PI);
-                            ctx.fill();
-                            if (d.type === 'UFO') {{
-                                ctx.shadowBlur = 40;
-                                ctx.shadowColor = '#9b59b6';
-                                ctx.beginPath();
-                                ctx.arc(dx, dy, 12, 0, 2*Math.PI);
-                                ctx.strokeStyle = '#9b59b6';
-                                ctx.lineWidth = 2;
-                                ctx.stroke();
-                            }}
-                            ctx.shadowBlur = 0;
-                            ctx.fillStyle = '#e8ddd0';
-                            ctx.font = '10px monospace';
-                            ctx.fillText(d.id, dx + 12, dy - 4);
+                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse);
                         }});
                         
+                        // Sweep line
                         let oldA = angle;
                         angle -= 0.03;
                         if (Math.floor(oldA / (2*Math.PI)) !== Math.floor(angle / (2*Math.PI))) {{
@@ -743,7 +841,7 @@ def main_page():
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
                     st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
 
-    # Satellite tab
+    # Satellite tab (unchanged)
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -789,7 +887,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab
+    # AI Analyst tab (unchanged)
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         user_question = st.text_area(L['ai_question'], height=100)
@@ -799,7 +897,7 @@ def main_page():
             st.markdown(f"### {L['ai_response']}")
             st.markdown(response)
 
-    # Object Detection tab
+    # Object Detection tab (unchanged)
     with tab_detect:
         st.title(L['detect_title'])
         st.markdown(L['detect_desc'])
