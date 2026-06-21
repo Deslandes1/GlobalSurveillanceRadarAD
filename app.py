@@ -55,7 +55,6 @@ st.set_page_config(
 # ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
 st.markdown("""
 <style>
-    /* Main background – dark with subtle leopard spots */
     .stApp {
         background: #0a0a0f;
         background-image: 
@@ -65,7 +64,6 @@ st.markdown("""
             radial-gradient(circle at 85% 20%, rgba(40, 30, 15, 0.08) 0%, transparent 40%);
         color: #e0d5c8;
     }
-    /* Sidebar – leopard dark */
     [data-testid="stSidebar"] {
         background: #0d0d12;
         background-image: 
@@ -78,7 +76,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stCaption {
         color: #d4c9bd !important;
     }
-    /* Login page – leopard dark */
     .login-container {
         background: #0d0d12;
         background-image: 
@@ -89,14 +86,12 @@ st.markdown("""
         padding: 2.5rem;
         box-shadow: 0 8px 32px rgba(0,0,0,0.8);
     }
-    /* Headers & text */
     h1, h2, h3, h4, h5, h6 {
         color: #e8ddd0 !important;
     }
     p, li, .stMarkdown {
         color: #d4c9bd !important;
     }
-    /* Buttons – tactical gold */
     .stButton>button {
         background: linear-gradient(135deg, #1a120a, #2a1f14) !important;
         color: #e8ddd0 !important;
@@ -110,7 +105,6 @@ st.markdown("""
         border-color: #6a4f30 !important;
         box-shadow: 0 0 20px rgba(90, 60, 30, 0.2);
     }
-    /* Input fields */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
         background-color: #141018 !important;
         color: #d4c9bd !important;
@@ -121,7 +115,6 @@ st.markdown("""
         border-color: #4a3520 !important;
         box-shadow: 0 0 12px rgba(90, 60, 30, 0.15);
     }
-    /* Metrics & cards */
     .stMetric {
         background: rgba(20, 16, 24, 0.6);
         border: 1px solid #1f1610;
@@ -134,14 +127,12 @@ st.markdown("""
     .stMetric .stMetricValue {
         color: #e8ddd0 !important;
     }
-    /* Expanders */
     .streamlit-expanderHeader {
         background: rgba(20, 16, 24, 0.6) !important;
         border: 1px solid #1f1610 !important;
         border-radius: 8px !important;
         color: #d4c9bd !important;
     }
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
         background: rgba(20, 16, 24, 0.4);
@@ -160,7 +151,6 @@ st.markdown("""
         color: #e8ddd0;
         border: 1px solid #3d2a18;
     }
-    /* Security badge */
     .security-badge {
         background: rgba(20, 16, 24, 0.8);
         border: 1px solid #3d2a18;
@@ -171,17 +161,14 @@ st.markdown("""
         font-weight: bold;
         font-family: monospace;
     }
-    /* Divider */
     hr {
         border-color: #1f1610 !important;
     }
-    /* Info/warning boxes */
     .stAlert {
         background: rgba(20, 16, 24, 0.6) !important;
         border: 1px solid #2a1f14 !important;
         color: #d4c9bd !important;
     }
-    /* Profile image */
     .profile-img {
         border-radius: 50%;
         border: 2px solid #4a3520;
@@ -191,7 +178,6 @@ st.markdown("""
         height: 100px;
         object-fit: cover;
     }
-    /* Legend for object types – real symbol shapes */
     .legend {
         display: flex;
         flex-wrap: wrap;
@@ -217,6 +203,23 @@ st.markdown("""
         font-size: 14px;
         line-height: 16px;
     }
+    .clock-container {
+        background: rgba(20,16,24,0.6);
+        border: 1px solid #2a1f14;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 5px 0 10px 0;
+        text-align: center;
+        font-family: 'Courier New', monospace;
+        color: #00ff64;
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+    }
+    .clock-container .date {
+        color: #b8a898;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -227,7 +230,7 @@ def generate_male_voice_audio():
     
     This application features four main modules.
     
-    First, the Radar Control tab. Here you can view live aircraft tracking with a 360-degree radar display. The radar sweeps continuously and plays a classic fetching sound on each pass. You can see aircraft identified by type, altitude, and distance from your ground station.
+    First, the Radar Control tab. Here you can view live aircraft tracking with a 360-degree radar display. The radar sweeps continuously and plays a classic fetching sound on each pass. You can see aircraft identified by type, altitude, and distance from your ground station. The interface includes a live clock showing the current time and date.
     
     Second, the Satellite Tracker tab. This module displays satellite positions and allows you to predict future passes based on your selected time and date. You can also view an interactive map with both aircraft and satellite overlays.
     
@@ -251,7 +254,7 @@ def generate_female_voice_audio():
     
     Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, and civilian aircraft as green or blue circles. Each symbol includes the callsign and altitude for instant identification.
     
-    A live legend is displayed above the radar, so you always know what each shape represents.
+    A live clock and calendar are displayed on the main page, showing the current time with seconds running and today's date in real time.
     
     The Radar Control tab gives you a 360‑degree view with range rings and contact labels. The Satellite Tracker tab predicts satellite passes and shows an interactive map with both aircraft and satellite overlays.
     
@@ -300,32 +303,25 @@ def classify_aircraft(alt_ft, callsign=""):
 
     callsign = str(callsign).upper()
 
-    # UFO / Unknown
     if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
         return "UFO", "#9b59b6", "🛸 UFO"
 
-    # Military (altitude > 40k or military prefix)
     military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
-    # Drone (low altitude or drone prefix)
     if alt_ft < 1000 or "DRN" in callsign or "UAV" in callsign:
         return "Drone", "#f39c12", "🚁 Drone"
 
-    # Cargo (between 25k and 40k and cargo-like callsign)
     if alt_ft > 25000 and alt_ft <= 40000 and ("C" in callsign or "CLX" in callsign or "FDX" in callsign):
         return "Cargo", "#f1c40f", "📦 Cargo"
 
-    # Public Airplane (10k–30k)
     if 10000 <= alt_ft <= 30000:
         return "Public Airplane", "#2ecc71", "🛩️ Public Airplane"
 
-    # General aviation (below 10k)
     if alt_ft < 10000:
         return "General Aviation", "#3498db", "🛩️ General"
 
-    # Fallback
     return "Other", "#95a5a6", "❓ Unknown"
 
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
@@ -427,7 +423,8 @@ UI = {
         "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
         "voice_female_explain": "🎤 AI Female Voice – Explain App (with new features)",
-        "legend_title": "🟢 Real NATO‑Style Symbols"
+        "legend_title": "🟢 Real NATO‑Style Symbols",
+        "clock_label": "🕒 Live Clock"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -462,7 +459,8 @@ UI = {
         "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
         "voice_female_explain": "🎤 Voix IA Femme – Expliquer l'app (nouveautés)",
-        "legend_title": "🟢 Symboles militaires réels"
+        "legend_title": "🟢 Symboles militaires réels",
+        "clock_label": "🕒 Horloge en direct"
     }
 }
 
@@ -651,7 +649,6 @@ def main_page():
                     let audioCtx = null;
                     let soundEnabled = false;
                     
-                    // Enable audio context on user click
                     canvas.addEventListener('click', () => {{
                         if (!audioCtx) {{
                             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -682,21 +679,18 @@ def main_page():
                         }} catch (e) {{}}
                     }}
                     
-                    // Draw a single target with realistic NATO-style symbol
                     function drawTarget(ctx, x, y, color, type, id, alt, pulse) {{
                         const size = 9;
                         ctx.save();
                         ctx.shadowBlur = 20;
                         ctx.shadowColor = color;
                         
-                        // Choose shape based on type
                         ctx.fillStyle = color;
                         ctx.strokeStyle = '#ffffff';
                         ctx.lineWidth = 1.2;
                         
                         switch(type) {{
                             case 'Military':
-                                // Triangle (▲)
                                 ctx.beginPath();
                                 ctx.moveTo(x, y - size);
                                 ctx.lineTo(x - size, y + size*0.7);
@@ -706,7 +700,6 @@ def main_page():
                                 ctx.stroke();
                                 break;
                             case 'Drone':
-                                // Diamond (◆)
                                 ctx.beginPath();
                                 ctx.moveTo(x, y - size);
                                 ctx.lineTo(x + size, y);
@@ -717,31 +710,26 @@ def main_page():
                                 ctx.stroke();
                                 break;
                             case 'UFO':
-                                // Square (■)
                                 ctx.fillRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
                                 ctx.strokeRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
                                 break;
                             case 'Public Airplane':
-                                // Large circle (●)
                                 ctx.beginPath();
                                 ctx.arc(x, y, size*0.7, 0, 2*Math.PI);
                                 ctx.fill();
                                 ctx.stroke();
                                 break;
                             case 'General Aviation':
-                                // Small circle (○)
                                 ctx.beginPath();
                                 ctx.arc(x, y, size*0.5, 0, 2*Math.PI);
                                 ctx.fill();
                                 ctx.stroke();
                                 break;
                             case 'Cargo':
-                                // Filled rectangle (■) with border
                                 ctx.fillRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
                                 ctx.strokeRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
                                 break;
                             default:
-                                // Small circle for Other
                                 ctx.beginPath();
                                 ctx.arc(x, y, size*0.4, 0, 2*Math.PI);
                                 ctx.fill();
@@ -749,7 +737,6 @@ def main_page():
                         }}
                         
                         ctx.shadowBlur = 0;
-                        // Pulsing ring for high-priority (Military, UFO)
                         if (type === 'Military' || type === 'UFO') {{
                             const pulseRadius = 12 + 3 * Math.sin(pulse);
                             ctx.shadowBlur = 30;
@@ -763,13 +750,11 @@ def main_page():
                         
                         ctx.restore();
                         
-                        // Callsign label (top right)
                         ctx.fillStyle = '#e8ddd0';
                         ctx.font = '9px monospace';
                         ctx.shadowBlur = 0;
                         ctx.fillText(id, x + 14, y - 4);
                         
-                        // Altitude label (bottom right)
                         ctx.fillStyle = 'rgba(200,200,200,0.6)';
                         ctx.font = '7px monospace';
                         ctx.fillText(alt, x + 14, y + 10);
@@ -778,7 +763,6 @@ def main_page():
                     function draw() {{
                         ctx.clearRect(0,0,550,550);
                         const cx = 275, cy = 275, r = 250;
-                        // Range rings
                         ctx.strokeStyle = 'rgba(40,30,20,0.6)';
                         ctx.lineWidth = 1;
                         for(let i = 1; i <= 4; i++) {{
@@ -786,7 +770,6 @@ def main_page():
                             ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                             ctx.stroke();
                         }}
-                        // Crosshairs
                         ctx.strokeStyle = 'rgba(40,30,20,0.3)';
                         ctx.lineWidth = 0.5;
                         ctx.beginPath();
@@ -797,7 +780,6 @@ def main_page():
                         ctx.stroke();
                         
                         const pulse = Date.now() / 300;
-                        // Draw all contacts
                         data.forEach((d, i) => {{
                             const angleRad = i * 1.2;
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
@@ -805,7 +787,6 @@ def main_page():
                             drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse);
                         }});
                         
-                        // Sweep line
                         let oldA = angle;
                         angle -= 0.03;
                         if (Math.floor(oldA / (2*Math.PI)) !== Math.floor(angle / (2*Math.PI))) {{
@@ -833,6 +814,31 @@ def main_page():
 
         with col_log:
             st.subheader(L['detection_log'])
+            
+            # ========== LIVE CLOCK AND CALENDAR ==========
+            clock_html = f"""
+            <div class="clock-container">
+                <div id="liveClock">--:--:--</div>
+                <div class="date" id="liveDate">--/--/----</div>
+            </div>
+            <script>
+                function updateClock() {{
+                    const now = new Date();
+                    const h = String(now.getHours()).padStart(2, '0');
+                    const m = String(now.getMinutes()).padStart(2, '0');
+                    const s = String(now.getSeconds()).padStart(2, '0');
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const year = now.getFullYear();
+                    document.getElementById('liveClock').innerHTML = h + ':' + m + ':' + s;
+                    document.getElementById('liveDate').innerHTML = month + '/' + day + '/' + year;
+                }}
+                updateClock();
+                setInterval(updateClock, 1000);
+            </script>
+            """
+            st.markdown(clock_html, unsafe_allow_html=True)
+            
             for d in aircraft_data:
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
                     st.write(f"**ID:** {d['id']}")
@@ -887,7 +893,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab (unchanged)
+    # AI Analyst tab
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         user_question = st.text_area(L['ai_question'], height=100)
@@ -897,7 +903,7 @@ def main_page():
             st.markdown(f"### {L['ai_response']}")
             st.markdown(response)
 
-    # Object Detection tab (unchanged)
+    # Object Detection tab
     with tab_detect:
         st.title(L['detect_title'])
         st.markdown(L['detect_desc'])
