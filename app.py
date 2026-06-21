@@ -536,12 +536,13 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-def ai_analysis(aircraft, satellites, u_lat, u_lon, question=None):
+# ========== UPDATED AI ANALYSIS – now includes location name ==========
+def ai_analysis(aircraft, satellites, u_lat, u_lon, question=None, location_name="Port-au-Prince, Haiti"):
     radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']*300:.0f}km" for a in aircraft])
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
-    full_prompt = f"""You are an AI surveillance analyst. Use the following data to answer the question. Respond concisely and honestly. The data comes from live ADS‑B transponder signals and classification is based on heuristics. If the data suggests low‑altitude aircraft, they may be general aviation or commercial aircraft on approach, not necessarily drones. Always clarify that classifications are approximate and for educational purposes only.
+    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). Use the following live ADS‑B data to answer the question. Always begin your response by stating the location and coordinates. Provide a balanced, educational analysis. Classifications are approximate and based on heuristics; do not falsely label low‑altitude aircraft as drones unless they explicitly indicate drone callsigns (DRN, UAV). If the question asks about threats, assess based on the presence of unusual or military contacts.
 
-Ground Station: Lat {u_lat}, Lon {u_lon}
+Ground Station: {location_name} ({u_lat}, {u_lon})
 
 Radar Contacts:
 {radar_summary}
@@ -940,7 +941,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # ========== AI Analyst tab (with improved AI prompt) ==========
+    # ========== AI Analyst tab (updated call with location name) ==========
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -994,7 +995,8 @@ def main_page():
                     st.warning("Please enter a question.")
                 else:
                     with st.spinner(L['ai_thinking']):
-                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question if user_question.strip() else None)
+                        # Pass location name "Port-au-Prince, Haiti" explicitly
+                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question, "Port-au-Prince, Haiti")
                         st.session_state.ai_response = response
                     st.markdown(f"### {L['ai_response']}")
                     st.markdown(response)
