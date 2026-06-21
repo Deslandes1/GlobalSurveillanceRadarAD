@@ -815,29 +815,29 @@ def main_page():
         with col_log:
             st.subheader(L['detection_log'])
             
-            # ========== LIVE CLOCK AND CALENDAR ==========
-            clock_html = f"""
+            # ========== LIVE CLOCK AND CALENDAR (fixed using components.html) ==========
+            clock_html = """
             <div class="clock-container">
                 <div id="liveClock">--:--:--</div>
                 <div class="date" id="liveDate">--/--/----</div>
             </div>
             <script>
-                function updateClock() {{
-                    const now = new Date();
-                    const h = String(now.getHours()).padStart(2, '0');
-                    const m = String(now.getMinutes()).padStart(2, '0');
-                    const s = String(now.getSeconds()).padStart(2, '0');
-                    const month = String(now.getMonth() + 1).padStart(2, '0');
-                    const day = String(now.getDate()).padStart(2, '0');
-                    const year = now.getFullYear();
+                function updateClock() {
+                    var now = new Date();
+                    var h = String(now.getHours()).padStart(2, '0');
+                    var m = String(now.getMinutes()).padStart(2, '0');
+                    var s = String(now.getSeconds()).padStart(2, '0');
+                    var month = String(now.getMonth() + 1).padStart(2, '0');
+                    var day = String(now.getDate()).padStart(2, '0');
+                    var year = now.getFullYear();
                     document.getElementById('liveClock').innerHTML = h + ':' + m + ':' + s;
                     document.getElementById('liveDate').innerHTML = month + '/' + day + '/' + year;
-                }}
+                }
                 updateClock();
                 setInterval(updateClock, 1000);
             </script>
             """
-            st.markdown(clock_html, unsafe_allow_html=True)
+            components.html(clock_html, height=70)
             
             for d in aircraft_data:
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
