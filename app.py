@@ -4,6 +4,9 @@ import random
 import math
 import requests
 import time
+import base64
+import os
+import tempfile
 from datetime import datetime
 import streamlit.components.v1 as components
 from groq import Groq
@@ -14,8 +17,6 @@ def run_object_detection(image_bytes):
     try:
         from ultralytics import YOLO
         import cv2
-        import tempfile
-        import os
         model = YOLO("yolov8n.pt")
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
@@ -51,16 +52,210 @@ st.set_page_config(
     page_icon="🌐"
 )
 
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "lang" not in st.session_state:
-    st.session_state.lang = "English"
+# ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
+st.markdown("""
+<style>
+    /* Main background – dark with subtle leopard spots */
+    .stApp {
+        background: #0a0a0f;
+        background-image: 
+            radial-gradient(circle at 20% 30%, rgba(60, 40, 20, 0.15) 0%, transparent 25%),
+            radial-gradient(circle at 70% 60%, rgba(60, 40, 20, 0.10) 0%, transparent 35%),
+            radial-gradient(circle at 40% 80%, rgba(80, 50, 25, 0.12) 0%, transparent 30%),
+            radial-gradient(circle at 85% 20%, rgba(40, 30, 15, 0.08) 0%, transparent 40%);
+        color: #e0d5c8;
+    }
+    /* Sidebar – leopard dark */
+    [data-testid="stSidebar"] {
+        background: #0d0d12;
+        background-image: 
+            radial-gradient(circle at 30% 40%, rgba(70, 50, 30, 0.12) 0%, transparent 30%),
+            radial-gradient(circle at 70% 70%, rgba(50, 35, 20, 0.08) 0%, transparent 35%);
+        border-right: 1px solid #2a1f14;
+    }
+    [data-testid="stSidebar"] .stMarkdown,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stCaption {
+        color: #d4c9bd !important;
+    }
+    /* Login page – leopard dark */
+    .login-container {
+        background: #0d0d12;
+        background-image: 
+            radial-gradient(circle at 40% 50%, rgba(70, 50, 30, 0.10) 0%, transparent 40%),
+            radial-gradient(circle at 70% 30%, rgba(50, 35, 20, 0.08) 0%, transparent 35%);
+        border: 1px solid #2a1f14;
+        border-radius: 16px;
+        padding: 2.5rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    }
+    /* Headers & text */
+    h1, h2, h3, h4, h5, h6 {
+        color: #e8ddd0 !important;
+    }
+    p, li, .stMarkdown {
+        color: #d4c9bd !important;
+    }
+    /* Buttons – tactical gold */
+    .stButton>button {
+        background: linear-gradient(135deg, #1a120a, #2a1f14) !important;
+        color: #e8ddd0 !important;
+        border: 1px solid #4a3520 !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #2a1f14, #3d2a18) !important;
+        border-color: #6a4f30 !important;
+        box-shadow: 0 0 20px rgba(90, 60, 30, 0.2);
+    }
+    /* Input fields */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
+        background-color: #141018 !important;
+        color: #d4c9bd !important;
+        border: 1px solid #2a1f14 !important;
+        border-radius: 8px !important;
+    }
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #4a3520 !important;
+        box-shadow: 0 0 12px rgba(90, 60, 30, 0.15);
+    }
+    /* Metrics & cards */
+    .stMetric {
+        background: rgba(20, 16, 24, 0.6);
+        border: 1px solid #1f1610;
+        border-radius: 12px;
+        padding: 0.8rem;
+    }
+    .stMetric label {
+        color: #a09080 !important;
+    }
+    .stMetric .stMetricValue {
+        color: #e8ddd0 !important;
+    }
+    /* Expanders */
+    .streamlit-expanderHeader {
+        background: rgba(20, 16, 24, 0.6) !important;
+        border: 1px solid #1f1610 !important;
+        border-radius: 8px !important;
+        color: #d4c9bd !important;
+    }
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px;
+        background: rgba(20, 16, 24, 0.4);
+        border-radius: 12px;
+        padding: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 8px;
+        color: #a09080;
+        padding: 8px 16px;
+        font-weight: 500;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: rgba(40, 30, 20, 0.6);
+        color: #e8ddd0;
+        border: 1px solid #3d2a18;
+    }
+    /* Security badge */
+    .security-badge {
+        background: rgba(20, 16, 24, 0.8);
+        border: 1px solid #3d2a18;
+        border-radius: 30px;
+        padding: 8px 15px;
+        text-align: center;
+        color: #b8a898;
+        font-weight: bold;
+        font-family: monospace;
+    }
+    /* Divider */
+    hr {
+        border-color: #1f1610 !important;
+    }
+    /* Info/warning boxes */
+    .stAlert {
+        background: rgba(20, 16, 24, 0.6) !important;
+        border: 1px solid #2a1f14 !important;
+        color: #d4c9bd !important;
+    }
+    /* Profile image */
+    .profile-img {
+        border-radius: 50%;
+        border: 2px solid #4a3520;
+        display: block;
+        margin: 0 auto 10px auto;
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Groq client for AI analyst
+# ========== AI MALE VOICE ==========
+def generate_male_voice_audio():
+    """Generate a male voice description of the app's functionalities."""
+    script = """
+    Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
+    
+    This application features four main modules.
+    
+    First, the Radar Control tab. Here you can view live aircraft tracking with a 360-degree radar display. The radar sweeps continuously and plays a classic fetching sound on each pass. You can see aircraft identified by type, altitude, and distance from your ground station.
+    
+    Second, the Satellite Tracker tab. This module displays satellite positions and allows you to predict future passes based on your selected time and date. You can also view an interactive map with both aircraft and satellite overlays.
+    
+    Third, the AI Analyst tab. This module is powered by Groq's Llama 3.1 model. You can ask any question about the radar contacts or satellite predictions, and the AI will provide a detailed threat analysis and recommendations.
+    
+    Fourth, the Object Detection tab. Upload an image and the system will detect and label objects using YOLOv8 computer vision.
+    
+    The sidebar includes language selection, your ground station coordinates, a demo mode toggle, and secure logout.
+    
+    This software is built for surveillance, security, and intelligence analysis. All data is encrypted and anonymized.
+    
+    GlobalInternet.py – connecting the global market with local expertise.
+    """
+    return script
+
+# ========== AUDIO PLAYER ==========
+def audio_player(audio_bytes, autoplay=False):
+    """Display an audio player in the sidebar."""
+    if audio_bytes:
+        b64 = base64.b64encode(audio_bytes).decode()
+        autoplay_attr = "autoplay" if autoplay else ""
+        player_html = f"""
+        <audio {autoplay_attr} controls style="width:100%; margin-top:10px;">
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            Your browser does not support the audio element.
+        </audio>
+        """
+        st.markdown(player_html, unsafe_allow_html=True)
+
+# ========== GROQ CLIENT ==========
 if "GROQ_API_KEY" not in st.secrets:
     st.error("⚠️ Missing Groq API key. Add `GROQ_API_KEY` to your Streamlit secrets.")
     st.stop()
 groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+# ========== SUPABASE CLIENT (optional) ==========
+try:
+    from supabase import create_client, Client
+    if "SUPABASE_URL" in st.secrets and "SUPABASE_KEY" in st.secrets:
+        supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+        SUPABASE_AVAILABLE = True
+    else:
+        SUPABASE_AVAILABLE = False
+except ImportError:
+    SUPABASE_AVAILABLE = False
+
+# ========== GLOBAL SHIELD ==========
+GLOBAL_SHIELD_ACTIVE = "GLOBAL_SHIELD_API_KEY" in st.secrets
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "lang" not in st.session_state:
+    st.session_state.lang = "English"
 
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
@@ -81,7 +276,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
                 lon = s[5]
                 if lat is None or lon is None:
                     continue
-                # Distance calculation (great-circle)
                 R = 6371
                 dlat = math.radians(lat - ground_lat)
                 dlon = math.radians(lon - ground_lon)
@@ -110,7 +304,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
                     "lat": lat,
                     "lon": lon
                 })
-            # Limit to 30 for readability
             return aircraft_list[:30]
         except Exception as e:
             if attempt == retries - 1:
@@ -167,7 +360,8 @@ UI = {
         "detect_btn": "Detect Objects",
         "detection_results": "Detected Objects",
         "refresh_btn": "Refresh Live Data",
-        "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode."
+        "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode.",
+        "voice_explain": "🎙️ AI Male Voice – Explain App"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -199,7 +393,8 @@ UI = {
         "detect_btn": "Détecter",
         "detection_results": "Objets détectés",
         "refresh_btn": "Actualiser",
-        "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection."
+        "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection.",
+        "voice_explain": "🎙️ Voix IA Homme – Expliquer l'app"
     }
 }
 
@@ -207,7 +402,12 @@ def login_page():
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown("### 🌐 GlobalInternet.py Access")
+        st.markdown("""
+        <div class="login-container">
+            <h2 style="text-align:center; color:#e8ddd0;">🌐 GlobalInternet.py Access</h2>
+            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal</p>
+        </div>
+        """, unsafe_allow_html=True)
         pwd = st.text_input("Enter Security Key", type="password")
         if st.button("Initialize System", key="login_btn", use_container_width=True):
             if pwd == "20082010":
@@ -245,14 +445,49 @@ Answer:"""
 def main_page():
     L = UI[st.session_state.lang]
     with st.sidebar:
+        # --- Profile picture and name ---
+        st.markdown("""
+        <img src="https://raw.githubusercontent.com/Deslandes1/GlobalSurveillanceRadarAD/main/Gesner%20Deslandes.png" 
+             class="profile-img" 
+             onerror="this.style.display='none'">
+        """, unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align:center; color:#e8ddd0;'>Gesner Deslandes</h3>", unsafe_allow_html=True)
+        st.divider()
+
         st.title("🌐 GlobalInternet.py")
         st.selectbox("Language", ["English", "French"], key="lang")
         st.markdown(f"**{L['author_tag']}**")
         st.divider()
+
+        # --- AI Male Voice button ---
+        if st.button(L['voice_explain'], use_container_width=True):
+            script = generate_male_voice_audio()
+            try:
+                from gtts import gTTS
+                import tempfile
+                tts = gTTS(text=script, lang="en" if st.session_state.lang == "English" else "fr", slow=False)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                    tts.save(tmp.name)
+                    with open(tmp.name, "rb") as f:
+                        audio_bytes = f.read()
+                    os.unlink(tmp.name)
+                    st.audio(audio_bytes, format="audio/mp3")
+                    st.success("🎙️ Male voice explanation played.")
+            except ImportError:
+                st.error("gTTS library not installed. Install with: pip install gTTS")
+            except Exception as e:
+                st.error(f"Voice generation error: {e}")
+
+        st.divider()
         st.markdown(f"### 🛡️ {L['security_badge']}")
-        st.markdown(f"<div style='background:#0a192f; border:1px solid #00ebc7; border-radius:30px; padding:8px; text-align:center; color:#00ebc7;'>{L['security_caption']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='security-badge'>{L['security_caption']}</div>", unsafe_allow_html=True)
+        if GLOBAL_SHIELD_ACTIVE:
+            st.success("✅ Global Shield API Key active")
+        else:
+            st.warning("⚠️ Global Shield API Key not configured")
         st.info(L['live_note'])
         st.divider()
+
         u_lat = st.number_input(L['lat'], value=18.5392, format="%.4f")
         u_lon = st.number_input(L['lon'], value=-72.3364, format="%.4f")
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
@@ -291,8 +526,8 @@ def main_page():
         with col_rad:
             radar_json = json.dumps(aircraft_data)
             radar_html = f"""
-            <html><body style="background:#03060c; margin:0; display:flex; justify-content:center; cursor:pointer;">
-                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #1e3a5f;"></canvas>
+            <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center; cursor:pointer;">
+                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14;"></canvas>
                 <script>
                     const canvas = document.getElementById('radar');
                     const ctx = canvas.getContext('2d');
@@ -309,7 +544,7 @@ def main_page():
                     }}
                     function draw() {{
                         ctx.clearRect(0,0,550,550); let cx=275, cy=275, r=250;
-                        ctx.strokeStyle='rgba(30,58,95,0.4)';
+                        ctx.strokeStyle='rgba(40,30,20,0.6)';
                         for(let i=1;i<=4;i++){{ ctx.beginPath(); ctx.arc(cx,cy,(r/4)*i,0,Math.PI*2); ctx.stroke(); }}
                         data.forEach((d, i) => {{
                             let angleRad = i * 1.2;
@@ -322,7 +557,7 @@ def main_page():
                         if(Math.floor(oldA/6.28) !== Math.floor(angle/6.28)) ping();
                         ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
                         let g=ctx.createRadialGradient(0,0,0,0,0,r);
-                        g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,255,100,0.2)');
+                        g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,255,100,0.15)');
                         ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,0,0.4); ctx.fill();
                         ctx.restore(); requestAnimationFrame(draw);
                     }}
@@ -340,7 +575,7 @@ def main_page():
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
                     st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
 
-    # Satellite tab (map with live aircraft if available)
+    # Satellite tab
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -373,7 +608,7 @@ def main_page():
             <html><head>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-                <style>#map {{ height: 500px; border-radius: 15px; border: 2px solid #1e3a5f; }}</style>
+                <style>#map {{ height: 500px; border-radius: 15px; border: 2px solid #2a1f14; }}</style>
             </head><body>
                 <div id="map"></div>
                 <script>
@@ -396,7 +631,7 @@ def main_page():
             st.markdown(f"### {L['ai_response']}")
             st.markdown(response)
 
-    # Object Detection tab (unchanged)
+    # Object Detection tab
     with tab_detect:
         st.title(L['detect_title'])
         st.markdown(L['detect_desc'])
