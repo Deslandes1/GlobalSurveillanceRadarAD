@@ -191,12 +191,35 @@ st.markdown("""
         height: 100px;
         object-fit: cover;
     }
+    /* Legend for object types */
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 10px;
+        background: rgba(20,16,24,0.5);
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid #2a1f14;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #d4c9bd;
+        font-size: 0.9rem;
+    }
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ========== AI MALE VOICE ==========
 def generate_male_voice_audio():
-    """Generate a male voice description of the app's functionalities."""
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
@@ -217,20 +240,6 @@ def generate_male_voice_audio():
     GlobalInternet.py – connecting the global market with local expertise.
     """
     return script
-
-# ========== AUDIO PLAYER ==========
-def audio_player(audio_bytes, autoplay=False):
-    """Display an audio player in the sidebar."""
-    if audio_bytes:
-        b64 = base64.b64encode(audio_bytes).decode()
-        autoplay_attr = "autoplay" if autoplay else ""
-        player_html = f"""
-        <audio {autoplay_attr} controls style="width:100%; margin-top:10px;">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            Your browser does not support the audio element.
-        </audio>
-        """
-        st.markdown(player_html, unsafe_allow_html=True)
 
 # ========== GROQ CLIENT ==========
 if "GROQ_API_KEY" not in st.secrets:
@@ -257,9 +266,49 @@ if "authenticated" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
 
+# ========== AIRCRAFT CLASSIFICATION ==========
+def classify_aircraft(alt_ft, callsign=""):
+    """
+    Classify aircraft into categories based on altitude and callsign heuristics.
+    Returns: (category, color, label)
+    """
+    alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
+    if not isinstance(alt_ft, (int, float)):
+        alt_ft = 0
+
+    # Convert callsign to string
+    callsign = str(callsign).upper()
+
+    # UFO: if callsign contains "UFO" or "UNK" or very unusual pattern
+    if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
+        return "UFO", "#9b59b6", "🛸 UFO"
+
+    # Military: callsign with military prefixes, or altitude > 40,000 ft
+    military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-"]
+    if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
+        return "Military", "#e74c3c", "✈️ Military"
+
+    # Drone: altitude below 1000 ft and callsign often "DRN" or similar
+    if alt_ft < 1000 or "DRN" in callsign or "UAV" in callsign:
+        return "Drone", "#f39c12", "🚁 Drone"
+
+    # Cargo: large altitude range but callsign often "C" or "CLX" etc.
+    if alt_ft > 25000 and alt_ft <= 40000 and ("C" in callsign or "CLX" in callsign or "FDX" in callsign):
+        return "Cargo", "#f1c40f", "📦 Cargo"
+
+    # Public Airplane (Commercial): between 10,000 and 30,000 ft
+    if 10000 <= alt_ft <= 30000:
+        return "Public Airplane", "#2ecc71", "🛩️ Public Airplane"
+
+    # General aviation: below 10,000 ft (fallback)
+    if alt_ft < 10000:
+        return "General Aviation", "#3498db", "🛩️ General"
+
+    # Default: if nothing matches
+    return "Other", "#95a5a6", "❓ Unknown"
+
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
-    """Fetch live aircraft from OpenSky API with retries and longer timeout."""
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
     for attempt in range(retries):
@@ -285,20 +334,14 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
                 max_km = 300
                 dist_norm = min(dist_km / max_km, 0.95)
                 alt = s[7] if s[7] is not None else 0
-                if alt > 30000:
-                    type_str = "High Altitude"
-                    color = "#ffcc00"
-                elif alt > 10000:
-                    type_str = "Commercial"
-                    color = "#00ff64"
-                else:
-                    type_str = "General Aviation"
-                    color = "#00bfff"
                 callsign = s[1].strip() if s[1] else s[0][:6].upper()
+                # Classify based on altitude and callsign
+                cat, color, label = classify_aircraft(alt, callsign)
                 aircraft_list.append({
                     "id": callsign,
-                    "type": type_str,
+                    "type": cat,
                     "color": color,
+                    "label": label,
                     "alt": f"{int(alt) if alt else 'N/A'}ft",
                     "dist": dist_norm,
                     "lat": lat,
@@ -313,11 +356,13 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
     return []
 
 def get_demo_aircraft():
-    """Fallback demo aircraft (no live data)."""
+    """Fallback demo aircraft with a variety of types."""
     return [
-        {"id": "AAL-410", "type": "Commercial", "color": "#00ff64", "alt": "32,000ft", "dist": 0.4},
-        {"id": "F-22-EX", "type": "Military Strike", "color": "#ff3300", "alt": "52,000ft", "dist": 0.8},
-        {"id": "DRN-QC", "type": "Drone/UAV", "color": "#ffcc00", "alt": "800ft", "dist": 0.2}
+        {"id": "AAL-410", "type": "Public Airplane", "color": "#2ecc71", "label": "🛩️ Public Airplane", "alt": "32,000ft", "dist": 0.4},
+        {"id": "F-22-EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8},
+        {"id": "DRN-QC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2},
+        {"id": "CLX-200", "type": "Cargo", "color": "#f1c40f", "label": "📦 Cargo", "alt": "28,000ft", "dist": 0.6},
+        {"id": "UFO-X", "type": "UFO", "color": "#9b59b6", "label": "🛸 UFO", "alt": "1,500ft", "dist": 0.7}
     ]
 
 def get_satellites():
@@ -341,7 +386,10 @@ UI = {
         "report": "Download Asset Report",
         "detection_log": "Live Detection Log",
         "sat_engine": "Predictive Mapping Engine",
-        "audio_note": "Click radar to enable sonar audio.",
+        "audio_note": "🖱️ Click the radar screen to enable the fetching sound.",
+        "sound_status": "🔊 Sound: {status}",
+        "sound_enabled": "Enabled (click radar to hear)",
+        "sound_disabled": "Click radar to enable",
         "lat": "Latitude",
         "lon": "Longitude",
         "predict_btn": "Calculate Pass",
@@ -361,7 +409,8 @@ UI = {
         "detection_results": "Detected Objects",
         "refresh_btn": "Refresh Live Data",
         "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode.",
-        "voice_explain": "🎙️ AI Male Voice – Explain App"
+        "voice_explain": "🎙️ AI Male Voice – Explain App",
+        "legend_title": "🟢 Object Type Legend"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -374,7 +423,10 @@ UI = {
         "report": "Télécharger le Rapport",
         "detection_log": "Journal de Détection",
         "sat_engine": "Moteur de Cartographie Prédictive",
-        "audio_note": "Cliquez sur le radar pour l'audio.",
+        "audio_note": "🖱️ Cliquez sur le radar pour activer le son.",
+        "sound_status": "🔊 Son : {status}",
+        "sound_enabled": "Activé (cliquez sur le radar)",
+        "sound_disabled": "Cliquez sur le radar pour activer",
         "lat": "Latitude",
         "lon": "Longitude",
         "predict_btn": "Prédire le Passage",
@@ -394,7 +446,8 @@ UI = {
         "detection_results": "Objets détectés",
         "refresh_btn": "Actualiser",
         "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection.",
-        "voice_explain": "🎙️ Voix IA Homme – Expliquer l'app"
+        "voice_explain": "🎙️ Voix IA Homme – Expliquer l'app",
+        "legend_title": "🟢 Légende des types"
     }
 }
 
@@ -445,7 +498,7 @@ Answer:"""
 def main_page():
     L = UI[st.session_state.lang]
     with st.sidebar:
-        # --- Profile picture and name ---
+        # Profile picture and name
         st.markdown("""
         <img src="https://raw.githubusercontent.com/Deslandes1/GlobalSurveillanceRadarAD/main/Gesner%20Deslandes.png" 
              class="profile-img" 
@@ -459,12 +512,11 @@ def main_page():
         st.markdown(f"**{L['author_tag']}**")
         st.divider()
 
-        # --- AI Male Voice button ---
+        # AI Male Voice button
         if st.button(L['voice_explain'], use_container_width=True):
             script = generate_male_voice_audio()
             try:
                 from gtts import gTTS
-                import tempfile
                 tts = gTTS(text=script, lang="en" if st.session_state.lang == "English" else "fr", slow=False)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                     tts.save(tmp.name)
@@ -521,61 +573,159 @@ def main_page():
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
+        # Audio note with sound status
         st.info(L['audio_note'])
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
+            # Legend display above radar
+            st.markdown(f"### {L['legend_title']}")
+            legend_html = """
+            <div class="legend">
+                <span class="legend-item"><span class="legend-color" style="background:#2ecc71;"></span> Public Airplane</span>
+                <span class="legend-item"><span class="legend-color" style="background:#e74c3c;"></span> Military</span>
+                <span class="legend-item"><span class="legend-color" style="background:#f39c12;"></span> Drone</span>
+                <span class="legend-item"><span class="legend-color" style="background:#f1c40f;"></span> Cargo</span>
+                <span class="legend-item"><span class="legend-color" style="background:#9b59b6;"></span> UFO</span>
+                <span class="legend-item"><span class="legend-color" style="background:#3498db;"></span> General Aviation</span>
+                <span class="legend-item"><span class="legend-color" style="background:#95a5a6;"></span> Other</span>
+            </div>
+            """
+            st.markdown(legend_html, unsafe_allow_html=True)
+
+            # Build radar JSON with full classification data
             radar_json = json.dumps(aircraft_data)
             radar_html = f"""
-            <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center; cursor:pointer;">
-                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14;"></canvas>
+            <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
+                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14; cursor:pointer;"></canvas>
                 <script>
                     const canvas = document.getElementById('radar');
                     const ctx = canvas.getContext('2d');
                     const data = {radar_json};
-                    let angle = 0; let audioCtx = null;
-                    canvas.onclick = () => {{ if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }};
+                    let angle = 0;
+                    let audioCtx = null;
+                    let soundEnabled = false;
+                    
+                    // Enable audio context on user click
+                    canvas.addEventListener('click', () => {{
+                        if (!audioCtx) {{
+                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        }}
+                        if (audioCtx.state === 'suspended') {{
+                            audioCtx.resume();
+                        }}
+                        soundEnabled = true;
+                        // Indicate sound is enabled (optional)
+                        canvas.style.borderColor = '#00ff64';
+                        setTimeout(() => {{ canvas.style.borderColor = '#2a1f14'; }}, 200);
+                    }});
+                    
                     function ping() {{
-                        if(!audioCtx) return;
-                        let o = audioCtx.createOscillator(); let g = audioCtx.createGain();
-                        o.frequency.setValueAtTime(800, audioCtx.currentTime);
-                        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                        o.connect(g); g.connect(audioCtx.destination);
-                        o.start(); o.stop(audioCtx.currentTime + 0.5);
+                        if (!audioCtx || !soundEnabled) return;
+                        try {{
+                            // Create a sweeping sonar ping
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            const now = audioCtx.currentTime;
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(400, now);
+                            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+                            gain.gain.setValueAtTime(0.2, now);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start(now);
+                            osc.stop(now + 0.35);
+                        }} catch (e) {{
+                            // ignore if sound fails
+                        }}
                     }}
+                    
                     function draw() {{
-                        ctx.clearRect(0,0,550,550); let cx=275, cy=275, r=250;
-                        ctx.strokeStyle='rgba(40,30,20,0.6)';
-                        for(let i=1;i<=4;i++){{ ctx.beginPath(); ctx.arc(cx,cy,(r/4)*i,0,Math.PI*2); ctx.stroke(); }}
+                        ctx.clearRect(0,0,550,550);
+                        const cx = 275, cy = 275, r = 250;
+                        // Draw range rings
+                        ctx.strokeStyle = 'rgba(40,30,20,0.6)';
+                        ctx.lineWidth = 1;
+                        for(let i = 1; i <= 4; i++) {{
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
+                            ctx.stroke();
+                        }}
+                        // Draw crosshairs
+                        ctx.strokeStyle = 'rgba(40,30,20,0.3)';
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(cx - r, cy);
+                        ctx.lineTo(cx + r, cy);
+                        ctx.moveTo(cx, cy - r);
+                        ctx.lineTo(cx, cy + r);
+                        ctx.stroke();
+                        
+                        // Draw contacts
                         data.forEach((d, i) => {{
-                            let angleRad = i * 1.2;
-                            let dx = cx + Math.cos(angleRad) * (r * d.dist);
-                            let dy = cy + Math.sin(angleRad) * (r * d.dist);
-                            ctx.fillStyle=d.color; ctx.shadowBlur=15; ctx.shadowColor=d.color;
-                            ctx.beginPath(); ctx.arc(dx,dy,6,0,7); ctx.fill();
+                            const angleRad = i * 1.2;
+                            const dx = cx + Math.cos(angleRad) * (r * d.dist);
+                            const dy = cy + Math.sin(angleRad) * (r * d.dist);
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = d.color;
+                            ctx.fillStyle = d.color;
+                            ctx.beginPath();
+                            ctx.arc(dx, dy, 8, 0, 2*Math.PI);
+                            ctx.fill();
+                            // Blinking effect for UFO
+                            if (d.type === 'UFO') {{
+                                ctx.shadowBlur = 40;
+                                ctx.shadowColor = '#9b59b6';
+                                ctx.beginPath();
+                                ctx.arc(dx, dy, 12, 0, 2*Math.PI);
+                                ctx.strokeStyle = '#9b59b6';
+                                ctx.lineWidth = 2;
+                                ctx.stroke();
+                            }}
+                            // Label
+                            ctx.shadowBlur = 0;
+                            ctx.fillStyle = '#e8ddd0';
+                            ctx.font = '10px monospace';
+                            ctx.fillText(d.id, dx + 12, dy - 4);
                         }});
-                        let oldA = angle; angle -= 0.03;
-                        if(Math.floor(oldA/6.28) !== Math.floor(angle/6.28)) ping();
-                        ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
-                        let g=ctx.createRadialGradient(0,0,0,0,0,r);
-                        g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,255,100,0.15)');
-                        ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,0,0.4); ctx.fill();
-                        ctx.restore(); requestAnimationFrame(draw);
+                        
+                        // Sweep line
+                        let oldA = angle;
+                        angle -= 0.03;
+                        if (Math.floor(oldA / (2*Math.PI)) !== Math.floor(angle / (2*Math.PI))) {{
+                            ping(); // Play sound every full sweep
+                        }}
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        ctx.rotate(angle);
+                        const grad = ctx.createRadialGradient(0,0,0,0,0,r);
+                        grad.addColorStop(0, 'transparent');
+                        grad.addColorStop(1, 'rgba(0,255,100,0.15)');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.moveTo(0,0);
+                        ctx.arc(0,0,r,0,0.4);
+                        ctx.fill();
+                        ctx.restore();
+                        requestAnimationFrame(draw);
                     }}
                     draw();
                 </script>
             </body></html>
             """
             components.html(radar_html, height=580)
+
         with col_log:
             st.subheader(L['detection_log'])
             for d in aircraft_data:
-                with st.expander(f"📡 {d['id']} [{d['type']}]"):
+                with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
+                    st.write(f"**ID:** {d['id']}")
                     st.write(f"**Altitude:** {d['alt']}")
                     if not use_demo and 'lat' in d:
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
-                    st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
+                    st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
 
-    # Satellite tab
+    # Satellite tab (unchanged)
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
