@@ -203,6 +203,31 @@ st.markdown("""
         font-size: 14px;
         line-height: 16px;
     }
+    .question-list {
+        background: rgba(20,16,24,0.5);
+        border: 1px solid #2a1f14;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    .question-list button {
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        border: none;
+        color: #d4c9bd;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-bottom: 2px;
+    }
+    .question-list button:hover {
+        background: rgba(255,255,255,0.1);
+        color: #ffffff;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -253,6 +278,24 @@ def generate_female_voice_audio():
     """
     return script
 
+# ========== AUDIO GENERATION FOR RESPONSES ==========
+def generate_audio_response(text, lang_code):
+    try:
+        from gtts import gTTS
+        if not text.strip():
+            return None
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp_path = tmp.name
+        tts = gTTS(text=text, lang=lang_code, slow=False)
+        tts.save(tmp_path)
+        with open(tmp_path, "rb") as f:
+            audio_bytes = f.read()
+        os.unlink(tmp_path)
+        return audio_bytes
+    except Exception as e:
+        st.error(f"Audio generation error: {e}")
+        return None
+
 # ========== GROQ CLIENT ==========
 if "GROQ_API_KEY" not in st.secrets:
     st.error("⚠️ Missing Groq API key. Add `GROQ_API_KEY` to your Streamlit secrets.")
@@ -277,6 +320,8 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "lang" not in st.session_state:
     st.session_state.lang = "English"
+if "ai_response" not in st.session_state:
+    st.session_state.ai_response = ""
 
 # ========== AIRCRAFT CLASSIFICATION ==========
 def classify_aircraft(alt_ft, callsign=""):
@@ -407,7 +452,9 @@ UI = {
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
         "voice_female_explain": "🎤 AI Female Voice – Explain App (with new features)",
         "legend_title": "🟢 Real NATO‑Style Symbols",
-        "clock_label": "🕒 Live Clock"
+        "clock_label": "🕒 Live Clock",
+        "common_questions_title": "💬 Common Questions",
+        "listen_response": "🔊 Listen to AI Response"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -443,7 +490,9 @@ UI = {
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
         "voice_female_explain": "🎤 Voix IA Femme – Expliquer l'app (nouveautés)",
         "legend_title": "🟢 Symboles militaires réels",
-        "clock_label": "🕒 Horloge en direct"
+        "clock_label": "🕒 Horloge en direct",
+        "common_questions_title": "💬 Questions courantes",
+        "listen_response": "🔊 Écouter la réponse IA"
     }
 }
 
@@ -513,7 +562,8 @@ def main_page():
             script = generate_male_voice_audio()
             try:
                 from gtts import gTTS
-                tts = gTTS(text=script, lang="en" if st.session_state.lang == "English" else "fr", slow=False)
+                lang_code = "en" if st.session_state.lang == "English" else "fr"
+                tts = gTTS(text=script, lang=lang_code, slow=False)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                     tts.save(tmp.name)
                     with open(tmp.name, "rb") as f:
@@ -531,7 +581,8 @@ def main_page():
             script = generate_female_voice_audio()
             try:
                 from gtts import gTTS
-                tts = gTTS(text=script, lang="en" if st.session_state.lang == "English" else "fr", slow=False)
+                lang_code = "en" if st.session_state.lang == "English" else "fr"
+                tts = gTTS(text=script, lang=lang_code, slow=False)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                     tts.save(tmp.name)
                     with open(tmp.name, "rb") as f:
@@ -583,14 +634,13 @@ def main_page():
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
-    # Radar tab
+    # Radar tab (unchanged)
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
         st.info(L['audio_note'])
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
-            # Legend with real symbol shapes
             st.markdown(f"### {L['legend_title']}")
             legend_html = """
             <div class="legend">
@@ -618,8 +668,6 @@ def main_page():
             </div>
             """
             st.markdown(legend_html, unsafe_allow_html=True)
-
-            # Radar canvas with real NATO-style symbols
             radar_json = json.dumps(aircraft_data)
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
@@ -797,8 +845,6 @@ def main_page():
 
         with col_log:
             st.subheader(L['detection_log'])
-            
-            # ========== LIVE CLOCK AND CALENDAR (FIXED – with inline CSS) ==========
             clock_html = """
             <div style="background: rgba(20,16,24,0.9); border: 1px solid #4a3520; border-radius: 8px; padding: 10px 12px; margin: 5px 0 10px 0; text-align: center; font-family: 'Courier New', monospace;">
                 <div id="liveClock" style="color: #ffffff; font-size: 1.6rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,255,255,0.5);">--:--:--</div>
@@ -821,7 +867,6 @@ def main_page():
             </script>
             """
             components.html(clock_html, height=90)
-            
             for d in aircraft_data:
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
                     st.write(f"**ID:** {d['id']}")
@@ -876,15 +921,87 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab
+    # ========== AI Analyst tab (updated with questions list and listen button) ==========
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
-        user_question = st.text_area(L['ai_question'], height=100)
-        if st.button(L['ai_analyze'], use_container_width=True):
-            with st.spinner(L['ai_thinking']):
-                response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question if user_question.strip() else None)
-            st.markdown(f"### {L['ai_response']}")
-            st.markdown(response)
+        
+        # Define common questions (20 questions related to user's location)
+        common_questions = [
+            "What is the current threat level in my area?",
+            "How many aircraft are currently within 50 km of my ground station?",
+            "Are there any military aircraft near my location?",
+            "What is the closest aircraft to my position?",
+            "How many drones are detected in my vicinity?",
+            "What satellites are currently overhead?",
+            "When will the next satellite pass over my location?",
+            "Are there any unusual or unidentified contacts on radar?",
+            "What is the altitude distribution of aircraft around me?",
+            "Is there any pattern in the aircraft movements?",
+            "What is the average distance of radar contacts?",
+            "How many aircraft are flying above 30,000 feet?",
+            "Are there any cargo planes in my area?",
+            "What is the most common aircraft type near me?",
+            "Is there any potential threat from the radar contacts?",
+            "Can you predict the trajectory of the nearest aircraft?",
+            "How does the current activity compare to typical patterns?",
+            "Are there any aircraft flying at low altitude?",
+            "What is the total number of radar contacts right now?",
+            "Summarize all radar and satellite activity in my area."
+        ]
+        
+        # Layout: left column for questions, right column for interaction
+        col_q, col_main = st.columns([1, 2])
+        
+        with col_q:
+            st.markdown(f"### {L['common_questions_title']}")
+            st.markdown('<div class="question-list">', unsafe_allow_html=True)
+            for q in common_questions:
+                if st.button(q, key=f"q_{q[:20]}"):
+                    st.session_state.ai_question_input = q
+                    st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col_main:
+            # Use session state to store question
+            if "ai_question_input" not in st.session_state:
+                st.session_state.ai_question_input = ""
+            
+            user_question = st.text_area(L['ai_question'], height=100, value=st.session_state.ai_question_input, key="ai_question_text")
+            
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                analyze_btn = st.button(L['ai_analyze'], use_container_width=True)
+            with col_btn2:
+                listen_btn = st.button(L['listen_response'], use_container_width=True)
+            
+            if analyze_btn:
+                if not user_question.strip():
+                    st.warning("Please enter a question.")
+                else:
+                    with st.spinner(L['ai_thinking']):
+                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question if user_question.strip() else None)
+                        st.session_state.ai_response = response
+                    st.markdown(f"### {L['ai_response']}")
+                    st.markdown(response)
+            
+            # Display saved response if exists and not just analyzed
+            if st.session_state.ai_response and not analyze_btn:
+                st.markdown(f"### {L['ai_response']}")
+                st.markdown(st.session_state.ai_response)
+            
+            # Listen to AI response
+            if listen_btn:
+                if st.session_state.ai_response:
+                    with st.spinner("Generating audio..."):
+                        lang_code = "en" if st.session_state.lang == "English" else "fr"
+                        audio_bytes = generate_audio_response(st.session_state.ai_response, lang_code)
+                        if audio_bytes:
+                            st.audio(audio_bytes, format="audio/mp3")
+                            st.success("🔊 AI response played.")
+                        else:
+                            st.error("Could not generate audio.")
+                else:
+                    st.warning("No AI response to listen to. Please ask a question first.")
 
     # Object Detection tab
     with tab_detect:
