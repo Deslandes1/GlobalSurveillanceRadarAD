@@ -52,7 +52,7 @@ st.set_page_config(
     page_icon="🌐"
 )
 
-# ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
+# ========== CUSTOM CSS – LEOPARD BLACK THEME (with white clock) ==========
 st.markdown("""
 <style>
     .stApp {
@@ -204,21 +204,26 @@ st.markdown("""
         line-height: 16px;
     }
     .clock-container {
-        background: rgba(20,16,24,0.6);
-        border: 1px solid #2a1f14;
+        background: rgba(20,16,24,0.7);
+        border: 1px solid #4a3520;
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 10px 12px;
         margin: 5px 0 10px 0;
         text-align: center;
         font-family: 'Courier New', monospace;
-        color: #00ff64;
-        font-size: 1.1rem;
-        letter-spacing: 1px;
+        color: #ffffff;
+        font-size: 1.4rem;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
     .clock-container .date {
-        color: #b8a898;
-        font-size: 0.9rem;
-        letter-spacing: 0.5px;
+        color: #ffffff;
+        font-size: 1.0rem;
+        font-weight: bold;
+        letter-spacing: 1px;
+        opacity: 0.85;
+        margin-top: 2px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -815,7 +820,7 @@ def main_page():
         with col_log:
             st.subheader(L['detection_log'])
             
-            # ========== LIVE CLOCK AND CALENDAR (fixed using components.html) ==========
+            # ========== LIVE CLOCK AND CALENDAR (BRIGHT WHITE) ==========
             clock_html = """
             <div class="clock-container">
                 <div id="liveClock">--:--:--</div>
@@ -837,7 +842,7 @@ def main_page():
                 setInterval(updateClock, 1000);
             </script>
             """
-            components.html(clock_html, height=70)
+            components.html(clock_html, height=80)
             
             for d in aircraft_data:
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
