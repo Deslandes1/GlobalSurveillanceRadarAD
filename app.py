@@ -52,7 +52,7 @@ st.set_page_config(
     page_icon="🌐"
 )
 
-# ========== CUSTOM CSS – LEOPARD BLACK THEME (with white clock) ==========
+# ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
 st.markdown("""
 <style>
     .stApp {
@@ -202,28 +202,6 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         line-height: 16px;
-    }
-    .clock-container {
-        background: rgba(20,16,24,0.7);
-        border: 1px solid #4a3520;
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin: 5px 0 10px 0;
-        text-align: center;
-        font-family: 'Courier New', monospace;
-        color: #ffffff;
-        font-size: 1.4rem;
-        font-weight: bold;
-        letter-spacing: 2px;
-        text-shadow: 0 0 10px rgba(255,255,255,0.3);
-    }
-    .clock-container .date {
-        color: #ffffff;
-        font-size: 1.0rem;
-        font-weight: bold;
-        letter-spacing: 1px;
-        opacity: 0.85;
-        margin-top: 2px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -820,11 +798,11 @@ def main_page():
         with col_log:
             st.subheader(L['detection_log'])
             
-            # ========== LIVE CLOCK AND CALENDAR (BRIGHT WHITE) ==========
+            # ========== LIVE CLOCK AND CALENDAR (FIXED – with inline CSS) ==========
             clock_html = """
-            <div class="clock-container">
-                <div id="liveClock">--:--:--</div>
-                <div class="date" id="liveDate">--/--/----</div>
+            <div style="background: rgba(20,16,24,0.9); border: 1px solid #4a3520; border-radius: 8px; padding: 10px 12px; margin: 5px 0 10px 0; text-align: center; font-family: 'Courier New', monospace;">
+                <div id="liveClock" style="color: #ffffff; font-size: 1.6rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,255,255,0.5);">--:--:--</div>
+                <div id="liveDate" style="color: #ffffff; font-size: 1.2rem; font-weight: bold; opacity: 0.9; margin-top: 2px;">--/--/----</div>
             </div>
             <script>
                 function updateClock() {
@@ -842,7 +820,7 @@ def main_page():
                 setInterval(updateClock, 1000);
             </script>
             """
-            components.html(clock_html, height=80)
+            components.html(clock_html, height=90)
             
             for d in aircraft_data:
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
