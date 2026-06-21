@@ -218,7 +218,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ========== AI MALE VOICE ==========
+# ========== AI VOICE SCRIPTS ==========
 def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
@@ -236,6 +236,30 @@ def generate_male_voice_audio():
     The sidebar includes language selection, your ground station coordinates, a demo mode toggle, and secure logout.
     
     This software is built for surveillance, security, and intelligence analysis. All data is encrypted and anonymized.
+    
+    GlobalInternet.py – connecting the global market with local expertise.
+    """
+    return script
+
+def generate_female_voice_audio():
+    script = """
+    Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
+    
+    This advanced surveillance system now features a live radar with a classic fetching sound – just click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
+    
+    Objects are automatically classified and colour‑coded for instant visual identification: Public Airplanes appear in green, Military in red, Drones in orange, Cargo in yellow, UFOs in purple, General Aviation in blue, and Other in grey.
+    
+    A live legend is displayed above the radar, so you always know what each colour represents.
+    
+    The Radar Control tab gives you a 360‑degree view with range rings and contact labels. The Satellite Tracker tab predicts satellite passes and shows an interactive map with both aircraft and satellite overlays.
+    
+    The AI Analyst tab uses Groq's Llama 3.1 to answer your questions about radar contacts and satellite predictions, providing threat analysis and recommendations.
+    
+    The Object Detection tab lets you upload images and detect objects with YOLOv8.
+    
+    The sidebar provides language selection, ground station coordinates, demo mode, and secure logout.
+    
+    All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
     
     GlobalInternet.py – connecting the global market with local expertise.
     """
@@ -268,43 +292,31 @@ if "lang" not in st.session_state:
 
 # ========== AIRCRAFT CLASSIFICATION ==========
 def classify_aircraft(alt_ft, callsign=""):
-    """
-    Classify aircraft into categories based on altitude and callsign heuristics.
-    Returns: (category, color, label)
-    """
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
         alt_ft = 0
 
-    # Convert callsign to string
     callsign = str(callsign).upper()
 
-    # UFO: if callsign contains "UFO" or "UNK" or very unusual pattern
     if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
         return "UFO", "#9b59b6", "🛸 UFO"
 
-    # Military: callsign with military prefixes, or altitude > 40,000 ft
     military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
-    # Drone: altitude below 1000 ft and callsign often "DRN" or similar
     if alt_ft < 1000 or "DRN" in callsign or "UAV" in callsign:
         return "Drone", "#f39c12", "🚁 Drone"
 
-    # Cargo: large altitude range but callsign often "C" or "CLX" etc.
     if alt_ft > 25000 and alt_ft <= 40000 and ("C" in callsign or "CLX" in callsign or "FDX" in callsign):
         return "Cargo", "#f1c40f", "📦 Cargo"
 
-    # Public Airplane (Commercial): between 10,000 and 30,000 ft
     if 10000 <= alt_ft <= 30000:
         return "Public Airplane", "#2ecc71", "🛩️ Public Airplane"
 
-    # General aviation: below 10,000 ft (fallback)
     if alt_ft < 10000:
         return "General Aviation", "#3498db", "🛩️ General"
 
-    # Default: if nothing matches
     return "Other", "#95a5a6", "❓ Unknown"
 
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
@@ -335,7 +347,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
                 dist_norm = min(dist_km / max_km, 0.95)
                 alt = s[7] if s[7] is not None else 0
                 callsign = s[1].strip() if s[1] else s[0][:6].upper()
-                # Classify based on altitude and callsign
                 cat, color, label = classify_aircraft(alt, callsign)
                 aircraft_list.append({
                     "id": callsign,
@@ -356,7 +367,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
     return []
 
 def get_demo_aircraft():
-    """Fallback demo aircraft with a variety of types."""
     return [
         {"id": "AAL-410", "type": "Public Airplane", "color": "#2ecc71", "label": "🛩️ Public Airplane", "alt": "32,000ft", "dist": 0.4},
         {"id": "F-22-EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8},
@@ -409,7 +419,8 @@ UI = {
         "detection_results": "Detected Objects",
         "refresh_btn": "Refresh Live Data",
         "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode.",
-        "voice_explain": "🎙️ AI Male Voice – Explain App",
+        "voice_male_explain": "🎙️ AI Male Voice – Explain App",
+        "voice_female_explain": "🎤 AI Female Voice – Explain App (with new features)",
         "legend_title": "🟢 Object Type Legend"
     },
     "French": {
@@ -446,7 +457,8 @@ UI = {
         "detection_results": "Objets détectés",
         "refresh_btn": "Actualiser",
         "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection.",
-        "voice_explain": "🎙️ Voix IA Homme – Expliquer l'app",
+        "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
+        "voice_female_explain": "🎤 Voix IA Femme – Expliquer l'app (nouveautés)",
         "legend_title": "🟢 Légende des types"
     }
 }
@@ -512,8 +524,8 @@ def main_page():
         st.markdown(f"**{L['author_tag']}**")
         st.divider()
 
-        # AI Male Voice button
-        if st.button(L['voice_explain'], use_container_width=True):
+        # Male Voice button
+        if st.button(L['voice_male_explain'], use_container_width=True):
             script = generate_male_voice_audio()
             try:
                 from gtts import gTTS
@@ -525,6 +537,24 @@ def main_page():
                     os.unlink(tmp.name)
                     st.audio(audio_bytes, format="audio/mp3")
                     st.success("🎙️ Male voice explanation played.")
+            except ImportError:
+                st.error("gTTS library not installed. Install with: pip install gTTS")
+            except Exception as e:
+                st.error(f"Voice generation error: {e}")
+
+        # Female Voice button
+        if st.button(L['voice_female_explain'], use_container_width=True):
+            script = generate_female_voice_audio()
+            try:
+                from gtts import gTTS
+                tts = gTTS(text=script, lang="en" if st.session_state.lang == "English" else "fr", slow=False)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                    tts.save(tmp.name)
+                    with open(tmp.name, "rb") as f:
+                        audio_bytes = f.read()
+                    os.unlink(tmp.name)
+                    st.audio(audio_bytes, format="audio/mp3")
+                    st.success("🎤 Female voice explanation played.")
             except ImportError:
                 st.error("gTTS library not installed. Install with: pip install gTTS")
             except Exception as e:
@@ -573,7 +603,6 @@ def main_page():
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
-        # Audio note with sound status
         st.info(L['audio_note'])
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
@@ -605,7 +634,6 @@ def main_page():
                     let audioCtx = null;
                     let soundEnabled = false;
                     
-                    // Enable audio context on user click
                     canvas.addEventListener('click', () => {{
                         if (!audioCtx) {{
                             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -614,7 +642,6 @@ def main_page():
                             audioCtx.resume();
                         }}
                         soundEnabled = true;
-                        // Indicate sound is enabled (optional)
                         canvas.style.borderColor = '#00ff64';
                         setTimeout(() => {{ canvas.style.borderColor = '#2a1f14'; }}, 200);
                     }});
@@ -622,7 +649,6 @@ def main_page():
                     function ping() {{
                         if (!audioCtx || !soundEnabled) return;
                         try {{
-                            // Create a sweeping sonar ping
                             const osc = audioCtx.createOscillator();
                             const gain = audioCtx.createGain();
                             const now = audioCtx.currentTime;
@@ -635,15 +661,12 @@ def main_page():
                             gain.connect(audioCtx.destination);
                             osc.start(now);
                             osc.stop(now + 0.35);
-                        }} catch (e) {{
-                            // ignore if sound fails
-                        }}
+                        }} catch (e) {{}}
                     }}
                     
                     function draw() {{
                         ctx.clearRect(0,0,550,550);
                         const cx = 275, cy = 275, r = 250;
-                        // Draw range rings
                         ctx.strokeStyle = 'rgba(40,30,20,0.6)';
                         ctx.lineWidth = 1;
                         for(let i = 1; i <= 4; i++) {{
@@ -651,7 +674,6 @@ def main_page():
                             ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                             ctx.stroke();
                         }}
-                        // Draw crosshairs
                         ctx.strokeStyle = 'rgba(40,30,20,0.3)';
                         ctx.lineWidth = 0.5;
                         ctx.beginPath();
@@ -661,7 +683,6 @@ def main_page():
                         ctx.lineTo(cx, cy + r);
                         ctx.stroke();
                         
-                        // Draw contacts
                         data.forEach((d, i) => {{
                             const angleRad = i * 1.2;
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
@@ -672,7 +693,6 @@ def main_page():
                             ctx.beginPath();
                             ctx.arc(dx, dy, 8, 0, 2*Math.PI);
                             ctx.fill();
-                            // Blinking effect for UFO
                             if (d.type === 'UFO') {{
                                 ctx.shadowBlur = 40;
                                 ctx.shadowColor = '#9b59b6';
@@ -682,18 +702,16 @@ def main_page():
                                 ctx.lineWidth = 2;
                                 ctx.stroke();
                             }}
-                            // Label
                             ctx.shadowBlur = 0;
                             ctx.fillStyle = '#e8ddd0';
                             ctx.font = '10px monospace';
                             ctx.fillText(d.id, dx + 12, dy - 4);
                         }});
                         
-                        // Sweep line
                         let oldA = angle;
                         angle -= 0.03;
                         if (Math.floor(oldA / (2*Math.PI)) !== Math.floor(angle / (2*Math.PI))) {{
-                            ping(); // Play sound every full sweep
+                            ping();
                         }}
                         ctx.save();
                         ctx.translate(cx, cy);
@@ -725,7 +743,7 @@ def main_page():
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
                     st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
 
-    # Satellite tab (unchanged)
+    # Satellite tab
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
