@@ -322,6 +322,8 @@ if "lang" not in st.session_state:
     st.session_state.lang = "English"
 if "ai_response" not in st.session_state:
     st.session_state.ai_response = ""
+if "ai_question_input" not in st.session_state:
+    st.session_state.ai_question_input = ""
 
 # ========== AIRCRAFT CLASSIFICATION ==========
 def classify_aircraft(alt_ft, callsign=""):
@@ -921,7 +923,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # ========== AI Analyst tab (updated with questions list and listen button) ==========
+    # ========== AI Analyst tab (fixed duplicate key issue) ==========
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -955,17 +957,13 @@ def main_page():
         with col_q:
             st.markdown(f"### {L['common_questions_title']}")
             st.markdown('<div class="question-list">', unsafe_allow_html=True)
-            for q in common_questions:
-                if st.button(q, key=f"q_{q[:20]}"):
+            for idx, q in enumerate(common_questions):
+                if st.button(q, key=f"q_{idx}"):
                     st.session_state.ai_question_input = q
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col_main:
-            # Use session state to store question
-            if "ai_question_input" not in st.session_state:
-                st.session_state.ai_question_input = ""
-            
             user_question = st.text_area(L['ai_question'], height=100, value=st.session_state.ai_question_input, key="ai_question_text")
             
             col_btn1, col_btn2 = st.columns(2)
