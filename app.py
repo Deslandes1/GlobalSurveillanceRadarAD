@@ -325,33 +325,52 @@ if "ai_response" not in st.session_state:
 if "ai_question_input" not in st.session_state:
     st.session_state.ai_question_input = ""
 
-# ========== AIRCRAFT CLASSIFICATION ==========
+# ========== AIRCRAFT CLASSIFICATION (improved) ==========
 def classify_aircraft(alt_ft, callsign=""):
+    """
+    Improved classification using callsign prefix, altitude, and known patterns.
+    Returns: (category, color, label)
+    """
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
         alt_ft = 0
 
     callsign = str(callsign).upper()
 
-    if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
-        return "UFO", "#9b59b6", "🛸 UFO"
+    # 1. Explicit drone indicators
+    if "DRN" in callsign or "UAV" in callsign:
+        return "Drone", "#f39c12", "🚁 Drone"
 
-    military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-"]
+    # 2. Military prefixes
+    military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-", "B-2"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
-    if alt_ft < 1000 or "DRN" in callsign or "UAV" in callsign:
-        return "Drone", "#f39c12", "🚁 Drone"
+    # 3. Airline codes (commercial)
+    airline_codes = ["AAL", "UAL", "SWA", "DAL", "NKS", "JBU", "FFT", "EJA", "LXJ", "N456", "N123"]
+    if any(callsign.startswith(code) for code in airline_codes):
+        if alt_ft > 25000:
+            return "Commercial Airplane", "#2ecc71", "🛩️ Commercial"
+        else:
+            return "General Aviation", "#3498db", "🛩️ General"
 
-    if alt_ft > 25000 and alt_ft <= 40000 and ("C" in callsign or "CLX" in callsign or "FDX" in callsign):
+    # 4. Cargo airlines
+    cargo_codes = ["FDX", "UPS", "CKS", "GTI"]
+    if any(callsign.startswith(code) for code in cargo_codes) and alt_ft > 20000:
         return "Cargo", "#f1c40f", "📦 Cargo"
 
-    if 10000 <= alt_ft <= 30000:
-        return "Public Airplane", "#2ecc71", "🛩️ Public Airplane"
+    # 5. General aviation (N-numbers and low altitude)
+    if callsign.startswith("N") and len(callsign) >= 5:
+        if alt_ft < 10000:
+            return "General Aviation", "#3498db", "🛩️ General"
+        else:
+            return "Commercial Airplane", "#2ecc71", "🛩️ Commercial"
 
-    if alt_ft < 10000:
-        return "General Aviation", "#3498db", "🛩️ General"
+    # 6. UFO / Unknown (fallback)
+    if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
+        return "UFO", "#9b59b6", "🛸 UFO"
 
+    # 7. Default
     return "Other", "#95a5a6", "❓ Unknown"
 
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
@@ -403,11 +422,12 @@ def fetch_live_aircraft(ground_lat, ground_lon, retries=3):
 
 def get_demo_aircraft():
     return [
-        {"id": "AAL-410", "type": "Public Airplane", "color": "#2ecc71", "label": "🛩️ Public Airplane", "alt": "32,000ft", "dist": 0.4},
+        {"id": "AAL-410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4},
         {"id": "F-22-EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8},
         {"id": "DRN-QC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2},
         {"id": "CLX-200", "type": "Cargo", "color": "#f1c40f", "label": "📦 Cargo", "alt": "28,000ft", "dist": 0.6},
-        {"id": "UFO-X", "type": "UFO", "color": "#9b59b6", "label": "🛸 UFO", "alt": "1,500ft", "dist": 0.7}
+        {"id": "UFO-X", "type": "UFO", "color": "#9b59b6", "label": "🛸 UFO", "alt": "1,500ft", "dist": 0.7},
+        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3}
     ]
 
 def get_satellites():
@@ -519,7 +539,7 @@ def login_page():
 def ai_analysis(aircraft, satellites, u_lat, u_lon, question=None):
     radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']*300:.0f}km" for a in aircraft])
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
-    full_prompt = f"""You are an AI surveillance analyst. Use the following data to answer the question. Respond concisely.
+    full_prompt = f"""You are an AI surveillance analyst. Use the following data to answer the question. Respond concisely and honestly. The data comes from live ADS‑B transponder signals and classification is based on heuristics. If the data suggests low‑altitude aircraft, they may be general aviation or commercial aircraft on approach, not necessarily drones. Always clarify that classifications are approximate and for educational purposes only.
 
 Ground Station: Lat {u_lat}, Lon {u_lon}
 
@@ -647,7 +667,7 @@ def main_page():
             legend_html = """
             <div class="legend">
                 <span class="legend-item">
-                    <span class="legend-shape" style="color:#2ecc71;">⬤</span> Public Airplane
+                    <span class="legend-shape" style="color:#2ecc71;">⬤</span> Commercial Airplane
                 </span>
                 <span class="legend-item">
                     <span class="legend-shape" style="color:#e74c3c;">▲</span> Military
@@ -656,7 +676,7 @@ def main_page():
                     <span class="legend-shape" style="color:#f39c12;">◆</span> Drone
                 </span>
                 <span class="legend-item">
-                    <span class="legend-shape" style="color:#f1c40f;">⬛</span> Cargo / Unknown
+                    <span class="legend-shape" style="color:#f1c40f;">⬛</span> Cargo
                 </span>
                 <span class="legend-item">
                     <span class="legend-shape" style="color:#9b59b6;">■</span> UFO
@@ -746,7 +766,8 @@ def main_page():
                                 ctx.fillRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
                                 ctx.strokeRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
                                 break;
-                            case 'Public Airplane':
+                            case 'Commercial Airplane':
+                            case 'Cargo':
                                 ctx.beginPath();
                                 ctx.arc(x, y, size*0.7, 0, 2*Math.PI);
                                 ctx.fill();
@@ -757,10 +778,6 @@ def main_page():
                                 ctx.arc(x, y, size*0.5, 0, 2*Math.PI);
                                 ctx.fill();
                                 ctx.stroke();
-                                break;
-                            case 'Cargo':
-                                ctx.fillRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
-                                ctx.strokeRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
                                 break;
                             default:
                                 ctx.beginPath();
@@ -923,7 +940,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # ========== AI Analyst tab (fixed duplicate key issue) ==========
+    # ========== AI Analyst tab (with improved AI prompt) ==========
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
