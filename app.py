@@ -249,27 +249,43 @@ st.markdown("""
         background: #e74c3c;
         color: #0a0a0f;
     }
+    .local-instructions {
+        background: rgba(20,16,24,0.6);
+        border: 1px solid #4a3520;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin: 10px 0;
+        font-size: 0.85rem;
+        color: #d4c9bd;
+    }
+    .local-instructions code {
+        background: rgba(255,255,255,0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #00ff64;
+        font-size: 0.8rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ========== AI VOICE SCRIPTS ==========
+# ========== AI VOICE SCRIPTS (updated with all features) ==========
 def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
-    This application features four main modules.
+    This application features four main modules: Radar Control, Satellite Tracker, AI Analyst, and Object Detection.
     
-    First, the Radar Control tab. Here you can view live aircraft tracking with a 360-degree radar display. The radar sweeps continuously and plays a classic fetching sound on each pass. You can see aircraft identified by type, altitude, and distance from your ground station. The interface includes a live clock showing the current time and date.
+    The Radar Control tab shows a 360-degree live radar display with a classic fetching sound. Click the radar screen to enable the audio and hear a sonar ping on every sweep. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation.
     
-    Second, the Satellite Tracker tab. This module displays satellite positions and allows you to predict future passes based on your selected time and date. You can also view an interactive map with both aircraft and satellite overlays.
+    The Satellite Tracker predicts satellite passes and shows an interactive map with aircraft and satellite overlays.
     
-    Third, the AI Analyst tab. This module is powered by Groq's Llama 3.1 model. You can ask any question about the radar contacts or satellite predictions, and the AI will provide a detailed threat analysis and recommendations.
+    The AI Analyst is powered by Groq's Llama 3.1. You can ask any question about radar contacts or satellite predictions, and the AI provides a detailed threat analysis and recommendations.
     
-    Fourth, the Object Detection tab. Upload an image and the system will detect and label objects using YOLOv8 computer vision.
+    The Object Detection tab lets you upload images and detect objects using YOLOv8 computer vision.
     
-    The sidebar includes language selection, your ground station coordinates, a demo mode toggle, and secure logout.
+    The sidebar includes automatic location detection, language selection (now also Spanish and Chinese), a demo mode toggle, and secure logout. You can search for any location and the app will update the radar to that area. The data source status shows whether you are seeing live, cached, or demo data.
     
-    This software is built for surveillance, security, and intelligence analysis. All data is encrypted and anonymized.
+    All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
     
     GlobalInternet.py – connecting the global market with local expertise.
     """
@@ -279,7 +295,7 @@ def generate_female_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
-    This advanced surveillance system now features a live radar with a classic fetching sound – just click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
+    This advanced surveillance system now features a live radar with a classic fetching sound. Just click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
     
     Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, and civilian aircraft as green or blue circles. Each symbol includes the callsign and altitude for instant identification.
     
@@ -291,7 +307,7 @@ def generate_female_voice_audio():
     
     The Object Detection tab lets you upload images and detect objects with YOLOv8.
     
-    The sidebar provides language selection, ground station coordinates, demo mode, and secure logout.
+    The sidebar provides automatic location detection, language selection (now also Spanish and Chinese), a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
     All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
     
@@ -489,11 +505,6 @@ def classify_aircraft(alt_ft, callsign=""):
 
 # ========== IMPROVED LIVE AIRCRAFT DATA FETCH (with exponential backoff and caching) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
-    """
-    Fetch live aircraft from OpenSky with exponential backoff on failure.
-    Returns a tuple: (aircraft_list, status_message)
-    status_message can be 'live', 'cached', 'demo'
-    """
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
     
@@ -504,8 +515,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                 data = response.json()
                 states = data.get("states", [])
                 if not states:
-                    # No data returned, but not an error
-                    # Return cached if available, else demo
                     return [], "no_data"
                 aircraft_list = []
                 for s in states:
@@ -534,21 +543,17 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                         "lat": lat,
                         "lon": lon
                     })
-                # Limit to 30 for performance
                 aircraft_list = aircraft_list[:30]
-                # Update cache
                 st.session_state.cached_aircraft_data = aircraft_list
                 st.session_state.cached_timestamp = datetime.now()
                 st.session_state.api_status = "Live"
                 return aircraft_list, "live"
             elif response.status_code == 429:
-                # Rate limited – wait longer
                 wait_time = (2 ** attempt) + random.uniform(0, 1)
                 st.session_state.api_status = f"Rate limited (retry in {wait_time:.1f}s)"
                 time.sleep(wait_time)
                 continue
             else:
-                # Other HTTP error
                 wait_time = (2 ** attempt) + random.uniform(0, 1)
                 time.sleep(wait_time)
                 continue
@@ -561,13 +566,11 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
             time.sleep(wait_time)
             continue
 
-    # If we exhausted retries, use cached data if available
     if st.session_state.cached_aircraft_data:
         st.session_state.api_status = "Cached (API unreachable)"
         return st.session_state.cached_aircraft_data, "cached"
     else:
         st.session_state.api_status = "Demo (No cached data)"
-        # Return demo data
         demo = get_demo_aircraft()
         return demo, "demo"
 
@@ -621,7 +624,7 @@ UI = {
         "detect_btn": "Detect Objects",
         "detection_results": "Detected Objects",
         "refresh_btn": "Refresh Live Data",
-        "live_note": "Live data may not work on Streamlit Cloud due to network restrictions. For real detection, run this app locally or use Demo Mode.",
+        "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
         "voice_female_explain": "🎤 AI Female Voice – Explain App (with new features)",
         "legend_title": "🟢 Real NATO‑Style Symbols",
@@ -639,7 +642,23 @@ UI = {
         "status_demo": "Demo (simulated)",
         "status_live_detail": "Live data fetched at {time}",
         "status_cached_detail": "Cached from {time}",
-        "status_demo_detail": "No live data available – showing demo"
+        "status_demo_detail": "No live data available – showing demo",
+        "local_instructions_title": "💻 Run Locally (Full Live Data)",
+        "local_step1": "Install Python 3.8 or higher from python.org.",
+        "local_step2": "Open Terminal or Command Prompt and run:",
+        "local_cmd1": "git clone https://github.com/Deslandes1/GlobalSurveillanceRadarAD.git",
+        "local_cmd2": "cd GlobalSurveillanceRadarAD",
+        "local_cmd3": "pip install -r requirements.txt",
+        "local_step3": "Create a .streamlit/secrets.toml file with your Groq API key:",
+        "local_cmd4": "GROQ_API_KEY = \"your-api-key\"",
+        "local_step4": "Run the app:",
+        "local_cmd5": "streamlit run app.py",
+        "local_step5": "Open the URL shown in your browser (usually http://localhost:8501).",
+        "voice_lang_label": "🎤 Voice Language",
+        "voice_lang_en": "English",
+        "voice_lang_fr": "Français",
+        "voice_lang_es": "Español",
+        "voice_lang_zh": "中文"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -671,7 +690,7 @@ UI = {
         "detect_btn": "Détecter",
         "detection_results": "Objets détectés",
         "refresh_btn": "Actualiser",
-        "live_note": "Les données en direct peuvent ne pas fonctionner sur Streamlit Cloud. Exécutez localement pour une vraie détection.",
+        "live_note": "💻 Pour exécuter cette application sur votre propre ordinateur et obtenir des données en direct, cliquez sur les instructions ci‑dessous.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
         "voice_female_explain": "🎤 Voix IA Femme – Expliquer l'app (nouveautés)",
         "legend_title": "🟢 Symboles militaires réels",
@@ -689,7 +708,155 @@ UI = {
         "status_demo": "Démo (simulé)",
         "status_live_detail": "Données récupérées à {time}",
         "status_cached_detail": "Mise en cache depuis {time}",
-        "status_demo_detail": "Aucune donnée en direct – démo affichée"
+        "status_demo_detail": "Aucune donnée en direct – démo affichée",
+        "local_instructions_title": "💻 Exécuter localement (données en direct)",
+        "local_step1": "Installez Python 3.8 ou supérieur depuis python.org.",
+        "local_step2": "Ouvrez le Terminal ou l'Invite de commandes et exécutez :",
+        "local_cmd1": "git clone https://github.com/Deslandes1/GlobalSurveillanceRadarAD.git",
+        "local_cmd2": "cd GlobalSurveillanceRadarAD",
+        "local_cmd3": "pip install -r requirements.txt",
+        "local_step3": "Créez un fichier .streamlit/secrets.toml avec votre clé API Groq :",
+        "local_cmd4": "GROQ_API_KEY = \"votre-clé-api\"",
+        "local_step4": "Lancez l'application :",
+        "local_cmd5": "streamlit run app.py",
+        "local_step5": "Ouvrez l'URL affichée dans votre navigateur (généralement http://localhost:8501).",
+        "voice_lang_label": "🎤 Langue vocale",
+        "voice_lang_en": "English",
+        "voice_lang_fr": "Français",
+        "voice_lang_es": "Español",
+        "voice_lang_zh": "中文"
+    },
+    "Spanish": {
+        "radar_tab": "📡 Control de Radar",
+        "sat_tab": "🛰️ Rastreador de Satélites",
+        "ai_tab": "🤖 Analista IA",
+        "detect_tab": "🕵️ Detección de Objetos",
+        "title": "RADAR DE VIGILANCIA GLOBAL",
+        "author_tag": "Construido por Gesner Deslandes",
+        "logout": "Cerrar Sesión",
+        "report": "Descargar Informe",
+        "detection_log": "Registro de Detección",
+        "sat_engine": "Motor de Mapeo Predictivo",
+        "audio_note": "🖱️ Haz clic en la pantalla del radar para activar el sonido.",
+        "lat": "Latitud",
+        "lon": "Longitud",
+        "predict_btn": "Calcular Paso",
+        "time_target": "Fecha/Hora Objetivo",
+        "aip_key": "Clave de Seguridad AIP (Imágenes Aéreas)",
+        "sky_view": "Vista Satelital OpenSky",
+        "ai_question": "Pregunta sobre contactos de radar o predicciones de satélites:",
+        "ai_analyze": "Analizar Nivel de Amenaza",
+        "ai_thinking": "🤖 IA analizando datos de vigilancia...",
+        "ai_response": "💡 Informe del Analista IA",
+        "security_badge": "🔐 Escudo de seguridad global activo",
+        "security_caption": "Todos los datos están cifrados y anonimizados",
+        "detect_title": "Detección de Objetos en Tiempo Real",
+        "detect_desc": "Sube una imagen (JPEG, PNG) para detectar objetos con YOLOv8.",
+        "upload_label": "Elige una imagen...",
+        "detect_btn": "Detectar Objetos",
+        "detection_results": "Objetos Detectados",
+        "refresh_btn": "Actualizar Datos",
+        "live_note": "💻 Para ejecutar esta aplicación en tu propia computadora y obtener datos en vivo, haz clic en las instrucciones abajo.",
+        "voice_male_explain": "🎙️ Voz IA Masculina – Explicar App",
+        "voice_female_explain": "🎤 Voz IA Femenina – Explicar App (nuevas funciones)",
+        "legend_title": "🟢 Símbolos estilo OTAN",
+        "clock_label": "🕒 Reloj en Vivo",
+        "common_questions_title": "💬 Preguntas Comunes",
+        "listen_response": "🔊 Escuchar Respuesta IA",
+        "location_detected": "📍 Ubicación detectada: {location}",
+        "location_name_label": "Nombre de ubicación (modificar)",
+        "search_location": "🔍 Buscar Ubicación",
+        "search_btn": "Buscar Coordenadas",
+        "search_error": "❌ Ubicación no encontrada. Intente de nuevo.",
+        "api_status_label": "📡 Fuente de Datos",
+        "status_live": "En vivo (OpenSky)",
+        "status_cached": "En caché",
+        "status_demo": "Demo (simulado)",
+        "status_live_detail": "Datos en vivo obtenidos a las {time}",
+        "status_cached_detail": "Datos en caché desde {time}",
+        "status_demo_detail": "Sin datos en vivo – mostrando demo",
+        "local_instructions_title": "💻 Ejecutar Localmente (Datos en Vivo)",
+        "local_step1": "Instala Python 3.8 o superior desde python.org.",
+        "local_step2": "Abre la Terminal o Símbolo del sistema y ejecuta:",
+        "local_cmd1": "git clone https://github.com/Deslandes1/GlobalSurveillanceRadarAD.git",
+        "local_cmd2": "cd GlobalSurveillanceRadarAD",
+        "local_cmd3": "pip install -r requirements.txt",
+        "local_step3": "Crea un archivo .streamlit/secrets.toml con tu clave API de Groq:",
+        "local_cmd4": "GROQ_API_KEY = \"tu-clave-api\"",
+        "local_step4": "Ejecuta la aplicación:",
+        "local_cmd5": "streamlit run app.py",
+        "local_step5": "Abre la URL mostrada en tu navegador (normalmente http://localhost:8501).",
+        "voice_lang_label": "🎤 Idioma de Voz",
+        "voice_lang_en": "English",
+        "voice_lang_fr": "Français",
+        "voice_lang_es": "Español",
+        "voice_lang_zh": "中文"
+    },
+    "Chinese": {
+        "radar_tab": "📡 雷达控制",
+        "sat_tab": "🛰️ 卫星跟踪器",
+        "ai_tab": "🤖 人工智能分析员",
+        "detect_tab": "🕵️ 物体检测",
+        "title": "全球监视雷达",
+        "author_tag": "由 Gesner Deslandes 构建",
+        "logout": "退出会话",
+        "report": "下载资产报告",
+        "detection_log": "实时检测日志",
+        "sat_engine": "预测测绘引擎",
+        "audio_note": "🖱️ 点击雷达屏幕启用声音。",
+        "lat": "纬度",
+        "lon": "经度",
+        "predict_btn": "计算过境",
+        "time_target": "预测目标（日期/时间）",
+        "aip_key": "AIP 安全密钥（航空影像）",
+        "sky_view": "OpenSky 卫星视图",
+        "ai_question": "询问有关雷达联系或卫星预测的问题：",
+        "ai_analyze": "分析当前威胁等级",
+        "ai_thinking": "🤖 人工智能正在分析监视数据...",
+        "ai_response": "💡 人工智能分析报告",
+        "security_badge": "🔐 全球安全盾牌已激活",
+        "security_caption": "所有数据均已加密并匿名化",
+        "detect_title": "实时物体检测",
+        "detect_desc": "上传图像（JPEG， PNG）以使用 YOLOv8 检测物体。",
+        "upload_label": "选择图像...",
+        "detect_btn": "检测物体",
+        "detection_results": "检测到的物体",
+        "refresh_btn": "刷新实时数据",
+        "live_note": "💻 要在您自己的计算机上运行此应用程序以获取完整的实时数据，请单击下面的说明。",
+        "voice_male_explain": "🎙️ 男性人工智能语音 – 解释应用",
+        "voice_female_explain": "🎤 女性人工智能语音 – 解释应用（新功能）",
+        "legend_title": "🟢 真实北约风格符号",
+        "clock_label": "🕒 实时时钟",
+        "common_questions_title": "💬 常见问题",
+        "listen_response": "🔊 听取人工智能回复",
+        "location_detected": "📍 检测到的位置： {location}",
+        "location_name_label": "位置名称（覆盖）",
+        "search_location": "🔍 搜索位置",
+        "search_btn": "搜索坐标",
+        "search_error": "❌ 未找到位置。请重试。",
+        "api_status_label": "📡 数据源",
+        "status_live": "实时（OpenSky）",
+        "status_cached": "缓存（来自上次获取）",
+        "status_demo": "演示（模拟）",
+        "status_live_detail": "实时数据获取于 {time}",
+        "status_cached_detail": "缓存自 {time}",
+        "status_demo_detail": "没有实时数据 – 显示演示",
+        "local_instructions_title": "💻 本地运行（完整实时数据）",
+        "local_step1": "从 python.org 安装 Python 3.8 或更高版本。",
+        "local_step2": "打开终端或命令提示符并运行：",
+        "local_cmd1": "git clone https://github.com/Deslandes1/GlobalSurveillanceRadarAD.git",
+        "local_cmd2": "cd GlobalSurveillanceRadarAD",
+        "local_cmd3": "pip install -r requirements.txt",
+        "local_step3": "创建一个 .streamlit/secrets.toml 文件，包含您的 Groq API 密钥：",
+        "local_cmd4": "GROQ_API_KEY = \"您的-api-密钥\"",
+        "local_step4": "运行应用程序：",
+        "local_cmd5": "streamlit run app.py",
+        "local_step5": "在浏览器中打开显示的 URL（通常为 http://localhost:8501）。",
+        "voice_lang_label": "🎤 语音语言",
+        "voice_lang_en": "English",
+        "voice_lang_fr": "Français",
+        "voice_lang_es": "Español",
+        "voice_lang_zh": "中文"
     }
 }
 
@@ -751,16 +918,25 @@ def main_page():
         st.divider()
 
         st.title("🌐 GlobalInternet.py")
-        st.selectbox("Language", ["English", "French"], key="lang")
+        st.selectbox("Language", ["English", "French", "Spanish", "Chinese"], key="lang")
         st.markdown(f"**{L['author_tag']}**")
         st.divider()
 
-        # Voice buttons
+        # Voice language selector (separate from interface language)
+        voice_lang = st.selectbox(
+            L['voice_lang_label'],
+            options=["en", "fr", "es", "zh"],
+            format_func=lambda x: L[f"voice_lang_{x}"] if f"voice_lang_{x}" in L else x,
+            key="voice_lang_selector"
+        )
+
+        # Male Voice button
         if st.button(L['voice_male_explain'], use_container_width=True):
             script = generate_male_voice_audio()
             try:
                 from gtts import gTTS
-                lang_code = "en" if st.session_state.lang == "English" else "fr"
+                # map voice_lang to gTTS language code
+                lang_code = "en" if voice_lang == "en" else "fr" if voice_lang == "fr" else "es" if voice_lang == "es" else "zh"
                 tts = gTTS(text=script, lang=lang_code, slow=False)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                     tts.save(tmp.name)
@@ -774,11 +950,12 @@ def main_page():
             except Exception as e:
                 st.error(f"Voice generation error: {e}")
 
+        # Female Voice button
         if st.button(L['voice_female_explain'], use_container_width=True):
             script = generate_female_voice_audio()
             try:
                 from gtts import gTTS
-                lang_code = "en" if st.session_state.lang == "English" else "fr"
+                lang_code = "en" if voice_lang == "en" else "fr" if voice_lang == "fr" else "es" if voice_lang == "es" else "zh"
                 tts = gTTS(text=script, lang=lang_code, slow=False)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                     tts.save(tmp.name)
@@ -825,7 +1002,23 @@ def main_page():
         st.caption(detail)
 
         st.divider()
-        st.info(L['live_note'])
+        
+        # ----- LOCAL RUN INSTRUCTIONS -----
+        with st.expander(L['local_instructions_title'], expanded=False):
+            st.markdown(f"""
+            <div class="local-instructions">
+                <p><strong>Step 1:</strong> {L['local_step1']}</p>
+                <p><strong>Step 2:</strong> {L['local_step2']}</p>
+                <code>{L['local_cmd1']}</code><br>
+                <code>{L['local_cmd2']}</code><br>
+                <code>{L['local_cmd3']}</code>
+                <p><strong>Step 3:</strong> {L['local_step3']}</p>
+                <code>{L['local_cmd4']}</code>
+                <p><strong>Step 4:</strong> {L['local_step4']}</p>
+                <code>{L['local_cmd5']}</code>
+                <p><strong>Step 5:</strong> {L['local_step5']}</p>
+            </div>
+            """, unsafe_allow_html=True)
         st.divider()
 
         # ----- LOCATION DETECTION & SEARCH -----
@@ -894,9 +1087,7 @@ def main_page():
         aircraft_data = get_demo_aircraft()
         st.session_state.api_status = "Demo (User selected)"
     else:
-        # Attempt to fetch live data with backoff
         aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
-        # status is already stored in session state inside the function
 
     sat_data = get_satellites()
 
@@ -1186,7 +1377,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab (unchanged)
+    # AI Analyst tab
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1249,7 +1440,8 @@ def main_page():
             if listen_btn:
                 if st.session_state.ai_response:
                     with st.spinner("Generating audio..."):
-                        lang_code = "en" if st.session_state.lang == "English" else "fr"
+                        # Use the selected voice language for the response
+                        lang_code = "en" if voice_lang == "en" else "fr" if voice_lang == "fr" else "es" if voice_lang == "es" else "zh"
                         audio_bytes = generate_audio_response(st.session_state.ai_response, lang_code)
                         if audio_bytes:
                             st.audio(audio_bytes, format="audio/mp3")
