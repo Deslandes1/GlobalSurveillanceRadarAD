@@ -325,6 +325,84 @@ if "ai_response" not in st.session_state:
 if "ai_question_input" not in st.session_state:
     st.session_state.ai_question_input = ""
 
+# ========== IP & LOCATION DETECTION ==========
+def get_real_ip():
+    try:
+        headers = st.context.headers
+        forwarded = headers.get("X-Forwarded-For")
+        if forwarded:
+            for candidate in forwarded.split(","):
+                candidate = candidate.strip()
+                if candidate and not is_private_ip(candidate):
+                    return candidate
+            return forwarded.split(",")[0].strip()
+    except Exception:
+        pass
+
+    if "real_ip" not in st.session_state:
+        # Fallback to using a service if no header
+        try:
+            response = requests.get("https://api.ipify.org?format=json", timeout=3)
+            if response.status_code == 200:
+                ip = response.json().get("ip")
+                st.session_state.real_ip = ip
+                return ip
+        except:
+            pass
+        return "Unable to retrieve"
+    else:
+        return st.session_state.real_ip
+
+def is_private_ip(ip):
+    private_patterns = [
+        re.compile(r'^10\.'),
+        re.compile(r'^172\.(1[6-9]|2[0-9]|3[0-1])\.'),
+        re.compile(r'^192\.168\.'),
+        re.compile(r'^127\.'),
+        re.compile(r'^169\.254\.'),
+        re.compile(r'^fc00:'),
+        re.compile(r'^fd00:'),
+        re.compile(r'^::1$')
+    ]
+    return any(pattern.match(ip) for pattern in private_patterns)
+
+def get_location(ip):
+    try:
+        response = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,isp,lat,lon,query", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                return {
+                    "country": data.get("country", "Unknown"),
+                    "region": data.get("regionName", "Unknown"),
+                    "city": data.get("city", "Unknown"),
+                    "isp": data.get("isp", "Unknown"),
+                    "lat": data.get("lat", 0.0),
+                    "lon": data.get("lon", 0.0)
+                }
+    except Exception:
+        pass
+    return None
+
+def get_detected_location():
+    if "detected_location" not in st.session_state:
+        ip = get_real_ip()
+        if ip and ip != "Unable to retrieve":
+            loc = get_location(ip)
+            if loc:
+                st.session_state.detected_location = loc
+                return loc
+        # Fallback to Haiti
+        st.session_state.detected_location = {
+            "country": "Haiti",
+            "region": "Ouest",
+            "city": "Port-au-Prince",
+            "isp": "Unknown",
+            "lat": 18.5392,
+            "lon": -72.3364
+        }
+    return st.session_state.detected_location
+
 # ========== AIRCRAFT CLASSIFICATION (improved) ==========
 def classify_aircraft(alt_ft, callsign=""):
     """
@@ -476,7 +554,9 @@ UI = {
         "legend_title": "🟢 Real NATO‑Style Symbols",
         "clock_label": "🕒 Live Clock",
         "common_questions_title": "💬 Common Questions",
-        "listen_response": "🔊 Listen to AI Response"
+        "listen_response": "🔊 Listen to AI Response",
+        "location_detected": "📍 Detected location: {location}",
+        "location_name_label": "Location Name (override)"
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -514,7 +594,9 @@ UI = {
         "legend_title": "🟢 Symboles militaires réels",
         "clock_label": "🕒 Horloge en direct",
         "common_questions_title": "💬 Questions courantes",
-        "listen_response": "🔊 Écouter la réponse IA"
+        "listen_response": "🔊 Écouter la réponse IA",
+        "location_detected": "📍 Localisation détectée : {location}",
+        "location_name_label": "Nom de la localisation (modifiable)"
     }
 }
 
@@ -536,8 +618,8 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== UPDATED AI ANALYSIS – now includes location name ==========
-def ai_analysis(aircraft, satellites, u_lat, u_lon, question=None, location_name="Port-au-Prince, Haiti"):
+# ========== AI ANALYSIS – now takes location_name dynamically ==========
+def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']*300:.0f}km" for a in aircraft])
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). Use the following live ADS‑B data to answer the question. Always begin your response by stating the location and coordinates. Provide a balanced, educational analysis. Classifications are approximate and based on heuristics; do not falsely label low‑altitude aircraft as drones unless they explicitly indicate drone callsigns (DRN, UAV). If the question asks about threats, assess based on the presence of unusual or military contacts.
@@ -628,8 +710,26 @@ def main_page():
         st.info(L['live_note'])
         st.divider()
 
-        u_lat = st.number_input(L['lat'], value=18.5392, format="%.4f")
-        u_lon = st.number_input(L['lon'], value=-72.3364, format="%.4f")
+        # ----- LOCATION DETECTION -----
+        detected = get_detected_location()
+        if detected:
+            default_city = f"{detected.get('city', '')}, {detected.get('country', '')}"
+            default_lat = detected.get('lat', 18.5392)
+            default_lon = detected.get('lon', -72.3364)
+        else:
+            default_city = "Port-au-Prince, Haiti"
+            default_lat = 18.5392
+            default_lon = -72.3364
+
+        # Show detected location
+        st.info(L['location_detected'].format(location=default_city))
+
+        # Allow override
+        location_name = st.text_input(L['location_name_label'], value=default_city)
+        u_lat = st.number_input(L['lat'], value=default_lat, format="%.4f")
+        u_lon = st.number_input(L['lon'], value=default_lon, format="%.4f")
+
+        st.divider()
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
         st.divider()
         use_demo = st.checkbox("Demo Mode (disable live OpenSky)", value=False)
@@ -941,11 +1041,11 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # ========== AI Analyst tab (updated call with location name) ==========
+    # ========== AI Analyst tab ==========
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
-        # Define common questions (20 questions related to user's location)
+        # Common questions
         common_questions = [
             "What is the current threat level in my area?",
             "How many aircraft are currently within 50 km of my ground station?",
@@ -969,9 +1069,7 @@ def main_page():
             "Summarize all radar and satellite activity in my area."
         ]
         
-        # Layout: left column for questions, right column for interaction
         col_q, col_main = st.columns([1, 2])
-        
         with col_q:
             st.markdown(f"### {L['common_questions_title']}")
             st.markdown('<div class="question-list">', unsafe_allow_html=True)
@@ -995,18 +1093,16 @@ def main_page():
                     st.warning("Please enter a question.")
                 else:
                     with st.spinner(L['ai_thinking']):
-                        # Pass location name "Port-au-Prince, Haiti" explicitly
-                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, user_question, "Port-au-Prince, Haiti")
+                        # Pass the location_name from sidebar
+                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
                     st.markdown(f"### {L['ai_response']}")
                     st.markdown(response)
             
-            # Display saved response if exists and not just analyzed
             if st.session_state.ai_response and not analyze_btn:
                 st.markdown(f"### {L['ai_response']}")
                 st.markdown(st.session_state.ai_response)
             
-            # Listen to AI response
             if listen_btn:
                 if st.session_state.ai_response:
                     with st.spinner("Generating audio..."):
