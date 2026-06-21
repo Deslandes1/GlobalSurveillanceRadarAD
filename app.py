@@ -11,6 +11,7 @@ from datetime import datetime
 import streamlit.components.v1 as components
 from groq import Groq
 import pandas as pd
+import re
 
 # ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
@@ -340,7 +341,6 @@ def get_real_ip():
         pass
 
     if "real_ip" not in st.session_state:
-        # Fallback to using a service if no header
         try:
             response = requests.get("https://api.ipify.org?format=json", timeout=3)
             if response.status_code == 200:
@@ -403,28 +403,46 @@ def get_detected_location():
         }
     return st.session_state.detected_location
 
+# ========== GEOCODING (location name to coordinates) ==========
+def geocode_location(location_name):
+    """Search for a location using Nominatim API and return (lat, lon, display_name)."""
+    if not location_name.strip():
+        return None, None, None
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": location_name,
+            "format": "json",
+            "limit": 1
+        }
+        headers = {"User-Agent": "GlobalInternet.py Surveillance Portal"}
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                lat = float(data[0]["lat"])
+                lon = float(data[0]["lon"])
+                display = data[0]["display_name"]
+                return lat, lon, display
+        return None, None, None
+    except Exception as e:
+        return None, None, None
+
 # ========== AIRCRAFT CLASSIFICATION (improved) ==========
 def classify_aircraft(alt_ft, callsign=""):
-    """
-    Improved classification using callsign prefix, altitude, and known patterns.
-    Returns: (category, color, label)
-    """
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
         alt_ft = 0
 
     callsign = str(callsign).upper()
 
-    # 1. Explicit drone indicators
     if "DRN" in callsign or "UAV" in callsign:
         return "Drone", "#f39c12", "🚁 Drone"
 
-    # 2. Military prefixes
     military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-", "B-2"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
-    # 3. Airline codes (commercial)
     airline_codes = ["AAL", "UAL", "SWA", "DAL", "NKS", "JBU", "FFT", "EJA", "LXJ", "N456", "N123"]
     if any(callsign.startswith(code) for code in airline_codes):
         if alt_ft > 25000:
@@ -432,23 +450,19 @@ def classify_aircraft(alt_ft, callsign=""):
         else:
             return "General Aviation", "#3498db", "🛩️ General"
 
-    # 4. Cargo airlines
     cargo_codes = ["FDX", "UPS", "CKS", "GTI"]
     if any(callsign.startswith(code) for code in cargo_codes) and alt_ft > 20000:
         return "Cargo", "#f1c40f", "📦 Cargo"
 
-    # 5. General aviation (N-numbers and low altitude)
     if callsign.startswith("N") and len(callsign) >= 5:
         if alt_ft < 10000:
             return "General Aviation", "#3498db", "🛩️ General"
         else:
             return "Commercial Airplane", "#2ecc71", "🛩️ Commercial"
 
-    # 6. UFO / Unknown (fallback)
     if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
         return "UFO", "#9b59b6", "🛸 UFO"
 
-    # 7. Default
     return "Other", "#95a5a6", "❓ Unknown"
 
 # ========== LIVE AIRCRAFT DATA FROM OPENSKY (with retry) ==========
@@ -556,7 +570,10 @@ UI = {
         "common_questions_title": "💬 Common Questions",
         "listen_response": "🔊 Listen to AI Response",
         "location_detected": "📍 Detected location: {location}",
-        "location_name_label": "Location Name (override)"
+        "location_name_label": "Location Name (override)",
+        "search_location": "🔍 Search Location",
+        "search_btn": "Search Coordinates",
+        "search_error": "❌ Location not found. Please try again."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -596,7 +613,10 @@ UI = {
         "common_questions_title": "💬 Questions courantes",
         "listen_response": "🔊 Écouter la réponse IA",
         "location_detected": "📍 Localisation détectée : {location}",
-        "location_name_label": "Nom de la localisation (modifiable)"
+        "location_name_label": "Nom de la localisation (modifiable)",
+        "search_location": "🔍 Rechercher un lieu",
+        "search_btn": "Rechercher les coordonnées",
+        "search_error": "❌ Lieu introuvable. Veuillez réessayer."
     }
 }
 
@@ -662,7 +682,7 @@ def main_page():
         st.markdown(f"**{L['author_tag']}**")
         st.divider()
 
-        # Male Voice button
+        # Voice buttons
         if st.button(L['voice_male_explain'], use_container_width=True):
             script = generate_male_voice_audio()
             try:
@@ -681,7 +701,6 @@ def main_page():
             except Exception as e:
                 st.error(f"Voice generation error: {e}")
 
-        # Female Voice button
         if st.button(L['voice_female_explain'], use_container_width=True):
             script = generate_female_voice_audio()
             try:
@@ -710,7 +729,7 @@ def main_page():
         st.info(L['live_note'])
         st.divider()
 
-        # ----- LOCATION DETECTION -----
+        # ----- LOCATION DETECTION & SEARCH -----
         detected = get_detected_location()
         if detected:
             default_city = f"{detected.get('city', '')}, {detected.get('country', '')}"
@@ -724,10 +743,44 @@ def main_page():
         # Show detected location
         st.info(L['location_detected'].format(location=default_city))
 
+        # Search location
+        st.markdown(f"### {L['search_location']}")
+        search_input = st.text_input("", placeholder="e.g., Kingston, Jamaica", key="location_search_input")
+        if st.button(L['search_btn'], use_container_width=True):
+            if search_input.strip():
+                lat, lon, display_name = geocode_location(search_input)
+                if lat is not None:
+                    # Update session state for location name and coordinates
+                    st.session_state.location_name = display_name
+                    st.session_state.lat_val = lat
+                    st.session_state.lon_val = lon
+                    st.success(f"📍 Found: {display_name}")
+                    st.rerun()
+                else:
+                    st.error(L['search_error'])
+            else:
+                st.warning("Please enter a location name.")
+
+        # Initialize session state for location name and coords if not set
+        if "location_name" not in st.session_state:
+            st.session_state.location_name = default_city
+        if "lat_val" not in st.session_state:
+            st.session_state.lat_val = default_lat
+        if "lon_val" not in st.session_state:
+            st.session_state.lon_val = default_lon
+
         # Allow override
-        location_name = st.text_input(L['location_name_label'], value=default_city)
-        u_lat = st.number_input(L['lat'], value=default_lat, format="%.4f")
-        u_lon = st.number_input(L['lon'], value=default_lon, format="%.4f")
+        location_name = st.text_input(L['location_name_label'], value=st.session_state.location_name, key="loc_name_override")
+        u_lat = st.number_input(L['lat'], value=st.session_state.lat_val, format="%.4f", key="lat_override")
+        u_lon = st.number_input(L['lon'], value=st.session_state.lon_val, format="%.4f", key="lon_override")
+
+        # If user manually changes the lat/lon or name, update session state
+        if location_name != st.session_state.location_name:
+            st.session_state.location_name = location_name
+        if u_lat != st.session_state.lat_val:
+            st.session_state.lat_val = u_lat
+        if u_lon != st.session_state.lon_val:
+            st.session_state.lon_val = u_lon
 
         st.divider()
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
@@ -1045,7 +1098,6 @@ def main_page():
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
-        # Common questions
         common_questions = [
             "What is the current threat level in my area?",
             "How many aircraft are currently within 50 km of my ground station?",
@@ -1093,7 +1145,6 @@ def main_page():
                     st.warning("Please enter a question.")
                 else:
                     with st.spinner(L['ai_thinking']):
-                        # Pass the location_name from sidebar
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
                     st.markdown(f"### {L['ai_response']}")
