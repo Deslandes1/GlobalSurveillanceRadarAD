@@ -8,3 +8,4 @@ supabase>=1.0.0
 ultralytics>=8.0.0
 opencv-python-headless>=4.5.0
 pytz>=2023.3
+skyfield>=1.48.0
