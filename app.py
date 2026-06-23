@@ -503,13 +503,13 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== LIVE AIRCRAFT FETCH (with adjustable max range via session state) ==========
+# ========== LIVE AIRCRAFT FETCH (with detection timestamp) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
     """
     Fetches ADS-B data from OpenSky and filters with strict sanity checks.
     Uses max_range from session state (default 180 km) to control detection radius.
+    Adds a 'detected_at' timestamp for each aircraft.
     """
-    # Get max range from session state (set by slider)
     max_range = st.session_state.get("max_range", 180)
     
     url = "https://opensky-network.org/api/states/all"
@@ -524,6 +524,7 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                 if not states:
                     return [], "no_data"
                 aircraft_list = []
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -532,7 +533,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                     if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
                         continue
                     
-                    # Compute distance
                     R = 6371
                     dlat = math.radians(lat - ground_lat)
                     dlon = math.radians(lon - ground_lon)
@@ -540,7 +540,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
                     dist_km = R * c
                     
-                    # ---- Use the adjustable max_range ----
                     if dist_km > max_range:
                         continue
                     
@@ -566,10 +565,10 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                         "distance_km": round(dist_km, 1),
                         "lat": lat,
                         "lon": lon,
-                        "verified": False
+                        "verified": False,
+                        "detected_at": now_str   # <-- NEW timestamp field
                     })
                 
-                # Sort by distance (closest first) and keep top 20
                 aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:20]
                 
                 st.session_state.cached_aircraft_data = aircraft_list
@@ -588,7 +587,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
             time.sleep(1 + attempt)
             continue
 
-    # If we exhausted retries, return cached or demo
     if st.session_state.cached_aircraft_data:
         st.session_state.api_status = "Cached (API unreachable)"
         return st.session_state.cached_aircraft_data, "cached"
@@ -598,10 +596,11 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
         return demo, "demo"
 
 def get_demo_aircraft():
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return [
-        {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 60},
-        {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30},
-        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45}
+        {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 60, "detected_at": now_str},
+        {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30, "detected_at": now_str},
+        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
 def get_satellites():
@@ -904,7 +903,7 @@ def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None
         radar_summary = "No aircraft detected within the current range."
     else:
         sorted_aircraft = sorted(aircraft, key=lambda x: x["distance_km"])
-        radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km" for a in sorted_aircraft[:10]])
+        radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})" for a in sorted_aircraft[:10]])
     
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     
@@ -1151,7 +1150,6 @@ def main_page():
             """
             st.markdown(legend_html, unsafe_allow_html=True)
             radar_json = json.dumps(aircraft_data)
-            # ----- UPDATED radar_html with alert sound -----
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
                 <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14; cursor:pointer;"></canvas>
@@ -1162,7 +1160,7 @@ def main_page():
                     let angle = 0;
                     let audioCtx = null;
                     let soundEnabled = false;
-                    let alertPlayed = false;   // track if we've played the alert sound for current aircraft presence
+                    let alertPlayed = false;
                     
                     canvas.addEventListener('click', () => {{
                         if (!audioCtx) {{
@@ -1176,7 +1174,6 @@ def main_page():
                         setTimeout(() => {{ canvas.style.borderColor = '#2a1f14'; }}, 200);
                     }});
                     
-                    // Existing ping sound (unchanged)
                     function ping() {{
                         if (!audioCtx || !soundEnabled) return;
                         try {{
@@ -1195,7 +1192,6 @@ def main_page():
                         }} catch (e) {{}}
                     }}
                     
-                    // New alert sound for aircraft detection
                     function playAlert() {{
                         if (!audioCtx) return;
                         try {{
@@ -1296,14 +1292,13 @@ def main_page():
                             drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse, dist);
                         }});
                         
-                        // --- Alert sound logic ---
                         if (data.length > 0) {{
                             if (!alertPlayed) {{
                                 playAlert();
                                 alertPlayed = true;
                             }}
                         }} else {{
-                            alertPlayed = false;   // reset when radar is empty
+                            alertPlayed = false;
                         }}
                         
                         let oldA = angle;
@@ -1361,9 +1356,12 @@ def main_page():
                     st.write(f"**Altitude:** {d['alt']}")
                     if "distance_km" in d:
                         st.write(f"**Distance:** {d['distance_km']:.1f} km")
+                    st.write(f"**Detected at:** {d.get('detected_at', 'N/A')}")   # <-- NEW
                     if not use_demo and 'lat' in d:
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
-                    st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
+                    # Include timestamp in download
+                    report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
+                    st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
     # Satellite tab
     with tab_sat:
@@ -1391,7 +1389,7 @@ def main_page():
             if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
                 for a in aircraft_data:
                     if "lat" in a and "lon" in a:
-                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
+                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km<br>Detected: {a.get('detected_at', 'N/A')}');"
             for s in sat_data:
                 markers += f"L.circleMarker([{u_lat + (hash(s['id'])%5-2.5)}, {u_lon + (hash(s['id'])%10-5)}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
             map_html = f"""
