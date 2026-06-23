@@ -22,39 +22,6 @@ try:
 except ImportError:
     SKYFIELD_AVAILABLE = False
 
-# ========== OPTIONAL: Object detection from uploaded images ==========
-def run_object_detection(image_bytes):
-    try:
-        from ultralytics import YOLO
-        import cv2
-        model = YOLO("yolov8n.pt")
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-            tmp.write(image_bytes)
-            tmp_path = tmp.name
-        results = model(tmp_path)
-        os.unlink(tmp_path)
-        img = cv2.imread(tmp_path)
-        if img is None:
-            return None, [{"error": "Could not read image"}]
-        detections = []
-        for result in results:
-            boxes = result.boxes
-            if boxes is not None:
-                for box in boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                    conf = float(box.conf[0])
-                    cls_id = int(box.cls[0])
-                    label = model.names[cls_id]
-                    detections.append({"label": label, "confidence": f"{conf:.2f}", "bbox": (x1, y1, x2, y2)})
-                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(img, f"{label} {conf:.2f}", (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return img_rgb, detections
-    except ImportError as e:
-        return None, [{"error": f"Missing dependencies: {e}"}]
-    except Exception as e:
-        return None, [{"error": str(e)}]
-
 # ========== CONFIGURATION ==========
 st.set_page_config(
     page_title="GlobalInternet.py | Surveillance Portal",
@@ -282,7 +249,7 @@ def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
-    This application features four main modules: Radar Control, Satellite Tracker, AI Analyst, and Object Detection.
+    This application features four main modules: Radar Control, Satellite Tracker, AI Analyst, and Flight Tracker.
     
     The Radar Control tab shows a 360-degree live radar display with a classic fetching sound. Click the radar screen to enable the audio and hear a sonar ping on every sweep. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation.
     
@@ -290,7 +257,7 @@ def generate_male_voice_audio():
     
     The AI Analyst is powered by Groq's Llama 3.1. You can ask any question about radar contacts or satellite predictions, and the AI provides a detailed threat analysis and recommendations.
     
-    The Object Detection tab lets you upload images and detect objects using YOLOv8 computer vision.
+    The Flight Tracker tab embeds a live map from Flightradar24, allowing you to see real-time aircraft movements around the world.
     
     The sidebar includes automatic location detection, language selection (now also Spanish and Chinese), a demo mode toggle, and secure logout. You can search for any location and the app will update the radar to that area. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -314,7 +281,7 @@ def generate_female_voice_audio():
     
     The AI Analyst tab uses Groq's Llama 3.1 to answer your questions about radar contacts and satellite predictions, providing threat analysis and recommendations.
     
-    The Object Detection tab lets you upload images and detect objects with YOLOv8.
+    The Flight Tracker tab embeds a live map from Flightradar24, giving you a global view of real‑time air traffic.
     
     The sidebar provides automatic location detection, language selection (now also Spanish and Chinese), a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -790,7 +757,7 @@ UI = {
         "radar_tab": "📡 Radar Control",
         "sat_tab": "🛰️ Satellite Tracker",
         "ai_tab": "🤖 AI Analyst",
-        "detect_tab": "🕵️ Object Detection",
+        "detect_tab": "✈️ Flight Tracker",
         "title": "GLOBAL SURVEILLANCE RADAR",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
@@ -810,11 +777,8 @@ UI = {
         "ai_response": "💡 AI Analyst Report",
         "security_badge": "🔐 Global Security Shield active",
         "security_caption": "All data is secured and anonymized",
-        "detect_title": "Real‑Time Object Detection",
-        "detect_desc": "Upload an image (JPEG, PNG) to detect objects using YOLOv8.",
-        "upload_label": "Choose an image...",
-        "detect_btn": "Detect Objects",
-        "detection_results": "Detected Objects",
+        "flight_tracker_title": "✈️ Live Flight Tracker",
+        "flight_tracker_desc": "Real-time aircraft tracking powered by Flightradar24",
         "refresh_btn": "Refresh Live Data",
         "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
@@ -856,7 +820,7 @@ UI = {
         "radar_tab": "📡 Contrôle Radar",
         "sat_tab": "🛰️ Suivi Satellite",
         "ai_tab": "🤖 Analyste IA",
-        "detect_tab": "🕵️ Détection",
+        "detect_tab": "✈️ Trafic Aérien",
         "title": "RADAR DE SURVEILLANCE MONDIAL",
         "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion",
@@ -876,11 +840,8 @@ UI = {
         "ai_response": "💡 Rapport IA",
         "security_badge": "🔐 Bouclier de sécurité actif",
         "security_caption": "Toutes les données sont sécurisées",
-        "detect_title": "Détection d'objets",
-        "detect_desc": "Téléchargez une image pour détecter des objets avec YOLOv8.",
-        "upload_label": "Choisissez une image...",
-        "detect_btn": "Détecter",
-        "detection_results": "Objets détectés",
+        "flight_tracker_title": "✈️ Suivi de vol en direct",
+        "flight_tracker_desc": "Suivi aérien en temps réel par Flightradar24",
         "refresh_btn": "Actualiser",
         "live_note": "💻 Pour exécuter cette application sur votre propre ordinateur et obtenir des données en direct, cliquez sur les instructions ci‑dessous.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
@@ -922,7 +883,7 @@ UI = {
         "radar_tab": "📡 Control de Radar",
         "sat_tab": "🛰️ Rastreador de Satélites",
         "ai_tab": "🤖 Analista IA",
-        "detect_tab": "🕵️ Detección de Objetos",
+        "detect_tab": "✈️ Rastreador de Vuelos",
         "title": "RADAR DE VIGILANCIA GLOBAL",
         "author_tag": "Construido por Gesner Deslandes",
         "logout": "Cerrar Sesión",
@@ -942,11 +903,8 @@ UI = {
         "ai_response": "💡 Informe del Analista IA",
         "security_badge": "🔐 Escudo de seguridad global activo",
         "security_caption": "Todos los datos están cifrados y anonimizados",
-        "detect_title": "Detección de Objetos en Tiempo Real",
-        "detect_desc": "Sube una imagen (JPEG, PNG) para detectar objetos con YOLOv8.",
-        "upload_label": "Elige una imagen...",
-        "detect_btn": "Detectar Objetos",
-        "detection_results": "Objetos Detectados",
+        "flight_tracker_title": "✈️ Rastreador de vuelos en vivo",
+        "flight_tracker_desc": "Seguimiento de aeronaves en tiempo real con Flightradar24",
         "refresh_btn": "Actualizar Datos",
         "live_note": "💻 Para ejecutar esta aplicación en tu propia computadora y obtener datos en vivo, haz clic en las instrucciones abajo.",
         "voice_male_explain": "🎙️ Voz IA Masculina – Explicar App",
@@ -988,7 +946,7 @@ UI = {
         "radar_tab": "📡 雷达控制",
         "sat_tab": "🛰️ 卫星跟踪器",
         "ai_tab": "🤖 人工智能分析员",
-        "detect_tab": "🕵️ 物体检测",
+        "detect_tab": "✈️ 航班跟踪器",
         "title": "全球监视雷达",
         "author_tag": "由 Gesner Deslandes 构建",
         "logout": "退出会话",
@@ -1008,11 +966,8 @@ UI = {
         "ai_response": "💡 人工智能分析报告",
         "security_badge": "🔐 全球安全盾牌已激活",
         "security_caption": "所有数据均已加密并匿名化",
-        "detect_title": "实时物体检测",
-        "detect_desc": "上传图像（JPEG， PNG）以使用 YOLOv8 检测物体。",
-        "upload_label": "选择图像...",
-        "detect_btn": "检测物体",
-        "detection_results": "检测到的物体",
+        "flight_tracker_title": "✈️ 实时航班跟踪",
+        "flight_tracker_desc": "由 Flightradar24 提供支持的实时飞机跟踪",
         "refresh_btn": "刷新实时数据",
         "live_note": "💻 要在您自己的计算机上运行此应用程序以获取完整的实时数据，请单击下面的说明。",
         "voice_male_explain": "🎙️ 男性人工智能语音 – 解释应用",
@@ -1316,8 +1271,7 @@ def main_page():
             st.rerun()
 
     # ---- Satellite data is NOT fetched here; it will be lazy-loaded in the satellite tab ----
-    # We'll pass a placeholder and fetch only when needed.
-    sat_data = []  # will be filled in satellite tab
+    sat_data = []  # placeholder
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
@@ -1562,7 +1516,7 @@ def main_page():
                     report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
-    # Satellite tab – LAZY LOAD (fetches only when this tab is opened)
+    # Satellite tab – lazy load
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -1570,54 +1524,42 @@ def main_page():
         if not SKYFIELD_AVAILABLE:
             st.error("❌ Skyfield library is not installed. Please install it with: pip install skyfield")
         else:
-            # Try to get satellite data with a spinner
             with st.spinner("🛰️ Fetching real-time satellite positions from Celestrak..."):
                 sat_data = get_satellite_data(u_lat, u_lon)
             
             if st.session_state.satellite_error or sat_data is None or len(sat_data) == 0:
                 st.error("❌ Unable to fetch real-time satellite data from Celestrak. Please check your internet connection and try again.")
                 if st.button("🔄 Retry Satellite Fetch"):
-                    # Clear cache and force refetch
                     st.session_state.satellite_tle_cache = None
                     st.session_state.satellite_cache_time = None
                     st.session_state.satellite_positions = None
                     st.session_state.satellite_error = False
                     st.rerun()
-                # Show a fallback message but NOT fallback data
                 st.info("ℹ️ Satellite positions will appear here once the TLE data is successfully retrieved.")
-                # Do not display any fake positions.
             else:
                 st.success("✅ Real-time satellite positions successfully loaded from Celestrak (TLE)")
                 col_ctrl, col_map = st.columns([1, 2])
                 with col_ctrl:
                     st.subheader("Live Satellite Positions")
                     st.caption("Positions calculated from real TLE data (updated every 6 hours)")
-                    if sat_data:
-                        for s in sat_data:
-                            with st.container(border=True):
-                                st.write(f"**{s['id']}** ({s['name']})")
-                                st.caption(f"Position: {s['lat']:.2f}°N, {s['lon']:.2f}°W")
-                                st.caption(f"Altitude: {s['alt']}")
-                                st.caption(f"Updated: {s['detected_at']}")
-                    else:
-                        st.warning("No satellite data available.")
+                    for s in sat_data:
+                        with st.container(border=True):
+                            st.write(f"**{s['id']}** ({s['name']})")
+                            st.caption(f"Position: {s['lat']:.2f}°N, {s['lon']:.2f}°W")
+                            st.caption(f"Altitude: {s['alt']}")
+                            st.caption(f"Updated: {s['detected_at']}")
                 
                 with col_map:
                     st.subheader(L['sky_view'])
                     tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                     attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
                     markers = ""
-                    
-                    # Aircraft markers
                     if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
                         for a in aircraft_data:
                             if "lat" in a and "lon" in a:
                                 markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('✈️ {a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
-                    
-                    # Satellite markers (accurate positions)
                     for s in sat_data:
                         markers += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color:'{s['color']}', radius:10, weight:2}}).addTo(map).bindPopup('🛰️ {s['id']}<br>{s['name']}<br>Alt: {s['alt']}');"
-                    
                     map_html = f"""
                     <html><head>
                         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -1635,7 +1577,7 @@ def main_page():
                     """
                     components.html(map_html, height=550)
 
-    # AI Analyst tab – also lazy loads satellites if needed
+    # AI Analyst tab
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1697,10 +1639,9 @@ def main_page():
                     st.warning("Please enter a question.")
                 else:
                     with st.spinner(L['ai_thinking']):
-                        # Lazy load satellite data if needed for the analysis
                         sat_data = get_satellite_data(u_lat, u_lon)
                         if sat_data is None:
-                            sat_data = []  # pass empty list if not available
+                            sat_data = []
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
                     st.rerun()
@@ -1718,27 +1659,15 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # Object Detection tab
+    # Flight Tracker tab (replaces Object Detection)
     with tab_detect:
-        st.title(L['detect_title'])
-        st.markdown(L['detect_desc'])
-        uploaded_file = st.file_uploader(L['upload_label'], type=["jpg", "jpeg", "png"])
-        if uploaded_file is not None:
-            img_bytes = uploaded_file.read()
-            st.image(img_bytes, caption="Uploaded Image", use_container_width=True)
-            if st.button(L['detect_btn']):
-                with st.spinner("Running YOLOv8..."):
-                    annotated_img, detections = run_object_detection(img_bytes)
-                if annotated_img is not None:
-                    st.image(annotated_img, caption="Detected Objects", use_container_width=True)
-                    st.subheader(L['detection_results'])
-                    if detections and "error" not in detections[0]:
-                        for d in detections:
-                            st.write(f"- {d['label']} (confidence {d['confidence']})")
-                    else:
-                        st.warning("No objects detected.")
-                else:
-                    st.error(f"Detection failed: {detections[0].get('error', 'Unknown error')}")
+        st.title(L['flight_tracker_title'])
+        st.markdown(L['flight_tracker_desc'])
+        st.components.v1.iframe(
+            "https://www.flightradar24.com/18.74,-69.58/8",
+            height=600,
+            scrolling=True
+        )
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
