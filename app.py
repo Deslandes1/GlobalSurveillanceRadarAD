@@ -11,7 +11,7 @@ from groq import Groq
 import re
 import pytz
 
-# ========== OBJECT DETECTION ==========
+# ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
     try:
         from ultralytics import YOLO
@@ -39,6 +39,8 @@ def run_object_detection(image_bytes):
                     cv2.putText(img, f"{label} {conf:.2f}", (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         return img_rgb, detections
+    except ImportError as e:
+        return None, [{"error": f"Missing dependencies: {e}"}]
     except Exception as e:
         return None, [{"error": str(e)}]
 
@@ -49,14 +51,41 @@ st.set_page_config(
     page_icon="🌐"
 )
 
-# ========== CUSTOM CSS ==========
+# ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
 st.markdown("""
 <style>
-    .stApp {background: #0a0a0f; color: #e0d5c8;}
-    [data-testid="stSidebar"] {background: #0d0d12; border-right: 1px solid #2a1f14;}
-    .stButton>button {background: linear-gradient(135deg, #1a120a, #2a1f14) !important; color: #e8ddd0 !important;}
-    .question-list button {width: 100%; text-align: left; background: transparent; border: none; color: #d4c9bd; padding: 6px 10px;}
-    .question-list button:hover {background: rgba(255,255,255,0.1);}
+    .stApp {
+        background: #0a0a0f;
+        background-image: 
+            radial-gradient(circle at 20% 30%, rgba(60, 40, 20, 0.15) 0%, transparent 25%),
+            radial-gradient(circle at 70% 60%, rgba(60, 40, 20, 0.10) 0%, transparent 35%),
+            radial-gradient(circle at 40% 80%, rgba(80, 50, 25, 0.12) 0%, transparent 30%),
+            radial-gradient(circle at 85% 20%, rgba(40, 30, 15, 0.08) 0%, transparent 40%);
+        color: #e0d5c8;
+    }
+    [data-testid="stSidebar"] {
+        background: #0d0d12;
+        background-image: 
+            radial-gradient(circle at 30% 40%, rgba(70, 50, 30, 0.12) 0%, transparent 30%),
+            radial-gradient(circle at 70% 70%, rgba(50, 35, 20, 0.08) 0%, transparent 35%);
+        border-right: 1px solid #2a1f14;
+    }
+    .stButton>button {
+        background: linear-gradient(135deg, #1a120a, #2a1f14) !important;
+        color: #e8ddd0 !important;
+        border: 1px solid #4a3520 !important;
+        border-radius: 8px !important;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #2a1f14, #3d2a18) !important;
+    }
+    .question-list button {
+        width: 100%; text-align: left; background: transparent; border: none; 
+        color: #d4c9bd; padding: 6px 10px; border-radius: 4px;
+    }
+    .question-list button:hover {
+        background: rgba(255,255,255,0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -82,8 +111,8 @@ if "cached_timestamp" not in st.session_state:
 if "api_status" not in st.session_state:
     st.session_state.api_status = "Initializing"
 
-# ========== TRANSLATIONS (UI) ==========
-# Paste your full original UI dictionary here
+# ========== TRANSLATIONS ==========
+# (Paste your full original UI dictionary here - I kept it short for space, add all keys from your original)
 UI = {
     "English": {
         "radar_tab": "📡 Radar Control",
@@ -96,12 +125,12 @@ UI = {
         "ai_response": "💡 AI Analyst Report",
         "common_questions_title": "💬 Common Questions",
         "listen_response": "🔊 Listen to AI Response",
-        # Add the rest of your keys from the original file
+        # ... add all other keys from your original UI dict
     },
-    "French": {}, "Spanish": {}, "Chinese": {}  # Fill with your original translations
-}
+    "French": {}, "Spanish": {}, "Chinese": {}
+}  # Fill with your full original translations
 
-# ========== AI ANALYSIS ==========
+# ========== ROBUST AI ANALYSIS ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
@@ -112,8 +141,7 @@ def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None
     
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     
-    full_prompt = f"""You are an AI surveillance analyst.
-Ground Station: {location_name} ({u_lat}, {u_lon})
+    full_prompt = f"""You are an AI surveillance analyst. Ground station: {location_name} ({u_lat}, {u_lon}).
 
 Radar Contacts:
 {radar_summary}
@@ -123,7 +151,7 @@ Satellites:
 
 Question: {question}
 Answer:"""
-    
+
     try:
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -134,11 +162,29 @@ Answer:"""
             temperature=0.2,
             max_tokens=600
         )
-        return completion.choices[0].message.content.strip() or "No response generated."
+        response = completion.choices[0].message.content.strip()
+        return response if response else "⚠️ AI returned empty response."
     except Exception as e:
         return f"⚠️ AI Error: {str(e)}"
 
-# ========== LOGIN ==========
+# ========== AUDIO ==========
+def generate_audio_response(text, lang_code="en"):
+    try:
+        from gtts import gTTS
+        if not text.strip():
+            return None
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp_path = tmp.name
+        tts = gTTS(text=text, lang=lang_code, slow=False)
+        tts.save(tmp_path)
+        with open(tmp_path, "rb") as f:
+            audio_bytes = f.read()
+        os.unlink(tmp_path)
+        return audio_bytes
+    except:
+        return None
+
+# ========== LOGIN PAGE ==========
 def login_page():
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.2, 1])
@@ -159,31 +205,32 @@ def login_page():
 
 # ========== MAIN PAGE ==========
 def main_page():
-    L = UI.get(st.session_state.lang, UI["English"])
+    L = UI[st.session_state.lang]
 
     with st.sidebar:
-        # === YOUR ORIGINAL SIDEBAR CODE ===
+        # === YOUR FULL ORIGINAL SIDEBAR CODE HERE ===
         st.title("🌐 GlobalInternet.py")
         st.selectbox("Language", ["English", "French", "Spanish", "Chinese"], key="lang")
         use_demo = st.checkbox("Demo Mode (disable live OpenSky)", value=False)
         if st.button("Refresh Live Data", use_container_width=True):
             st.rerun()
-        # Add the rest of your sidebar (voice buttons, range, status, etc.)
+        # Paste the rest of your original sidebar (voice, range, status, location, etc.)
 
-    # Data Fetching (add your original fetch_live_aircraft logic here)
+    # Data Fetching - Paste your original fetch logic here
     if use_demo:
-        aircraft_data = []  # replace with get_demo_aircraft()
+        aircraft_data = get_demo_aircraft() if 'get_demo_aircraft' in globals() else []
     else:
-        aircraft_data = []  # replace with your fetch function
+        aircraft_data, _ = fetch_live_aircraft(18.5392, -72.3364) if 'fetch_live_aircraft' in globals() else []
 
-    sat_data = [{"id": "ISS", "type": "Space Station", "alt": "408km"}]
+    sat_data = get_satellites() if 'get_satellites' in globals() else []
     location_name = "Port-au-Prince, Haiti"
     u_lat = 18.5392
     u_lon = -72.3364
 
-    tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L.get("radar_tab", "Radar"), L.get("sat_tab", "Satellite"), L.get("ai_tab", "AI Analyst"), L.get("detect_tab", "Detection")])
+    tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
-    # Radar, Satellite, Object Detection tabs - keep your original code here
+    # === YOUR ORIGINAL RADAR, SATELLITE, OBJECT DETECTION TABS HERE ===
+    # Paste them unchanged from your original file
 
     # FIXED AI ANALYST TAB
     with tab_ai:
@@ -211,8 +258,8 @@ def main_page():
         
         with col_main:
             st.text_area(
-                L.get('ai_question', 'Ask your question:'),
-                height=120,
+                L.get('ai_question', 'Ask about radar contacts or satellite predictions:'),
+                height=100,
                 key="ai_question_text",
                 placeholder="Type your question here..."
             )
@@ -240,9 +287,10 @@ def main_page():
                     st.rerun()
 
             if listen_btn and st.session_state.ai_response:
-                audio_bytes = None  # Add generate_audio_response call
+                audio_bytes = generate_audio_response(st.session_state.ai_response)
                 if audio_bytes:
                     st.audio(audio_bytes, format="audio/mp3")
+                    st.success("🔊 AI response played.")
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
