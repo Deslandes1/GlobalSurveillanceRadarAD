@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 from groq import Groq
 import pandas as pd
 import re
-import pytz  # <-- FOR TIMEZONE SUPPORT
+import pytz
 
 # ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
@@ -504,43 +504,43 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== ENHANCED LIVE AIRCRAFT FETCH (aggressive retry) ==========
-def fetch_live_aircraft(ground_lat, ground_lon, max_retries=10, initial_delay=1):
+# ========== OPTIMIZED LIVE AIRCRAFT FETCH (fast) ==========
+def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3, initial_delay=0.5):
     """
-    Fetches ADS-B data from OpenSky with aggressive retry logic.
-    Uses max_range from session state (default 180 km).
-    Returns live data, cached data, or demo as absolute last resort.
+    Fast fetch with immediate cache return if data is recent.
+    Only tries 3 retries with short timeout.
     """
     max_range = st.session_state.get("max_range", 180)
+    haiti_tz = pytz.timezone('America/Port-au-Prince')
+    
+    # ----- Check for recent cached data FIRST -----
+    if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
+        age = (datetime.now() - st.session_state.cached_timestamp).total_seconds()
+        if age < 60:  # less than 1 minute old
+            st.session_state.api_status = "Cached (recent)"
+            return st.session_state.cached_aircraft_data, "cached"
+    
+    # ----- No recent cache – attempt live fetch with limited retries -----
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
     
-    # Get Haiti timezone
-    haiti_tz = pytz.timezone('America/Port-au-Prince')
-    
     for attempt in range(max_retries):
         try:
-            response = requests.get(url, headers=headers, timeout=15)
-            
+            response = requests.get(url, headers=headers, timeout=10)  # short timeout
             if response.status_code == 200:
                 data = response.json()
                 states = data.get("states", [])
-                
                 if not states:
-                    # No data from OpenSky (empty response)
+                    # No aircraft detected
                     st.session_state.api_status = "Live (No aircraft detected)"
                     if st.session_state.cached_aircraft_data:
-                        # Return cached if available, but keep trying on next refresh
                         return st.session_state.cached_aircraft_data, "cached"
-                    else:
-                        # Wait and retry
-                        time.sleep(initial_delay * (attempt + 1))
-                        continue
+                    time.sleep(0.5)
+                    continue
                 
-                # Process the live data
+                # Process data
                 aircraft_list = []
                 now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
-                
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -548,29 +548,23 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=10, initial_delay=1)
                         continue
                     if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
                         continue
-                    
                     R = 6371
                     dlat = math.radians(lat - ground_lat)
                     dlon = math.radians(lon - ground_lon)
                     a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
                     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
                     dist_km = R * c
-                    
                     if dist_km > max_range:
                         continue
-                    
                     alt = s[7] if s[7] is not None else 0
                     if alt < -1000 or alt > 60000:
                         continue
-                    
                     callsign = s[1].strip() if s[1] else s[0][:6].upper()
                     if not callsign or len(callsign) < 2:
                         continue
                     if callsign in ["N/A", "UNKNOWN", "-----", "0", "NA"]:
                         continue
-                    
                     cat, color, label = classify_aircraft(alt, callsign)
-                    
                     aircraft_list.append({
                         "id": callsign,
                         "type": cat,
@@ -592,44 +586,30 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=10, initial_delay=1)
                     st.session_state.api_status = "Live"
                     return aircraft_list, "live"
                 else:
-                    # No aircraft within range
                     st.session_state.api_status = "Live (No aircraft within range)"
                     return st.session_state.cached_aircraft_data or [], "cached"
             
             elif response.status_code == 429:
-                # Rate limited – wait and retry
-                wait_time = (2 ** attempt) + random.uniform(0, 1)
-                st.session_state.api_status = f"Rate limited (retry in {wait_time:.1f}s)"
-                time.sleep(wait_time)
+                wait = (2 ** attempt) * 0.5
+                time.sleep(wait)
                 continue
-            
             else:
-                # Other error – wait and retry
-                st.session_state.api_status = f"Error {response.status_code}, retrying..."
-                time.sleep(initial_delay * (attempt + 1))
+                time.sleep(0.5)
                 continue
-                
-        except requests.exceptions.Timeout:
-            st.session_state.api_status = f"Timeout (retry {attempt+1}/{max_retries})"
-            time.sleep(initial_delay * (attempt + 1))
-            continue
         except Exception as e:
-            st.session_state.api_status = f"Error: {str(e)[:30]} (retry {attempt+1}/{max_retries})"
-            time.sleep(initial_delay * (attempt + 1))
+            time.sleep(0.5)
             continue
     
-    # If we exhausted all retries
+    # Retries exhausted – return whatever cache we have, or demo
     if st.session_state.cached_aircraft_data:
         st.session_state.api_status = "Cached (Live unavailable – retrying)"
         return st.session_state.cached_aircraft_data, "cached"
     else:
-        # Only show demo if absolutely no data exists
         st.session_state.api_status = "Demo (No cached data – waiting for signal)"
         demo = get_demo_aircraft()
         return demo, "demo"
 
 def get_demo_aircraft():
-    import pytz
     haiti_tz = pytz.timezone('America/Port-au-Prince')
     now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     return [
@@ -1159,49 +1139,20 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    # ---- Fetch data with aggressive retry ----
+    # ---- Fetch data with smart fast cache ----
     if use_demo:
         aircraft_data = get_demo_aircraft()
         st.session_state.api_status = "Demo (User selected)"
     else:
-        # Try to fetch live data
+        # Fast fetch (will use cache if recent)
         aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
-        
-        # Handle status
-        if status == "demo":
-            st.warning("📡 No live signal yet. Waiting for OpenSky data... Retrying every 10 seconds.")
-            # We still display the demo data, but the status shows we're waiting
-            st.session_state.api_status = "Waiting for signal..."
-            # Schedule auto-refresh after 10 seconds (only if auto-refresh is not manual)
-            if refresh_interval != "Manual only":
-                # Use streamlit's built-in rerun after a delay (we'll use time.sleep in a separate thread? Better to use st.empty and rerun)
-                # Actually we can use st.experimental_rerun but not available. We'll use st.empty with a timer.
-                # Simpler: set a session state flag to rerun after some time.
-                # Use st.rerun with a timer: we can't sleep in the main thread, but we can use st.empty and a placeholder.
-                # We'll use a workaround: set a timeout in the session and then rerun.
-                if 'next_refresh' not in st.session_state:
-                    st.session_state.next_refresh = time.time() + 10
-                if time.time() > st.session_state.next_refresh:
-                    st.session_state.next_refresh = time.time() + 10
-                    st.rerun()
-        elif status == "cached":
-            st.info("📡 Live data temporarily unavailable – showing cached data. Retrying...")
-            if refresh_interval != "Manual only":
-                if 'next_refresh' not in st.session_state:
-                    st.session_state.next_refresh = time.time() + 5
-                if time.time() > st.session_state.next_refresh:
-                    st.session_state.next_refresh = time.time() + 5
-                    st.rerun()
-        else:
-            # Live data – update the status
-            if aircraft_data:
-                st.session_state.api_status = "Live"
-            else:
-                st.session_state.api_status = "Live (No aircraft detected)"
-            # Reset the refresh timer
-            st.session_state.next_refresh = time.time() + (seconds if refresh_interval != "Manual only" else 300)
-    
-    # Auto-refresh: if interval is set, schedule a rerun after the interval
+        # If we got cached data, let the user know we'll refresh soon
+        if status == "cached" and aircraft_data:
+            st.info("📡 Using cached data (live refresh in progress)")
+        elif status == "demo":
+            st.warning("📡 No live signal yet. Waiting for OpenSky data...")
+
+    # Auto-refresh timer
     if refresh_interval != "Manual only":
         seconds = int(refresh_interval.split()[0])
         if 'next_refresh' not in st.session_state:
