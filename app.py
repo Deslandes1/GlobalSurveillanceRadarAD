@@ -503,12 +503,15 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== FIXED LIVE AIRCRAFT FETCH (accurate) ==========
+# ========== LIVE AIRCRAFT FETCH (with adjustable max range via session state) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
     """
     Fetches ADS-B data from OpenSky and filters with strict sanity checks.
-    Only returns aircraft within 150 km (maximum credible range for a ground station).
+    Uses max_range from session state (default 180 km) to control detection radius.
     """
+    # Get max range from session state (set by slider)
+    max_range = st.session_state.get("max_range", 180)
+    
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
     
@@ -521,7 +524,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                 if not states:
                     return [], "no_data"
                 aircraft_list = []
-                # Keep track of previous positions to detect ghosts (optional)
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -538,42 +540,38 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
                     dist_km = R * c
                     
-                    # ---- HARDCORE FILTER: only consider aircraft within 150 km ----
-                    if dist_km > 150.0:
+                    # ---- Use the adjustable max_range ----
+                    if dist_km > max_range:
                         continue
                     
                     alt = s[7] if s[7] is not None else 0
-                    if alt < -1000 or alt > 60000:  # sanity check
+                    if alt < -1000 or alt > 60000:
                         continue
                     
                     callsign = s[1].strip() if s[1] else s[0][:6].upper()
                     if not callsign or len(callsign) < 2:
                         continue
-                    # Reject obvious ghost callsigns
                     if callsign in ["N/A", "UNKNOWN", "-----", "0", "NA"]:
                         continue
                     
                     cat, color, label = classify_aircraft(alt, callsign)
                     
-                    # Determine if this is likely a commercial flight (for verification)
-                    # We'll trust the classification; if it's "Commercial" and distance < 50 km, it's likely real.
                     aircraft_list.append({
                         "id": callsign,
                         "type": cat,
                         "color": color,
                         "label": label,
                         "alt": f"{int(alt) if alt else 'N/A'}ft",
-                        "dist": min(dist_km / 150.0, 0.95),  # normalized for radar
+                        "dist": min(dist_km / max_range, 0.95),
                         "distance_km": round(dist_km, 1),
                         "lat": lat,
                         "lon": lon,
-                        "verified": False  # we'll set to True if we cross-check (optional)
+                        "verified": False
                     })
                 
                 # Sort by distance (closest first) and keep top 20
                 aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:20]
                 
-                # Cache the result
                 st.session_state.cached_aircraft_data = aircraft_list
                 st.session_state.cached_timestamp = datetime.now()
                 st.session_state.api_status = "Live"
@@ -584,7 +582,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                 time.sleep(wait_time)
                 continue
             else:
-                # Other errors, try again with backoff
                 time.sleep(1 + attempt)
                 continue
         except Exception as e:
@@ -616,7 +613,6 @@ def get_satellites():
     ]
 
 # ========== TRANSLATIONS ==========
-# (keep as is, no changes)
 UI = {
     "English": {
         "radar_tab": "📡 Radar Control",
@@ -902,16 +898,11 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== FIXED AI ANALYSIS (more honest) ==========
+# ========== AI ANALYSIS (honest) ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
-    # Only consider aircraft within 150 km (already filtered in fetch)
-    # but we can further filter to those within 50 km for "closest" questions
-    # We will pass the entire list, but the AI will see distance values.
-    
     if not aircraft:
-        radar_summary = "No aircraft detected within 150 km of your location."
+        radar_summary = "No aircraft detected within the current range."
     else:
-        # Sort by distance and show up to 10
         sorted_aircraft = sorted(aircraft, key=lambda x: x["distance_km"])
         radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km" for a in sorted_aircraft[:10]])
     
@@ -922,13 +913,13 @@ Use the following live ADS-B data to answer the question.
 CRITICAL INSTRUCTIONS:
 - Only report aircraft that are actually present in the list. Do not invent any contacts.
 - If the question asks for the closest aircraft, compute the minimum distance from the list and report that aircraft's ID, type, altitude, and distance.
-- If there are no aircraft within 50 km, clearly state that.
+- If there are no aircraft within the current range, clearly state that.
 - Classifications are based on callsign and altitude heuristics; do not over‑interpret.
 - Be concise and factual.
 
 Ground Station: {location_name} ({u_lat}, {u_lon})
 
-Radar Contacts (within 150 km):
+Radar Contacts:
 {radar_summary}
 
 Satellites (for context):
@@ -1050,7 +1041,21 @@ def main_page():
 
         st.divider()
         
-        # Local instructions
+        # ----- NEW: MAX RANGE SLIDER -----
+        st.markdown("### 📡 Max Detection Range")
+        max_range = st.slider(
+            "Distance from ground station (km)",
+            min_value=50,
+            max_value=300,
+            value=180,
+            step=10,
+            key="max_range",  # stored in session state
+            help="Adjust the maximum distance to include aircraft. 180 km covers all of Haiti."
+        )
+        st.caption(f"Current range: **{max_range} km**")
+        st.divider()
+        
+        # ----- LOCAL RUN INSTRUCTIONS -----
         with st.expander(L['local_instructions_title'], expanded=False):
             st.markdown(f"""
             <div class="local-instructions">
@@ -1068,52 +1073,33 @@ def main_page():
             """, unsafe_allow_html=True)
         st.divider()
 
-        # Location
-        detected = get_detected_location()
-        if detected:
-            default_city = f"{detected.get('city', '')}, {detected.get('country', '')}"
-            default_lat = detected.get('lat', 18.5392)
-            default_lon = detected.get('lon', -72.3364)
+        # ----- FIXED LOCATION: Port-au-Prince, Haiti -----
+        st.markdown("### 📍 Fixed Location")
+        st.info("**Port-au-Prince, Haiti** (18.5392, -72.3364)")
+        st.caption("Radar is fixed to cover all of Haiti.")
+        
+        # Display the coordinates as read-only inputs (or hidden)
+        # but we still need to pass them to the rest of the app
+        location_name = "Port-au-Prince, Haiti"
+        u_lat = 18.5392
+        u_lon = -72.3364
+
+        # We still keep the override fields for future flexibility, but default to Haiti
+        # and we can hide the location override if not needed, but we'll keep them for now.
+        st.markdown("---")
+        st.markdown("#### Override (optional)")
+        location_name_override = st.text_input("Location Name (override)", value=location_name, key="loc_name_override")
+        u_lat_override = st.number_input("Latitude", value=u_lat, format="%.4f", key="lat_override")
+        u_lon_override = st.number_input("Longitude", value=u_lon, format="%.4f", key="lon_override")
+        
+        # Use the override values if changed, else use defaults
+        if location_name_override != location_name or u_lat_override != u_lat or u_lon_override != u_lon:
+            location_name = location_name_override
+            u_lat = u_lat_override
+            u_lon = u_lon_override
+            st.caption("Using custom location override.")
         else:
-            default_city = "Port-au-Prince, Haiti"
-            default_lat = 18.5392
-            default_lon = -72.3364
-
-        st.info(L['location_detected'].format(location=default_city))
-
-        st.markdown(f"### {L['search_location']}")
-        search_input = st.text_input("", placeholder="e.g., Kingston, Jamaica", key="location_search_input")
-        if st.button(L['search_btn'], use_container_width=True):
-            if search_input.strip():
-                lat, lon, display_name = geocode_location(search_input)
-                if lat is not None:
-                    st.session_state.location_name = display_name
-                    st.session_state.lat_val = lat
-                    st.session_state.lon_val = lon
-                    st.success(f"📍 Found: {display_name}")
-                    st.rerun()
-                else:
-                    st.error(L['search_error'])
-            else:
-                st.warning("Please enter a location name.")
-
-        if "location_name" not in st.session_state:
-            st.session_state.location_name = default_city
-        if "lat_val" not in st.session_state:
-            st.session_state.lat_val = default_lat
-        if "lon_val" not in st.session_state:
-            st.session_state.lon_val = default_lon
-
-        location_name = st.text_input(L['location_name_label'], value=st.session_state.location_name, key="loc_name_override")
-        u_lat = st.number_input(L['lat'], value=st.session_state.lat_val, format="%.4f", key="lat_override")
-        u_lon = st.number_input(L['lon'], value=st.session_state.lon_val, format="%.4f", key="lon_override")
-
-        if location_name != st.session_state.location_name:
-            st.session_state.location_name = location_name
-        if u_lat != st.session_state.lat_val:
-            st.session_state.lat_val = u_lat
-        if u_lon != st.session_state.lon_val:
-            st.session_state.lon_val = u_lon
+            st.caption("Using default Port-au-Prince, Haiti.")
 
         st.divider()
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
@@ -1146,7 +1132,7 @@ def main_page():
         st.subheader(L['author_tag'])
         st.info(L['audio_note'])
         
-        # Show closest aircraft (within 50 km) info
+        # Show closest aircraft (within current range) info
         close_aircraft = [a for a in aircraft_data if "distance_km" in a and a["distance_km"] <= 50]
         if close_aircraft:
             closest = min(close_aircraft, key=lambda x: x["distance_km"])
