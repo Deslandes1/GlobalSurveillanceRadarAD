@@ -12,6 +12,7 @@ import streamlit.components.v1 as components
 from groq import Groq
 import pandas as pd
 import re
+import pytz  # <-- ADDED FOR TIMEZONE SUPPORT
 
 # ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
@@ -503,17 +504,20 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== LIVE AIRCRAFT FETCH (with AM/PM timestamp) ==========
+# ========== LIVE AIRCRAFT FETCH (with Haiti timezone) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
     """
     Fetches ADS-B data from OpenSky and filters with strict sanity checks.
     Uses max_range from session state (default 180 km) to control detection radius.
-    Adds a 'detected_at' timestamp in 12-hour AM/PM format.
+    Adds a 'detected_at' timestamp in 12-hour AM/PM format with Haiti local timezone.
     """
     max_range = st.session_state.get("max_range", 180)
     
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
+    
+    # Get Haiti timezone
+    haiti_tz = pytz.timezone('America/Port-au-Prince')
     
     for attempt in range(max_retries):
         try:
@@ -524,7 +528,8 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                 if not states:
                     return [], "no_data"
                 aircraft_list = []
-                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                # FIXED: Use Haiti local timezone
+                now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -596,7 +601,9 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
         return demo, "demo"
 
 def get_demo_aircraft():
-    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    import pytz
+    haiti_tz = pytz.timezone('America/Port-au-Prince')
+    now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     return [
         {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 60, "detected_at": now_str},
         {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30, "detected_at": now_str},
