@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 from groq import Groq
 import pandas as pd
 import re
-import pytz  # <-- ADDED FOR TIMEZONE SUPPORT
+import pytz  # <-- FOR TIMEZONE SUPPORT
 
 # ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
@@ -504,15 +504,14 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== LIVE AIRCRAFT FETCH (with Haiti timezone) ==========
-def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
+# ========== ENHANCED LIVE AIRCRAFT FETCH (aggressive retry) ==========
+def fetch_live_aircraft(ground_lat, ground_lon, max_retries=10, initial_delay=1):
     """
-    Fetches ADS-B data from OpenSky and filters with strict sanity checks.
-    Uses max_range from session state (default 180 km) to control detection radius.
-    Adds a 'detected_at' timestamp in 12-hour AM/PM format with Haiti local timezone.
+    Fetches ADS-B data from OpenSky with aggressive retry logic.
+    Uses max_range from session state (default 180 km).
+    Returns live data, cached data, or demo as absolute last resort.
     """
     max_range = st.session_state.get("max_range", 180)
-    
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
     
@@ -521,15 +520,27 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
     
     for attempt in range(max_retries):
         try:
-            response = requests.get(url, headers=headers, timeout=20)
+            response = requests.get(url, headers=headers, timeout=15)
+            
             if response.status_code == 200:
                 data = response.json()
                 states = data.get("states", [])
+                
                 if not states:
-                    return [], "no_data"
+                    # No data from OpenSky (empty response)
+                    st.session_state.api_status = "Live (No aircraft detected)"
+                    if st.session_state.cached_aircraft_data:
+                        # Return cached if available, but keep trying on next refresh
+                        return st.session_state.cached_aircraft_data, "cached"
+                    else:
+                        # Wait and retry
+                        time.sleep(initial_delay * (attempt + 1))
+                        continue
+                
+                # Process the live data
                 aircraft_list = []
-                # FIXED: Use Haiti local timezone
                 now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+                
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -574,29 +585,46 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                         "detected_at": now_str
                     })
                 
-                aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:20]
-                
-                st.session_state.cached_aircraft_data = aircraft_list
-                st.session_state.cached_timestamp = datetime.now()
-                st.session_state.api_status = "Live"
-                return aircraft_list, "live"
+                if aircraft_list:
+                    aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:20]
+                    st.session_state.cached_aircraft_data = aircraft_list
+                    st.session_state.cached_timestamp = datetime.now()
+                    st.session_state.api_status = "Live"
+                    return aircraft_list, "live"
+                else:
+                    # No aircraft within range
+                    st.session_state.api_status = "Live (No aircraft within range)"
+                    return st.session_state.cached_aircraft_data or [], "cached"
+            
             elif response.status_code == 429:
+                # Rate limited – wait and retry
                 wait_time = (2 ** attempt) + random.uniform(0, 1)
                 st.session_state.api_status = f"Rate limited (retry in {wait_time:.1f}s)"
                 time.sleep(wait_time)
                 continue
+            
             else:
-                time.sleep(1 + attempt)
+                # Other error – wait and retry
+                st.session_state.api_status = f"Error {response.status_code}, retrying..."
+                time.sleep(initial_delay * (attempt + 1))
                 continue
-        except Exception as e:
-            time.sleep(1 + attempt)
+                
+        except requests.exceptions.Timeout:
+            st.session_state.api_status = f"Timeout (retry {attempt+1}/{max_retries})"
+            time.sleep(initial_delay * (attempt + 1))
             continue
-
+        except Exception as e:
+            st.session_state.api_status = f"Error: {str(e)[:30]} (retry {attempt+1}/{max_retries})"
+            time.sleep(initial_delay * (attempt + 1))
+            continue
+    
+    # If we exhausted all retries
     if st.session_state.cached_aircraft_data:
-        st.session_state.api_status = "Cached (API unreachable)"
+        st.session_state.api_status = "Cached (Live unavailable – retrying)"
         return st.session_state.cached_aircraft_data, "cached"
     else:
-        st.session_state.api_status = "Demo (No cached data)"
+        # Only show demo if absolutely no data exists
+        st.session_state.api_status = "Demo (No cached data – waiting for signal)"
         demo = get_demo_aircraft()
         return demo, "demo"
 
@@ -1061,6 +1089,21 @@ def main_page():
         st.caption(f"Current range: **{max_range} km**")
         st.divider()
         
+        # ----- AUTO-REFRESH CONTROL -----
+        st.markdown("### 🔄 Auto-Refresh")
+        refresh_interval = st.selectbox(
+            "Refresh every:",
+            ["5 seconds", "10 seconds", "15 seconds", "30 seconds", "Manual only"],
+            index=1
+        )
+        if refresh_interval != "Manual only":
+            seconds = int(refresh_interval.split()[0])
+            st.caption(f"Auto-refreshing every {seconds} seconds")
+        else:
+            st.caption("Manual refresh only (click the refresh button)")
+        
+        st.divider()
+        
         # ----- LOCAL RUN INSTRUCTIONS -----
         with st.expander(L['local_instructions_title'], expanded=False):
             st.markdown(f"""
@@ -1116,12 +1159,56 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    # ---- Fetch data ----
+    # ---- Fetch data with aggressive retry ----
     if use_demo:
         aircraft_data = get_demo_aircraft()
         st.session_state.api_status = "Demo (User selected)"
     else:
+        # Try to fetch live data
         aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
+        
+        # Handle status
+        if status == "demo":
+            st.warning("📡 No live signal yet. Waiting for OpenSky data... Retrying every 10 seconds.")
+            # We still display the demo data, but the status shows we're waiting
+            st.session_state.api_status = "Waiting for signal..."
+            # Schedule auto-refresh after 10 seconds (only if auto-refresh is not manual)
+            if refresh_interval != "Manual only":
+                # Use streamlit's built-in rerun after a delay (we'll use time.sleep in a separate thread? Better to use st.empty and rerun)
+                # Actually we can use st.experimental_rerun but not available. We'll use st.empty with a timer.
+                # Simpler: set a session state flag to rerun after some time.
+                # Use st.rerun with a timer: we can't sleep in the main thread, but we can use st.empty and a placeholder.
+                # We'll use a workaround: set a timeout in the session and then rerun.
+                if 'next_refresh' not in st.session_state:
+                    st.session_state.next_refresh = time.time() + 10
+                if time.time() > st.session_state.next_refresh:
+                    st.session_state.next_refresh = time.time() + 10
+                    st.rerun()
+        elif status == "cached":
+            st.info("📡 Live data temporarily unavailable – showing cached data. Retrying...")
+            if refresh_interval != "Manual only":
+                if 'next_refresh' not in st.session_state:
+                    st.session_state.next_refresh = time.time() + 5
+                if time.time() > st.session_state.next_refresh:
+                    st.session_state.next_refresh = time.time() + 5
+                    st.rerun()
+        else:
+            # Live data – update the status
+            if aircraft_data:
+                st.session_state.api_status = "Live"
+            else:
+                st.session_state.api_status = "Live (No aircraft detected)"
+            # Reset the refresh timer
+            st.session_state.next_refresh = time.time() + (seconds if refresh_interval != "Manual only" else 300)
+    
+    # Auto-refresh: if interval is set, schedule a rerun after the interval
+    if refresh_interval != "Manual only":
+        seconds = int(refresh_interval.split()[0])
+        if 'next_refresh' not in st.session_state:
+            st.session_state.next_refresh = time.time() + seconds
+        if time.time() > st.session_state.next_refresh:
+            st.session_state.next_refresh = time.time() + seconds
+            st.rerun()
 
     sat_data = get_satellites()
 
