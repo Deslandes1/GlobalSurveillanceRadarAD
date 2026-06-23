@@ -503,7 +503,7 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== IMPROVED LIVE AIRCRAFT DATA FETCH (with exponential backoff and caching) ==========
+# ========== IMPROVED LIVE AIRCRAFT DATA FETCH (with ghost target filtering) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
@@ -520,18 +520,33 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                 for s in states:
                     lat = s[6]
                     lon = s[5]
+                    # Skip if lat or lon is None or invalid
                     if lat is None or lon is None:
                         continue
+                    # Skip if lat/lon are outside reasonable bounds
+                    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+                        continue
+                    
                     R = 6371
                     dlat = math.radians(lat - ground_lat)
                     dlon = math.radians(lon - ground_lon)
                     a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
                     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
                     dist_km = R * c
-                    max_km = 300
+                    
+                    # Only include aircraft within 500 km to avoid ghost targets
+                    if dist_km > 500:
+                        continue
+                    
+                    max_km = 500
                     dist_norm = min(dist_km / max_km, 0.95)
                     alt = s[7] if s[7] is not None else 0
                     callsign = s[1].strip() if s[1] else s[0][:6].upper()
+                    
+                    # Skip invalid callsigns
+                    if not callsign or len(callsign) < 2:
+                        continue
+                        
                     cat, color, label = classify_aircraft(alt, callsign)
                     aircraft_list.append({
                         "id": callsign,
@@ -540,10 +555,13 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                         "label": label,
                         "alt": f"{int(alt) if alt else 'N/A'}ft",
                         "dist": dist_norm,
+                        "distance_km": round(dist_km, 1),
                         "lat": lat,
                         "lon": lon
                     })
-                aircraft_list = aircraft_list[:30]
+                
+                # Sort by distance and keep top 30
+                aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:30]
                 st.session_state.cached_aircraft_data = aircraft_list
                 st.session_state.cached_timestamp = datetime.now()
                 st.session_state.api_status = "Live"
@@ -576,12 +594,12 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
 
 def get_demo_aircraft():
     return [
-        {"id": "AAL-410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4},
-        {"id": "F-22-EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8},
-        {"id": "DRN-QC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2},
-        {"id": "CLX-200", "type": "Cargo", "color": "#f1c40f", "label": "📦 Cargo", "alt": "28,000ft", "dist": 0.6},
-        {"id": "UFO-X", "type": "UFO", "color": "#9b59b6", "label": "🛸 UFO", "alt": "1,500ft", "dist": 0.7},
-        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3}
+        {"id": "AAL-410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 200},
+        {"id": "F-22-EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8, "distance_km": 400},
+        {"id": "DRN-QC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 100},
+        {"id": "CLX-200", "type": "Cargo", "color": "#f1c40f", "label": "📦 Cargo", "alt": "28,000ft", "dist": 0.6, "distance_km": 300},
+        {"id": "UFO-X", "type": "UFO", "color": "#9b59b6", "label": "🛸 UFO", "alt": "1,500ft", "dist": 0.7, "distance_km": 350},
+        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 150}
     ]
 
 def get_satellites():
@@ -880,9 +898,18 @@ def login_page():
 
 # ========== AI ANALYSIS ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
-    radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['dist']*300:.0f}km" for a in aircraft])
+    # Filter out ghost targets and include accurate distance
+    valid_aircraft = [a for a in aircraft if "distance_km" in a and a["distance_km"] < 500]
+    
+    if not valid_aircraft:
+        radar_summary = "No aircraft within 500 km of your location."
+    else:
+        sorted_aircraft = sorted(valid_aircraft, key=lambda x: x["distance_km"])
+        radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km" for a in sorted_aircraft[:15]])
+    
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
-    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). Use the following live ADS‑B data to answer the question. Always begin your response by stating the location and coordinates. Provide a balanced, educational analysis. Classifications are approximate and based on heuristics; do not falsely label low‑altitude aircraft as drones unless they explicitly indicate drone callsigns (DRN, UAV). If the question asks about threats, assess based on the presence of unusual or military contacts.
+    
+    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). Use the following live ADS-B data to answer the question. Always begin your response by stating the location and coordinates. Provide a balanced, educational analysis. Classifications are approximate and based on heuristics. Do not falsely label low-altitude aircraft as drones unless they explicitly indicate drone callsigns (DRN, UAV). If the question asks about threats, assess based on the presence of unusual or military contacts.
 
 Ground Station: {location_name} ({u_lat}, {u_lon})
 
@@ -894,11 +921,15 @@ Satellites:
 
 Question: {question if question else "Give a threat summary"}
 Answer:"""
+    
     try:
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": full_prompt}],
-            temperature=0.3,
+            messages=[
+                {"role": "system", "content": "You are a precise surveillance analyst. Only use the provided data. If no data is available, state that clearly. Do not invent contacts or locations."},
+                {"role": "user", "content": full_prompt}
+            ],
+            temperature=0.2,
             max_tokens=500
         )
         return completion.choices[0].message.content.strip()
@@ -935,7 +966,6 @@ def main_page():
             script = generate_male_voice_audio()
             try:
                 from gtts import gTTS
-                # map voice_lang to gTTS language code
                 lang_code = "en" if voice_lang == "en" else "fr" if voice_lang == "fr" else "es" if voice_lang == "es" else "zh"
                 tts = gTTS(text=script, lang=lang_code, slow=False)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
@@ -1093,11 +1123,19 @@ def main_page():
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
-    # Radar tab (unchanged)
+    # Radar tab
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
         st.info(L['audio_note'])
+        
+        # Show count of aircraft within 50km
+        within_50km = [a for a in aircraft_data if "distance_km" in a and a["distance_km"] <= 50]
+        if within_50km:
+            st.success(f"✅ {len(within_50km)} aircraft detected within 50 km of your location.")
+        else:
+            st.info("ℹ️ No aircraft detected within 50 km of your location.")
+        
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
             st.markdown(f"### {L['legend_title']}")
@@ -1169,7 +1207,7 @@ def main_page():
                         }} catch (e) {{}}
                     }}
                     
-                    function drawTarget(ctx, x, y, color, type, id, alt, pulse) {{
+                    function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance) {{
                         const size = 9;
                         ctx.save();
                         ctx.shadowBlur = 20;
@@ -1245,6 +1283,10 @@ def main_page():
                         ctx.fillStyle = 'rgba(200,200,200,0.6)';
                         ctx.font = '7px monospace';
                         ctx.fillText(alt, x + 14, y + 10);
+                        
+                        ctx.fillStyle = 'rgba(200,200,200,0.4)';
+                        ctx.font = '6px monospace';
+                        ctx.fillText(distance + 'km', x + 14, y + 20);
                     }}
                     
                     function draw() {{
@@ -1271,7 +1313,8 @@ def main_page():
                             const angleRad = i * 1.2;
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
                             const dy = cy + Math.sin(angleRad) * (r * d.dist);
-                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse);
+                            const dist = d.distance_km ? d.distance_km.toFixed(0) : 'N/A';
+                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse, dist);
                         }});
                         
                         let oldA = angle;
@@ -1327,11 +1370,13 @@ def main_page():
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
                     st.write(f"**ID:** {d['id']}")
                     st.write(f"**Altitude:** {d['alt']}")
+                    if "distance_km" in d:
+                        st.write(f"**Distance:** {d['distance_km']:.1f} km")
                     if not use_demo and 'lat' in d:
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
                     st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
 
-    # Satellite tab (unchanged)
+    # Satellite tab
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -1357,7 +1402,7 @@ def main_page():
             if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
                 for a in aircraft_data:
                     if "lat" in a and "lon" in a:
-                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}');"
+                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
             for s in sat_data:
                 markers += f"L.circleMarker([{u_lat + (hash(s['id'])%5-2.5)}, {u_lon + (hash(s['id'])%10-5)}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
             map_html = f"""
@@ -1440,7 +1485,6 @@ def main_page():
             if listen_btn:
                 if st.session_state.ai_response:
                     with st.spinner("Generating audio..."):
-                        # Use the selected voice language for the response
                         lang_code = "en" if voice_lang == "en" else "fr" if voice_lang == "fr" else "es" if voice_lang == "es" else "zh"
                         audio_bytes = generate_audio_response(st.session_state.ai_response, lang_code)
                         if audio_bytes:
