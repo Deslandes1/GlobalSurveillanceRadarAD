@@ -505,40 +505,37 @@ def classify_aircraft(alt_ft, callsign=""):
     return "Other", "#95a5a6", "❓ Unknown"
 
 # ========== OPTIMIZED LIVE AIRCRAFT FETCH (fast) ==========
-def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3, initial_delay=0.5):
+def fetch_live_aircraft(ground_lat, ground_lon):
     """
     Fast fetch with immediate cache return if data is recent.
-    Only tries 3 retries with short timeout.
+    Returns (aircraft_list, status) always.
     """
     max_range = st.session_state.get("max_range", 180)
     haiti_tz = pytz.timezone('America/Port-au-Prince')
     
-    # ----- Check for recent cached data FIRST -----
+    # Check for recent cached data
     if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
         age = (datetime.now() - st.session_state.cached_timestamp).total_seconds()
-        if age < 60:  # less than 1 minute old
+        if age < 60:
             st.session_state.api_status = "Cached (recent)"
             return st.session_state.cached_aircraft_data, "cached"
     
-    # ----- No recent cache – attempt live fetch with limited retries -----
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
     
-    for attempt in range(max_retries):
+    for attempt in range(3):
         try:
-            response = requests.get(url, headers=headers, timeout=10)  # short timeout
+            response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 states = data.get("states", [])
                 if not states:
-                    # No aircraft detected
                     st.session_state.api_status = "Live (No aircraft detected)"
                     if st.session_state.cached_aircraft_data:
                         return st.session_state.cached_aircraft_data, "cached"
                     time.sleep(0.5)
                     continue
                 
-                # Process data
                 aircraft_list = []
                 now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
                 for s in states:
@@ -588,7 +585,6 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3, initial_delay=0.5
                 else:
                     st.session_state.api_status = "Live (No aircraft within range)"
                     return st.session_state.cached_aircraft_data or [], "cached"
-            
             elif response.status_code == 429:
                 wait = (2 ** attempt) * 0.5
                 time.sleep(wait)
@@ -596,11 +592,11 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3, initial_delay=0.5
             else:
                 time.sleep(0.5)
                 continue
-        except Exception as e:
+        except Exception:
             time.sleep(0.5)
             continue
     
-    # Retries exhausted – return whatever cache we have, or demo
+    # Retries exhausted
     if st.session_state.cached_aircraft_data:
         st.session_state.api_status = "Cached (Live unavailable – retrying)"
         return st.session_state.cached_aircraft_data, "cached"
@@ -917,7 +913,6 @@ def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None
     """
     AI Analyst that always returns a response – even if the Groq call fails.
     """
-    # Build a summary of the radar data
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
     else:
@@ -964,9 +959,7 @@ Answer:"""
             response = "⚠️ The AI returned an empty response. Please try again."
         return response
     except Exception as e:
-        # Return a fallback message with the error so the user sees something
-        error_msg = str(e)
-        return f"⚠️ AI error: {error_msg}\n\nPlease check your Groq API key and ensure you have credits. You can also try a different question."
+        return f"⚠️ AI error: {str(e)}\n\nPlease check your Groq API key and ensure you have credits. You can also try a different question."
 
 def main_page():
     L = UI[st.session_state.lang]
@@ -1143,9 +1136,9 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    # ---- Fetch data ----
+    # ---- Fetch data (now always returns a tuple) ----
     if use_demo:
-        aircraft_data = get_demo_aircraft()
+        aircraft_data, _ = get_demo_aircraft(), "demo"  # manually set status
         st.session_state.api_status = "Demo (User selected)"
     else:
         aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
@@ -1520,7 +1513,6 @@ def main_page():
                     with st.spinner(L['ai_thinking']):
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
-                    # Update the display without a full rerun – the next render will show it
                     st.rerun()
             
             # Listen button
