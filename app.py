@@ -1270,7 +1270,7 @@ def main_page():
             st.session_state.next_refresh = time.time() + seconds
             st.rerun()
 
-    # ---- Satellite data is NOT fetched here; it will be lazy-loaded in the satellite tab ----
+    # ---- Satellite data ----
     sat_data = []  # placeholder
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
@@ -1659,12 +1659,12 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # Flight Tracker tab (replaces Object Detection)
+    # Flight Tracker tab (working iframe)
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
         st.components.v1.iframe(
-            "https://www.flightradar24.com/18.74,-69.58/8",
+            "https://www.flightradar24.com/simple?lat=18.74&lon=-69.58&z=8&label1=reg&size=medium",
             height=600,
             scrolling=True
         )
