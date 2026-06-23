@@ -614,12 +614,16 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
+# ========== SATELLITE DATA WITH ORBITAL PARAMETERS ==========
 def get_satellites():
+    """
+    Returns a list of satellites with orbital period (hours) and initial longitude offset.
+    """
     return [
-        {"id": "STAR-V2", "type": "Starlink", "color": "#00ff64", "alt": "550km"},
-        {"id": "NAV-GPS", "type": "GPS III", "color": "#00bfff", "alt": "20,200km"},
-        {"id": "KH-11-S", "type": "Spy Satellite", "color": "#ff3300", "alt": "380km"},
-        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km"}
+        {"id": "STAR-V2", "type": "Starlink", "color": "#00ff64", "alt": "550km", "period_hr": 1.5, "init_lon": -80.0},
+        {"id": "NAV-GPS", "type": "GPS III", "color": "#00bfff", "alt": "20,200km", "period_hr": 12.0, "init_lon": -60.0},
+        {"id": "KH-11-S", "type": "Spy Satellite", "color": "#ff3300", "alt": "380km", "period_hr": 1.4, "init_lon": -100.0},
+        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km", "period_hr": 1.5, "init_lon": -40.0}
     ]
 
 # ========== TRANSLATIONS ==========
@@ -1401,20 +1405,31 @@ def main_page():
                     report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
-    # Satellite tab
+    # Satellite tab – fixed predictions
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
+        st.info("⚠️ Satellite predictions are approximate and based on simplified orbital models. For accurate tracking, use dedicated tools like Heavens-Above or N2YO.com.")
         col_ctrl, col_map = st.columns([1, 2])
         with col_ctrl:
             st.subheader("OpenSky Prediction")
             t_date = st.date_input(L['time_target'], datetime.now())
             t_time = st.time_input("Target Time", datetime.now().time())
             full_t = datetime.combine(t_date, t_time)
-            diff = (full_t - datetime.now()).total_seconds() / 3600
+            diff_sec = (full_t - datetime.now()).total_seconds()
+            diff_hours = diff_sec / 3600.0
             for s in sat_data:
-                pred_lat = u_lat + (math.sin(diff + hash(s['id']) % 10) * 10)
-                pred_lon = u_lon + (diff * 15) % 360 - 180
+                # Compute latitude (oscillate around user's latitude)
+                lat_offset = 5 * math.sin(2 * math.pi * diff_sec / (s["period_hr"] * 3600) + hash(s["id"]) % 10)
+                pred_lat = u_lat + lat_offset
+                # Compute longitude based on orbital period
+                # Each orbit shifts longitude by (360 * Earth_rotation_rate / period) but we use simplified drift
+                # Using the formula: lon = init_lon + (360 * diff_hours / period_hr) % 360 - 180
+                lon_shift = (360 * diff_hours / s["period_hr"]) % 360
+                pred_lon = s["init_lon"] + lon_shift
+                pred_lon = pred_lon % 360
+                if pred_lon > 180:
+                    pred_lon -= 360
                 with st.container(border=True):
                     st.write(f"**{s['id']}** ({s['type']})")
                     st.caption(f"Predicted Lock: {pred_lat:.2f}N, {pred_lon:.2f}W")
@@ -1429,7 +1444,15 @@ def main_page():
                     if "lat" in a and "lon" in a:
                         markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km<br>Detected: {a.get('detected_at', 'N/A')}');"
             for s in sat_data:
-                markers += f"L.circleMarker([{u_lat + (hash(s['id'])%5-2.5)}, {u_lon + (hash(s['id'])%10-5)}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
+                # Use the same prediction for map markers
+                lat_offset = 5 * math.sin(2 * math.pi * diff_sec / (s["period_hr"] * 3600) + hash(s["id"]) % 10)
+                pred_lat = u_lat + lat_offset
+                lon_shift = (360 * diff_hours / s["period_hr"]) % 360
+                pred_lon = s["init_lon"] + lon_shift
+                pred_lon = pred_lon % 360
+                if pred_lon > 180:
+                    pred_lon -= 360
+                markers += f"L.circleMarker([{pred_lat}, {pred_lon}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
             map_html = f"""
             <html><head>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
