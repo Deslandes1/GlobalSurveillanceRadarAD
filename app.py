@@ -384,6 +384,8 @@ if "satellite_tle_cache" not in st.session_state:
     st.session_state.satellite_tle_cache = None
 if "satellite_cache_time" not in st.session_state:
     st.session_state.satellite_cache_time = None
+if "satellite_positions" not in st.session_state:
+    st.session_state.satellite_positions = None
 
 # ========== IP & LOCATION DETECTION ==========
 def get_real_ip():
@@ -628,10 +630,10 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
-# ========== ACCURATE SATELLITE TRACKING WITH REAL TLE DATA ==========
+# ========== SATELLITE TRACKING (lazy loading) ==========
 
-@st.cache_data(ttl=21600)  # cache for 6 hours
-def fetch_tle_from_celestrak(catnr, timeout=15, retries=3):
+@st.cache_data(ttl=21600)
+def fetch_tle_from_celestrak(catnr, timeout=10, retries=2):
     """
     Fetch TLE for a given NORAD catalog number from Celestrak.
     Tries both celestrak.org and celestrak.com with retries.
@@ -698,25 +700,7 @@ def get_satellite_tle():
         st.session_state.satellite_cache_time = datetime.now()
         return tle_data
     else:
-        # Fallback: try to use N2YO public API (no key needed for simple requests)
-        try:
-            alt_tle_data = fetch_tle_from_n2yo(satellites_catalog)
-            if alt_tle_data:
-                st.session_state.satellite_tle_cache = alt_tle_data
-                st.session_state.satellite_cache_time = datetime.now()
-                return alt_tle_data
-        except:
-            pass
         return None
-
-def fetch_tle_from_n2yo(catalog):
-    """
-    Fallback: try to get TLE from N2YO's public endpoint.
-    """
-    # N2YO provides TLE via their API without key for some satellites? Not directly.
-    # Instead, we'll use a public mirror or a different service.
-    # For simplicity, we return None and rely on the fallback static data.
-    return None
 
 def compute_satellite_positions(target_time, ground_lat, ground_lon):
     """
@@ -767,6 +751,41 @@ def compute_satellite_positions(target_time, ground_lat, ground_lon):
     except Exception as e:
         st.warning(f"Error computing satellite positions: {e}")
         return None
+
+def get_satellites_fallback():
+    """Fallback satellite data if TLE fetch fails."""
+    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    return [
+        {"id": "STAR-V2", "type": "Satellite", "color": "#00ff64", "alt": "550km", "name": "Starlink-1007", "lat": 23.09, "lon": -80.00, "detected_at": now_str},
+        {"id": "NAV-GPS", "type": "Satellite", "color": "#00bfff", "alt": "20,200km", "name": "GPS III-6", "lat": 19.24, "lon": -60.00, "detected_at": now_str},
+        {"id": "KH-11-S", "type": "Satellite", "color": "#ff3300", "alt": "380km", "name": "USA-224 (KH-11)", "lat": 13.74, "lon": -100.00, "detected_at": now_str},
+        {"id": "ISS", "type": "Satellite", "color": "#ffffff", "alt": "408km", "name": "ISS (ZARYA)", "lat": 19.24, "lon": -40.00, "detected_at": now_str}
+    ]
+
+def get_satellite_data(u_lat, u_lon):
+    """
+    Lazy load satellite positions – only called when needed.
+    """
+    # Check if we have recent positions in session state
+    if st.session_state.satellite_positions:
+        # If we have positions, return them (they are updated on demand)
+        return st.session_state.satellite_positions
+    
+    # Compute fresh positions
+    if SKYFIELD_AVAILABLE:
+        target_time = datetime.now()
+        positions = compute_satellite_positions(target_time, u_lat, u_lon)
+        if positions:
+            st.session_state.satellite_positions = positions
+            return positions
+        else:
+            fallback = get_satellites_fallback()
+            st.session_state.satellite_positions = fallback
+            return fallback
+    else:
+        fallback = get_satellites_fallback()
+        st.session_state.satellite_positions = fallback
+        return fallback
 
 # ========== TRANSLATIONS ==========
 UI = {
@@ -1104,16 +1123,6 @@ Answer:"""
     except Exception as e:
         return f"⚠️ AI error: {str(e)}\n\nPlease check your Groq API key and ensure you have credits. You can also try a different question."
 
-def get_satellites_fallback():
-    """Fallback satellite data if TLE fetch fails."""
-    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-    return [
-        {"id": "STAR-V2", "type": "Satellite", "color": "#00ff64", "alt": "550km", "name": "Starlink-1007", "lat": 23.09, "lon": -80.00, "detected_at": now_str},
-        {"id": "NAV-GPS", "type": "Satellite", "color": "#00bfff", "alt": "20,200km", "name": "GPS III-6", "lat": 19.24, "lon": -60.00, "detected_at": now_str},
-        {"id": "KH-11-S", "type": "Satellite", "color": "#ff3300", "alt": "380km", "name": "USA-224 (KH-11)", "lat": 13.74, "lon": -100.00, "detected_at": now_str},
-        {"id": "ISS", "type": "Satellite", "color": "#ffffff", "alt": "408km", "name": "ISS (ZARYA)", "lat": 19.24, "lon": -40.00, "detected_at": now_str}
-    ]
-
 def main_page():
     L = UI[st.session_state.lang]
     with st.sidebar:
@@ -1309,19 +1318,9 @@ def main_page():
             st.session_state.next_refresh = time.time() + seconds
             st.rerun()
 
-    # ---- Satellite data ----
-    sat_data = []
-    if SKYFIELD_AVAILABLE:
-        target_time = datetime.now()
-        sat_positions = compute_satellite_positions(target_time, u_lat, u_lon)
-        if sat_positions:
-            sat_data = sat_positions
-        else:
-            st.info("ℹ️ Using fallback satellite data (real-time TLE unavailable).")
-            sat_data = get_satellites_fallback()
-    else:
-        st.warning("⚠️ Skyfield library not installed. Install with: pip install skyfield")
-        sat_data = get_satellites_fallback()
+    # ---- Satellite data is NOT fetched here; it will be lazy-loaded in the satellite tab ----
+    # We'll pass a placeholder and fetch only when needed.
+    sat_data = []  # will be filled in satellite tab
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
@@ -1566,10 +1565,14 @@ def main_page():
                     report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
-    # Satellite tab – ACCURATE REAL DATA
+    # Satellite tab – LAZY LOAD (fetches only when this tab is opened)
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
+        
+        # Lazy load satellite data with spinner
+        with st.spinner("🛰️ Fetching satellite positions from Celestrak..."):
+            sat_data = get_satellite_data(u_lat, u_lon)
         
         if SKYFIELD_AVAILABLE:
             st.success("✅ Using real-time satellite tracking data from Celestrak (TLE)")
@@ -1624,7 +1627,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab
+    # AI Analyst tab – also lazy loads satellites if needed
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1686,6 +1689,8 @@ def main_page():
                     st.warning("Please enter a question.")
                 else:
                     with st.spinner(L['ai_thinking']):
+                        # Lazy load satellite data if needed for the analysis
+                        sat_data = get_satellite_data(u_lat, u_lon)
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
                     st.rerun()
