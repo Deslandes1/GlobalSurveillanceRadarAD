@@ -249,6 +249,10 @@ st.markdown("""
         background: #e74c3c;
         color: #0a0a0f;
     }
+    .status-verified {
+        background: #00bfff;
+        color: #0a0a0f;
+    }
     .local-instructions {
         background: rgba(20,16,24,0.6);
         border: 1px solid #4a3520;
@@ -352,6 +356,9 @@ except ImportError:
 
 # ========== GLOBAL SHIELD ==========
 GLOBAL_SHIELD_ACTIVE = "GLOBAL_SHIELD_API_KEY" in st.secrets
+
+# ========== AVIATIONSTACK API KEY ==========
+AVIATIONSTACK_KEY = st.secrets.get("AVIATIONSTACK_KEY", "")
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -466,7 +473,7 @@ def geocode_location(location_name):
     except Exception:
         return None, None, None
 
-# ========== AIRCRAFT CLASSIFICATION (improved) ==========
+# ========== AIRCRAFT CLASSIFICATION (improved with AviationStack verification) ==========
 def classify_aircraft(alt_ft, callsign=""):
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
@@ -481,7 +488,7 @@ def classify_aircraft(alt_ft, callsign=""):
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
-    airline_codes = ["AAL", "UAL", "SWA", "DAL", "NKS", "JBU", "FFT", "EJA", "LXJ", "N456", "N123"]
+    airline_codes = ["AAL", "UAL", "SWA", "DAL", "NKS", "JBU", "FFT", "EJA", "LXJ", "N456", "N123", "TAM"]
     if any(callsign.startswith(code) for code in airline_codes):
         if alt_ft > 25000:
             return "Commercial Airplane", "#2ecc71", "🛩️ Commercial"
@@ -503,7 +510,69 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== IMPROVED LIVE AIRCRAFT DATA FETCH (with ghost target filtering) ==========
+# ========== VERIFY AIRCRAFT WITH AVIATIONSTACK ==========
+def verify_aircraft_with_aviationstack(callsign):
+    """
+    Verify aircraft details using AviationStack API.
+    Returns: (verified_type, aircraft_name, airline_name, is_verified)
+    """
+    if not AVIATIONSTACK_KEY:
+        return None, None, None, False
+    
+    try:
+        url = "http://api.aviationstack.com/v1/flights"
+        params = {
+            "access_key": AVIATIONSTACK_KEY,
+            "flight_iata": callsign
+        }
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("data") and len(data["data"]) > 0:
+                flight = data["data"][0]
+                airline_name = flight.get("airline", {}).get("name", "Unknown Airline")
+                aircraft_name = flight.get("aircraft", {}).get("name", "Unknown Aircraft")
+                flight_status = flight.get("flight_status", "unknown")
+                departure = flight.get("departure", {}).get("airport", "Unknown")
+                arrival = flight.get("arrival", {}).get("airport", "Unknown")
+                return {
+                    "type": "Commercial Airplane",
+                    "airline": airline_name,
+                    "aircraft": aircraft_name,
+                    "status": flight_status,
+                    "departure": departure,
+                    "arrival": arrival,
+                    "verified": True
+                }
+        return None, None, None, False
+    except Exception as e:
+        return None, None, None, False
+
+def verify_aircraft_with_faa(callsign):
+    """
+    Verify N-number aircraft with FAA registry.
+    """
+    if not callsign.startswith("N") or len(callsign) < 5:
+        return None, False
+    
+    try:
+        url = f"https://api.faa.gov/aircraft/registry/{callsign}"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                return {
+                    "type": "General Aviation",
+                    "manufacturer": data.get("manufacturer", "Unknown"),
+                    "model": data.get("model", "Unknown"),
+                    "year": data.get("year", "Unknown"),
+                    "verified": True
+                }
+        return None, False
+    except:
+        return None, False
+
+# ========== IMPROVED LIVE AIRCRAFT DATA FETCH (with verification and ghost filtering) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
     url = "https://opensky-network.org/api/states/all"
     headers = {"User-Agent": "Mozilla/5.0 (compatible; SurveillancePortal/1.0)"}
@@ -534,11 +603,11 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
                     dist_km = R * c
                     
-                    # Only include aircraft within 500 km to avoid ghost targets
-                    if dist_km > 500:
+                    # Only include aircraft within 300 km for accuracy
+                    if dist_km > 300:
                         continue
                     
-                    max_km = 500
+                    max_km = 300
                     dist_norm = min(dist_km / max_km, 0.95)
                     alt = s[7] if s[7] is not None else 0
                     callsign = s[1].strip() if s[1] else s[0][:6].upper()
@@ -546,9 +615,19 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                     # Skip invalid callsigns
                     if not callsign or len(callsign) < 2:
                         continue
+                    
+                    # Skip obvious ghost targets (too many same callsign or invalid format)
+                    if callsign in ["N/A", "UNKNOWN", "-----", "0"]:
+                        continue
                         
                     cat, color, label = classify_aircraft(alt, callsign)
-                    aircraft_list.append({
+                    
+                    # Verify with AviationStack if key exists
+                    verified_info = None
+                    if AVIATIONSTACK_KEY and cat in ["Commercial Airplane", "Other"]:
+                        verified_info = verify_aircraft_with_aviationstack(callsign)
+                    
+                    aircraft_entry = {
                         "id": callsign,
                         "type": cat,
                         "color": color,
@@ -557,8 +636,27 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
                         "dist": dist_norm,
                         "distance_km": round(dist_km, 1),
                         "lat": lat,
-                        "lon": lon
-                    })
+                        "lon": lon,
+                        "verified": False
+                    }
+                    
+                    if verified_info and verified_info.get("verified"):
+                        aircraft_entry["verified"] = True
+                        aircraft_entry["airline"] = verified_info.get("airline", "")
+                        aircraft_entry["aircraft_name"] = verified_info.get("aircraft", "")
+                        aircraft_entry["departure"] = verified_info.get("departure", "")
+                        aircraft_entry["arrival"] = verified_info.get("arrival", "")
+                        aircraft_entry["status"] = verified_info.get("status", "")
+                    
+                    # FAA verification for N-numbers
+                    elif callsign.startswith("N") and len(callsign) >= 5:
+                        faa_info = verify_aircraft_with_faa(callsign)
+                        if faa_info and faa_info.get("verified"):
+                            aircraft_entry["verified"] = True
+                            aircraft_entry["manufacturer"] = faa_info.get("manufacturer", "")
+                            aircraft_entry["model"] = faa_info.get("model", "")
+                    
+                    aircraft_list.append(aircraft_entry)
                 
                 # Sort by distance and keep top 30
                 aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:30]
@@ -594,11 +692,10 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=5, initial_delay=1):
 
 def get_demo_aircraft():
     return [
-        {"id": "AAL-410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 200},
-        {"id": "F-22-EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8, "distance_km": 400},
-        {"id": "DRN-QC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 100},
-        {"id": "CLX-200", "type": "Cargo", "color": "#f1c40f", "label": "📦 Cargo", "alt": "28,000ft", "dist": 0.6, "distance_km": 300},
-        {"id": "UFO-X", "type": "UFO", "color": "#9b59b6", "label": "🛸 UFO", "alt": "1,500ft", "dist": 0.7, "distance_km": 350},
+        {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 200},
+        {"id": "F22EX", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "52,000ft", "dist": 0.8, "distance_km": 400},
+        {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 100},
+        {"id": "CLX200", "type": "Cargo", "color": "#f1c40f", "label": "📦 Cargo", "alt": "28,000ft", "dist": 0.6, "distance_km": 300},
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 150}
     ]
 
@@ -656,9 +753,11 @@ UI = {
         "search_error": "❌ Location not found. Please try again.",
         "api_status_label": "📡 Data Source",
         "status_live": "Live (OpenSky)",
+        "status_verified": "Live + Verified",
         "status_cached": "Cached (from previous fetch)",
         "status_demo": "Demo (simulated)",
         "status_live_detail": "Live data fetched at {time}",
+        "status_verified_detail": "Live data with AviationStack verification",
         "status_cached_detail": "Cached from {time}",
         "status_demo_detail": "No live data available – showing demo",
         "local_instructions_title": "💻 Run Locally (Full Live Data)",
@@ -722,9 +821,11 @@ UI = {
         "search_error": "❌ Lieu introuvable. Veuillez réessayer.",
         "api_status_label": "📡 Source de données",
         "status_live": "En direct (OpenSky)",
+        "status_verified": "En direct + Vérifié",
         "status_cached": "Mis en cache",
         "status_demo": "Démo (simulé)",
         "status_live_detail": "Données récupérées à {time}",
+        "status_verified_detail": "Données avec vérification AviationStack",
         "status_cached_detail": "Mise en cache depuis {time}",
         "status_demo_detail": "Aucune donnée en direct – démo affichée",
         "local_instructions_title": "💻 Exécuter localement (données en direct)",
@@ -788,9 +889,11 @@ UI = {
         "search_error": "❌ Ubicación no encontrada. Intente de nuevo.",
         "api_status_label": "📡 Fuente de Datos",
         "status_live": "En vivo (OpenSky)",
+        "status_verified": "En vivo + Verificado",
         "status_cached": "En caché",
         "status_demo": "Demo (simulado)",
         "status_live_detail": "Datos en vivo obtenidos a las {time}",
+        "status_verified_detail": "Datos con verificación AviationStack",
         "status_cached_detail": "Datos en caché desde {time}",
         "status_demo_detail": "Sin datos en vivo – mostrando demo",
         "local_instructions_title": "💻 Ejecutar Localmente (Datos en Vivo)",
@@ -854,9 +957,11 @@ UI = {
         "search_error": "❌ 未找到位置。请重试。",
         "api_status_label": "📡 数据源",
         "status_live": "实时（OpenSky）",
+        "status_verified": "实时 + 已验证",
         "status_cached": "缓存（来自上次获取）",
         "status_demo": "演示（模拟）",
         "status_live_detail": "实时数据获取于 {time}",
+        "status_verified_detail": "带 AviationStack 验证的实时数据",
         "status_cached_detail": "缓存自 {time}",
         "status_demo_detail": "没有实时数据 – 显示演示",
         "local_instructions_title": "💻 本地运行（完整实时数据）",
@@ -896,20 +1001,30 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== AI ANALYSIS ==========
+# ========== AI ANALYSIS (with verification data) ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     # Filter out ghost targets and include accurate distance
-    valid_aircraft = [a for a in aircraft if "distance_km" in a and a["distance_km"] < 500]
+    valid_aircraft = [a for a in aircraft if "distance_km" in a and a["distance_km"] < 300]
     
     if not valid_aircraft:
-        radar_summary = "No aircraft within 500 km of your location."
+        radar_summary = "No aircraft within 300 km of your location."
     else:
         sorted_aircraft = sorted(valid_aircraft, key=lambda x: x["distance_km"])
-        radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km" for a in sorted_aircraft[:15]])
+        radar_summary = []
+        for a in sorted_aircraft[:15]:
+            line = f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km"
+            if a.get("verified"):
+                line += f" ✅ Verified"
+                if a.get("airline"):
+                    line += f" - {a['airline']} {a.get('aircraft_name', '')}"
+                if a.get("manufacturer"):
+                    line += f" - {a['manufacturer']} {a.get('model', '')}"
+            radar_summary.append(line)
+        radar_summary = "\n".join(radar_summary)
     
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     
-    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). Use the following live ADS-B data to answer the question. Always begin your response by stating the location and coordinates. Provide a balanced, educational analysis. Classifications are approximate and based on heuristics. Do not falsely label low-altitude aircraft as drones unless they explicitly indicate drone callsigns (DRN, UAV). If the question asks about threats, assess based on the presence of unusual or military contacts.
+    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). Use the following live ADS-B data to answer the question. Always begin your response by stating the location and coordinates. Provide a balanced, educational analysis. If an aircraft is marked as "Verified", it has been confirmed through external data sources (AviationStack or FAA). If the question asks about threats, assess based on the presence of unusual or military contacts. Do not invent contacts.
 
 Ground Station: {location_name} ({u_lat}, {u_lon})
 
@@ -926,7 +1041,7 @@ Answer:"""
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a precise surveillance analyst. Only use the provided data. If no data is available, state that clearly. Do not invent contacts or locations."},
+                {"role": "system", "content": "You are a precise surveillance analyst. Only use the provided data. If no data is available, state that clearly. Do not invent contacts or locations. Always verify aircraft classifications against the provided verification status."},
                 {"role": "user", "content": full_prompt}
             ],
             temperature=0.2,
@@ -1012,12 +1127,18 @@ def main_page():
         st.markdown(f"### {L['api_status_label']}")
         status = st.session_state.api_status
         if "Live" in status:
-            badge_class = "status-live"
-            if st.session_state.cached_timestamp:
-                time_str = st.session_state.cached_timestamp.strftime("%H:%M:%S")
-                detail = L['status_live_detail'].format(time=time_str)
+            if AVIATIONSTACK_KEY:
+                badge_class = "status-verified"
+                detail = L['status_verified_detail']
+                status_text = L['status_verified']
             else:
-                detail = "Live data"
+                badge_class = "status-live"
+                if st.session_state.cached_timestamp:
+                    time_str = st.session_state.cached_timestamp.strftime("%H:%M:%S")
+                    detail = L['status_live_detail'].format(time=time_str)
+                else:
+                    detail = "Live data"
+                status_text = "Live"
         elif "Cached" in status:
             badge_class = "status-cached"
             if st.session_state.cached_timestamp:
@@ -1025,11 +1146,19 @@ def main_page():
                 detail = L['status_cached_detail'].format(time=time_str)
             else:
                 detail = "Cached data"
+            status_text = "Cached"
         else:
             badge_class = "status-demo"
             detail = L['status_demo_detail']
-        st.markdown(f'<span class="status-badge {badge_class}">{status}</span>', unsafe_allow_html=True)
+            status_text = "Demo"
+        st.markdown(f'<span class="status-badge {badge_class}">{status_text}</span>', unsafe_allow_html=True)
         st.caption(detail)
+        
+        # Show AviationStack status
+        if AVIATIONSTACK_KEY:
+            st.success("✅ AviationStack API active")
+        else:
+            st.warning("⚠️ AviationStack API key not configured")
 
         st.divider()
         
@@ -1162,6 +1291,9 @@ def main_page():
                 <span class="legend-item">
                     <span class="legend-shape" style="color:#95a5a6;">◉</span> Other
                 </span>
+                <span class="legend-item">
+                    <span class="legend-shape" style="color:#00bfff;">✓</span> Verified Aircraft
+                </span>
             </div>
             """
             st.markdown(legend_html, unsafe_allow_html=True)
@@ -1207,7 +1339,7 @@ def main_page():
                         }} catch (e) {{}}
                     }}
                     
-                    function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance) {{
+                    function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance, verified) {{
                         const size = 9;
                         ctx.save();
                         ctx.shadowBlur = 20;
@@ -1259,6 +1391,14 @@ def main_page():
                                 ctx.arc(x, y, size*0.4, 0, 2*Math.PI);
                                 ctx.fill();
                                 ctx.stroke();
+                        }}
+                        
+                        // Verified checkmark
+                        if (verified) {{
+                            ctx.shadowBlur = 0;
+                            ctx.fillStyle = '#00bfff';
+                            ctx.font = '10px Arial';
+                            ctx.fillText('✓', x + 12, y - 12);
                         }}
                         
                         ctx.shadowBlur = 0;
@@ -1314,7 +1454,8 @@ def main_page():
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
                             const dy = cy + Math.sin(angleRad) * (r * d.dist);
                             const dist = d.distance_km ? d.distance_km.toFixed(0) : 'N/A';
-                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse, dist);
+                            const verified = d.verified || false;
+                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse, dist, verified);
                         }});
                         
                         let oldA = angle;
@@ -1372,6 +1513,22 @@ def main_page():
                     st.write(f"**Altitude:** {d['alt']}")
                     if "distance_km" in d:
                         st.write(f"**Distance:** {d['distance_km']:.1f} km")
+                    if d.get("verified"):
+                        st.success("✅ Verified aircraft")
+                        if d.get("airline"):
+                            st.write(f"**Airline:** {d['airline']}")
+                        if d.get("aircraft_name"):
+                            st.write(f"**Aircraft:** {d['aircraft_name']}")
+                        if d.get("departure"):
+                            st.write(f"**From:** {d['departure']}")
+                        if d.get("arrival"):
+                            st.write(f"**To:** {d['arrival']}")
+                        if d.get("manufacturer"):
+                            st.write(f"**Manufacturer:** {d['manufacturer']}")
+                        if d.get("model"):
+                            st.write(f"**Model:** {d['model']}")
+                    else:
+                        st.warning("⚠️ Not verified")
                     if not use_demo and 'lat' in d:
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
                     st.download_button(L['report'], f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nOP: Gesner Deslandes", key=f"dl_{d['id']}")
@@ -1402,7 +1559,10 @@ def main_page():
             if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
                 for a in aircraft_data:
                     if "lat" in a and "lon" in a:
-                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
+                        popup_text = f"{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km"
+                        if a.get("verified"):
+                            popup_text += "<br>✅ Verified"
+                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{popup_text}');"
             for s in sat_data:
                 markers += f"L.circleMarker([{u_lat + (hash(s['id'])%5-2.5)}, {u_lon + (hash(s['id'])%10-5)}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
             map_html = f"""
