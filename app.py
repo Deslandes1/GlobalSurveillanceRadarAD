@@ -912,16 +912,20 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== FIXED AI ANALYSIS (works in demo and live) ==========
+# ========== ROBUST AI ANALYSIS (always returns a message) ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     """
-    AI Analyst that actually works – no response_format to avoid Groq errors.
+    AI Analyst that always returns a response – even if the Groq call fails.
     """
+    # Build a summary of the radar data
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
     else:
         sorted_aircraft = sorted(aircraft, key=lambda x: x["distance_km"])
-        radar_summary = "\n".join([f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})" for a in sorted_aircraft[:10]])
+        lines = []
+        for a in sorted_aircraft[:10]:
+            lines.append(f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})")
+        radar_summary = "\n".join(lines)
     
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     
@@ -946,7 +950,6 @@ Question: {question if question else "Give a threat summary"}
 Answer:"""
     
     try:
-        # Remove response_format to avoid Groq compatibility issues
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
@@ -956,14 +959,18 @@ Answer:"""
             temperature=0.2,
             max_tokens=500
         )
-        return completion.choices[0].message.content.strip()
+        response = completion.choices[0].message.content.strip()
+        if not response:
+            response = "⚠️ The AI returned an empty response. Please try again."
+        return response
     except Exception as e:
-        return f"⚠️ AI error: {str(e)}"
+        # Return a fallback message with the error so the user sees something
+        error_msg = str(e)
+        return f"⚠️ AI error: {error_msg}\n\nPlease check your Groq API key and ensure you have credits. You can also try a different question."
 
 def main_page():
     L = UI[st.session_state.lang]
     with st.sidebar:
-        # Profile picture and name
         st.markdown("""
         <img src="https://raw.githubusercontent.com/Deslandes1/GlobalSurveillanceRadarAD/main/Gesner%20Deslandes.png" 
              class="profile-img" 
@@ -977,7 +984,6 @@ def main_page():
         st.markdown(f"**{L['author_tag']}**")
         st.divider()
 
-        # Voice language selector
         voice_lang = st.selectbox(
             L['voice_lang_label'],
             options=["en", "fr", "es", "zh"],
@@ -985,7 +991,6 @@ def main_page():
             key="voice_lang_selector"
         )
 
-        # Voice buttons
         if st.button(L['voice_male_explain'], use_container_width=True):
             script = generate_male_voice_audio()
             try:
@@ -1030,7 +1035,6 @@ def main_page():
         else:
             st.warning("⚠️ Global Shield API Key not configured")
         
-        # API status
         st.markdown("---")
         st.markdown(f"### {L['api_status_label']}")
         status = st.session_state.api_status
@@ -1059,7 +1063,6 @@ def main_page():
 
         st.divider()
         
-        # ----- MAX RANGE SLIDER -----
         st.markdown("### 📡 Max Detection Range")
         max_range = st.slider(
             "Distance from ground station (km)",
@@ -1073,7 +1076,6 @@ def main_page():
         st.caption(f"Current range: **{max_range} km**")
         st.divider()
         
-        # ----- AUTO-REFRESH CONTROL -----
         st.markdown("### 🔄 Auto-Refresh")
         refresh_interval = st.selectbox(
             "Refresh every:",
@@ -1088,7 +1090,6 @@ def main_page():
         
         st.divider()
         
-        # ----- LOCAL RUN INSTRUCTIONS -----
         with st.expander(L['local_instructions_title'], expanded=False):
             st.markdown(f"""
             <div class="local-instructions">
@@ -1106,7 +1107,6 @@ def main_page():
             """, unsafe_allow_html=True)
         st.divider()
 
-        # ----- FIXED LOCATION: Port-au-Prince, Haiti -----
         st.markdown("### 📍 Fixed Location")
         st.info("**Port-au-Prince, Haiti** (18.5392, -72.3364)")
         st.caption("Radar is fixed to cover all of Haiti.")
@@ -1143,14 +1143,12 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    # ---- Fetch data with smart fast cache ----
+    # ---- Fetch data ----
     if use_demo:
         aircraft_data = get_demo_aircraft()
         st.session_state.api_status = "Demo (User selected)"
     else:
-        # Fast fetch (will use cache if recent)
         aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
-        # If we got cached data, let the user know we'll refresh soon
         if status == "cached" and aircraft_data:
             st.info("📡 Using cached data (live refresh in progress)")
         elif status == "demo":
@@ -1175,7 +1173,6 @@ def main_page():
         st.subheader(L['author_tag'])
         st.info(L['audio_note'])
         
-        # Show closest aircraft (within current range) info
         close_aircraft = [a for a in aircraft_data if "distance_km" in a and a["distance_km"] <= 50]
         if close_aircraft:
             closest = min(close_aircraft, key=lambda x: x["distance_km"])
@@ -1508,6 +1505,12 @@ def main_page():
             with col_btn2:
                 listen_btn = st.button(L['listen_response'], use_container_width=True)
             
+            # Always show any existing AI response
+            if st.session_state.ai_response:
+                st.markdown(f"### {L['ai_response']}")
+                st.markdown(st.session_state.ai_response)
+            
+            # If the user clicked Analyze, update the response
             if analyze_btn:
                 if not user_question.strip():
                     st.warning("Please enter a question.")
@@ -1515,13 +1518,10 @@ def main_page():
                     with st.spinner(L['ai_thinking']):
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
-                    st.markdown(f"### {L['ai_response']}")
-                    st.markdown(response)
+                    # Rerun to refresh the display
+                    st.rerun()
             
-            if st.session_state.ai_response and not analyze_btn:
-                st.markdown(f"### {L['ai_response']}")
-                st.markdown(st.session_state.ai_response)
-            
+            # Listen button
             if listen_btn:
                 if st.session_state.ai_response:
                     with st.spinner("Generating audio..."):
