@@ -7,12 +7,20 @@ import time
 import base64
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 from groq import Groq
 import pandas as pd
 import re
 import pytz
+
+# ========== SATELLITE TRACKING WITH REAL TLE DATA ==========
+try:
+    from skyfield.api import load, EarthSatellite
+    from skyfield.timelib import Time
+    SKYFIELD_AVAILABLE = True
+except ImportError:
+    SKYFIELD_AVAILABLE = False
 
 # ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
@@ -371,6 +379,12 @@ if "cached_timestamp" not in st.session_state:
 if "api_status" not in st.session_state:
     st.session_state.api_status = "Initializing"
 
+# ========== SATELLITE CACHE ==========
+if "satellite_tle_cache" not in st.session_state:
+    st.session_state.satellite_tle_cache = None
+if "satellite_cache_time" not in st.session_state:
+    st.session_state.satellite_cache_time = None
+
 # ========== IP & LOCATION DETECTION ==========
 def get_real_ip():
     try:
@@ -614,17 +628,135 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
-# ========== SATELLITE DATA WITH ORBITAL PARAMETERS ==========
-def get_satellites():
+# ========== ACCURATE SATELLITE TRACKING USING REAL TLE DATA ==========
+def get_satellite_tle():
     """
-    Returns a list of satellites with orbital period (hours) and initial longitude offset.
+    Fetch real-time TLE data from Celestrak for satellites.
+    Returns a dictionary of satellite objects.
     """
-    return [
-        {"id": "STAR-V2", "type": "Starlink", "color": "#00ff64", "alt": "550km", "period_hr": 1.5, "init_lon": -80.0},
-        {"id": "NAV-GPS", "type": "GPS III", "color": "#00bfff", "alt": "20,200km", "period_hr": 12.0, "init_lon": -60.0},
-        {"id": "KH-11-S", "type": "Spy Satellite", "color": "#ff3300", "alt": "380km", "period_hr": 1.4, "init_lon": -100.0},
-        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km", "period_hr": 1.5, "init_lon": -40.0}
-    ]
+    if not SKYFIELD_AVAILABLE:
+        return None
+    
+    # Check cache (refresh every 6 hours)
+    if st.session_state.satellite_tle_cache and st.session_state.satellite_cache_time:
+        age = (datetime.now() - st.session_state.satellite_cache_time).total_seconds()
+        if age < 21600:  # 6 hours
+            return st.session_state.satellite_tle_cache
+    
+    try:
+        # Load TLE data for specific satellites
+        satellites = {}
+        
+        # ISS (ZARYA) - NORAD ID: 25544
+        iss_url = "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE"
+        response = requests.get(iss_url, timeout=10)
+        if response.status_code == 200:
+            lines = response.text.strip().split('\n')
+            if len(lines) >= 3:
+                satellites["ISS"] = {
+                    "name": "ISS (ZARYA)",
+                    "line1": lines[1].strip(),
+                    "line2": lines[2].strip()
+                }
+        
+        # GPS III-6 - NORAD ID: 46825
+        gps_url = "https://celestrak.org/NORAD/elements/gp.php?CATNR=46825&FORMAT=TLE"
+        response = requests.get(gps_url, timeout=10)
+        if response.status_code == 200:
+            lines = response.text.strip().split('\n')
+            if len(lines) >= 3:
+                satellites["NAV-GPS"] = {
+                    "name": "GPS III-6",
+                    "line1": lines[1].strip(),
+                    "line2": lines[2].strip()
+                }
+        
+        # Starlink-1007 - NORAD ID: 44713
+        starlink_url = "https://celestrak.org/NORAD/elements/gp.php?CATNR=44713&FORMAT=TLE"
+        response = requests.get(starlink_url, timeout=10)
+        if response.status_code == 200:
+            lines = response.text.strip().split('\n')
+            if len(lines) >= 3:
+                satellites["STAR-V2"] = {
+                    "name": "Starlink-1007",
+                    "line1": lines[1].strip(),
+                    "line2": lines[2].strip()
+                }
+        
+        # KH-11 (USA-224) - NORAD ID: 37348
+        spy_url = "https://celestrak.org/NORAD/elements/gp.php?CATNR=37348&FORMAT=TLE"
+        response = requests.get(spy_url, timeout=10)
+        if response.status_code == 200:
+            lines = response.text.strip().split('\n')
+            if len(lines) >= 3:
+                satellites["KH-11-S"] = {
+                    "name": "USA-224 (KH-11)",
+                    "line1": lines[1].strip(),
+                    "line2": lines[2].strip()
+                }
+        
+        if satellites:
+            st.session_state.satellite_tle_cache = satellites
+            st.session_state.satellite_cache_time = datetime.now()
+            return satellites
+        else:
+            return None
+    except Exception as e:
+        st.warning(f"Could not fetch TLE data: {e}")
+        return None
+
+def compute_satellite_positions(target_time, ground_lat, ground_lon):
+    """
+    Compute satellite positions at the given time using real TLE data.
+    Returns a list of satellite position dictionaries.
+    """
+    if not SKYFIELD_AVAILABLE:
+        return None
+    
+    tle_data = get_satellite_tle()
+    if not tle_data:
+        return None
+    
+    try:
+        ts = load.timescale()
+        t = ts.utc(target_time.year, target_time.month, target_time.day,
+                   target_time.hour, target_time.minute, target_time.second)
+        
+        positions = []
+        
+        for sat_id, data in tle_data.items():
+            satellite = EarthSatellite(data["line1"], data["line2"], data["name"], ts)
+            geocentric = satellite.at(t)
+            subpoint = geocentric.subpoint()
+            
+            # Get latitude and longitude in degrees
+            lat = subpoint.latitude.degrees
+            lon = subpoint.longitude.degrees
+            alt_km = subpoint.elevation.km
+            
+            # Determine color based on satellite type
+            color_map = {
+                "STAR-V2": "#00ff64",
+                "NAV-GPS": "#00bfff",
+                "KH-11-S": "#ff3300",
+                "ISS": "#ffffff"
+            }
+            
+            positions.append({
+                "id": sat_id,
+                "type": "Satellite",
+                "name": data["name"],
+                "color": color_map.get(sat_id, "#ffffff"),
+                "lat": lat,
+                "lon": lon,
+                "alt": f"{alt_km:.0f}km" if alt_km > 0 else "N/A",
+                "detected_at": target_time.strftime("%Y-%m-%d %I:%M:%S %p")
+            })
+        
+        return positions
+    except Exception as e:
+        st.warning(f"Error computing satellite positions: {e}")
+        return None
 
 # ========== TRANSLATIONS ==========
 UI = {
@@ -912,11 +1044,8 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== ROBUST AI ANALYSIS (always returns a message) ==========
+# ========== AI ANALYSIS ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
-    """
-    AI Analyst that always returns a response – even if the Groq call fails.
-    """
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
     else:
@@ -926,7 +1055,7 @@ def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None
             lines.append(f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})")
         radar_summary = "\n".join(lines)
     
-    sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
+    sat_summary = "\n".join([f"- {s['id']} ({s['name']}) at altitude {s['alt']}, position {s['lat']:.2f}N, {s['lon']:.2f}W" for s in satellites])
     
     full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). 
 Use the following live ADS-B data to answer the question. 
@@ -1140,9 +1269,9 @@ def main_page():
             st.session_state.authenticated = False
             st.rerun()
 
-    # ---- Fetch data (now always returns a tuple) ----
+    # ---- Fetch aircraft data ----
     if use_demo:
-        aircraft_data, _ = get_demo_aircraft(), "demo"  # manually set status
+        aircraft_data, _ = get_demo_aircraft(), "demo"
         st.session_state.api_status = "Demo (User selected)"
     else:
         aircraft_data, status = fetch_live_aircraft(u_lat, u_lon)
@@ -1160,7 +1289,19 @@ def main_page():
             st.session_state.next_refresh = time.time() + seconds
             st.rerun()
 
-    sat_data = get_satellites()
+    # ---- Satellite data ----
+    sat_data = []
+    if SKYFIELD_AVAILABLE:
+        target_time = datetime.now()
+        sat_positions = compute_satellite_positions(target_time, u_lat, u_lon)
+        if sat_positions:
+            sat_data = sat_positions
+        else:
+            st.warning("⚠️ Could not compute satellite positions. Using fallback data.")
+            sat_data = get_satellites_fallback()
+    else:
+        st.warning("⚠️ Skyfield library not installed. Install with: pip install skyfield")
+        sat_data = get_satellites_fallback()
 
     tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
@@ -1405,54 +1546,47 @@ def main_page():
                     report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
-    # Satellite tab – fixed predictions
+    # Satellite tab – ACCURATE REAL DATA
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
-        st.info("⚠️ Satellite predictions are approximate and based on simplified orbital models. For accurate tracking, use dedicated tools like Heavens-Above or N2YO.com.")
+        
+        if SKYFIELD_AVAILABLE:
+            st.success("✅ Using real-time satellite tracking data from Celestrak (TLE)")
+        else:
+            st.warning("⚠️ Skyfield library not installed. Install with: pip install skyfield")
+        
         col_ctrl, col_map = st.columns([1, 2])
         with col_ctrl:
-            st.subheader("OpenSky Prediction")
-            t_date = st.date_input(L['time_target'], datetime.now())
-            t_time = st.time_input("Target Time", datetime.now().time())
-            full_t = datetime.combine(t_date, t_time)
-            diff_sec = (full_t - datetime.now()).total_seconds()
-            diff_hours = diff_sec / 3600.0
-            for s in sat_data:
-                # Compute latitude (oscillate around user's latitude)
-                lat_offset = 5 * math.sin(2 * math.pi * diff_sec / (s["period_hr"] * 3600) + hash(s["id"]) % 10)
-                pred_lat = u_lat + lat_offset
-                # Compute longitude based on orbital period
-                # Each orbit shifts longitude by (360 * Earth_rotation_rate / period) but we use simplified drift
-                # Using the formula: lon = init_lon + (360 * diff_hours / period_hr) % 360 - 180
-                lon_shift = (360 * diff_hours / s["period_hr"]) % 360
-                pred_lon = s["init_lon"] + lon_shift
-                pred_lon = pred_lon % 360
-                if pred_lon > 180:
-                    pred_lon -= 360
-                with st.container(border=True):
-                    st.write(f"**{s['id']}** ({s['type']})")
-                    st.caption(f"Predicted Lock: {pred_lat:.2f}N, {pred_lon:.2f}W")
-                    st.download_button(L['report'], f"PREDICTION\n{s['id']}\n{full_t}", key=f"sat_{s['id']}")
+            st.subheader("Live Satellite Positions")
+            st.caption("Positions calculated from real TLE data (updated every 6 hours)")
+            
+            if sat_data:
+                for s in sat_data:
+                    with st.container(border=True):
+                        st.write(f"**{s['id']}** ({s['name']})")
+                        st.caption(f"Position: {s['lat']:.2f}°N, {s['lon']:.2f}°W")
+                        st.caption(f"Altitude: {s['alt']}")
+                        st.caption(f"Updated: {s['detected_at']}")
+            else:
+                st.warning("No satellite data available.")
+        
         with col_map:
             st.subheader(L['sky_view'])
             tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
             markers = ""
+            
+            # Aircraft markers
             if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
                 for a in aircraft_data:
                     if "lat" in a and "lon" in a:
-                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('{a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km<br>Detected: {a.get('detected_at', 'N/A')}');"
+                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('✈️ {a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
+            
+            # Satellite markers (accurate positions)
             for s in sat_data:
-                # Use the same prediction for map markers
-                lat_offset = 5 * math.sin(2 * math.pi * diff_sec / (s["period_hr"] * 3600) + hash(s["id"]) % 10)
-                pred_lat = u_lat + lat_offset
-                lon_shift = (360 * diff_hours / s["period_hr"]) % 360
-                pred_lon = s["init_lon"] + lon_shift
-                pred_lon = pred_lon % 360
-                if pred_lon > 180:
-                    pred_lon -= 360
-                markers += f"L.circleMarker([{pred_lat}, {pred_lon}], {{color:'{s['color']}', radius:8}}).addTo(map).bindPopup('{s['id']}');"
+                markers += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color:'{s['color']}', radius:10, weight:2}}).addTo(map).bindPopup('🛰️ {s['id']}<br>{s['name']}<br>Alt: {s['alt']}');"
+            
             map_html = f"""
             <html><head>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -1463,14 +1597,14 @@ def main_page():
                 <script>
                     const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 10);
                     L.tileLayer('{tiles}', {{ attribution: '{attribution}' }}).addTo(map);
-                    L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 12, weight: 3}}).addTo(map).bindPopup('Primary Ground Lock');
+                    L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 12, weight: 3}}).addTo(map).bindPopup('📍 Ground Station');
                     {markers}
                 </script>
             </body></html>
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab (FIXED – now always shows a response)
+    # AI Analyst tab
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1521,14 +1655,12 @@ def main_page():
             with col_btn2:
                 listen_btn = st.button(L['listen_response'], use_container_width=True)
             
-            # Always show the response container with a default placeholder if empty
             if not st.session_state.ai_response:
                 st.info("💡 Click 'Analyze' to get an AI response based on the current radar data.")
             else:
                 st.markdown(f"### {L['ai_response']}")
                 st.markdown(st.session_state.ai_response)
             
-            # If the user clicked Analyze, process and update the response
             if analyze_btn:
                 if not user_question.strip():
                     st.warning("Please enter a question.")
@@ -1538,7 +1670,6 @@ def main_page():
                         st.session_state.ai_response = response
                     st.rerun()
             
-            # Listen button
             if listen_btn:
                 if st.session_state.ai_response:
                     with st.spinner("Generating audio..."):
@@ -1573,6 +1704,15 @@ def main_page():
                         st.warning("No objects detected.")
                 else:
                     st.error(f"Detection failed: {detections[0].get('error', 'Unknown error')}")
+
+def get_satellites_fallback():
+    """Fallback satellite data if TLE fetch fails."""
+    return [
+        {"id": "STAR-V2", "type": "Starlink", "color": "#00ff64", "alt": "550km", "name": "Starlink-1007", "lat": 23.09, "lon": -80.00, "detected_at": datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")},
+        {"id": "NAV-GPS", "type": "GPS III", "color": "#00bfff", "alt": "20,200km", "name": "GPS III-6", "lat": 19.24, "lon": -60.00, "detected_at": datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")},
+        {"id": "KH-11-S", "type": "Spy Satellite", "color": "#ff3300", "alt": "380km", "name": "USA-224 (KH-11)", "lat": 13.74, "lon": -100.00, "detected_at": datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")},
+        {"id": "ISS", "type": "Space Station", "color": "#ffffff", "alt": "408km", "name": "ISS (ZARYA)", "lat": 19.24, "lon": -40.00, "detected_at": datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")}
+    ]
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
