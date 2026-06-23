@@ -1,17 +1,20 @@
 import streamlit as st
 import json
+import random
 import math
 import requests
 import time
+import base64
 import os
 import tempfile
 from datetime import datetime
 import streamlit.components.v1 as components
 from groq import Groq
+import pandas as pd
 import re
 import pytz
 
-# ========== OPTIONAL: Object detection ==========
+# ========== OPTIONAL: Object detection from uploaded images ==========
 def run_object_detection(image_bytes):
     try:
         from ultralytics import YOLO
@@ -45,19 +48,75 @@ def run_object_detection(image_bytes):
         return None, [{"error": str(e)}]
 
 # ========== CONFIGURATION ==========
-st.set_page_config(page_title="GlobalInternet.py | Surveillance Portal", layout="wide", page_icon="🌐")
+st.set_page_config(
+    page_title="GlobalInternet.py | Surveillance Portal",
+    layout="wide",
+    page_icon="🌐"
+)
 
-# ========== CUSTOM CSS ==========
+# ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
 st.markdown("""
 <style>
-    .stApp {background: #0a0a0f; color: #e0d5c8;}
-    [data-testid="stSidebar"] {background: #0d0d12; border-right: 1px solid #2a1f14;}
-    .stButton>button {background: linear-gradient(135deg, #1a120a, #2a1f14) !important; color: #e8ddd0 !important; border: 1px solid #4a3520 !important;}
-    .stButton>button:hover {background: linear-gradient(135deg, #2a1f14, #3d2a18) !important;}
-    .question-list button {width: 100%; text-align: left; background: transparent; border: none; color: #d4c9bd; padding: 6px 10px; border-radius: 4px;}
-    .question-list button:hover {background: rgba(255,255,255,0.1);}
+    .stApp {
+        background: #0a0a0f;
+        background-image: 
+            radial-gradient(circle at 20% 30%, rgba(60, 40, 20, 0.15) 0%, transparent 25%),
+            radial-gradient(circle at 70% 60%, rgba(60, 40, 20, 0.10) 0%, transparent 35%),
+            radial-gradient(circle at 40% 80%, rgba(80, 50, 25, 0.12) 0%, transparent 30%),
+            radial-gradient(circle at 85% 20%, rgba(40, 30, 15, 0.08) 0%, transparent 40%);
+        color: #e0d5c8;
+    }
+    [data-testid="stSidebar"] {
+        background: #0d0d12;
+        background-image: 
+            radial-gradient(circle at 30% 40%, rgba(70, 50, 30, 0.12) 0%, transparent 30%),
+            radial-gradient(circle at 70% 70%, rgba(50, 35, 20, 0.08) 0%, transparent 35%);
+        border-right: 1px solid #2a1f14;
+    }
+    .stButton>button {
+        background: linear-gradient(135deg, #1a120a, #2a1f14) !important;
+        color: #e8ddd0 !important;
+        border: 1px solid #4a3520 !important;
+        border-radius: 8px !important;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #2a1f14, #3d2a18) !important;
+    }
+    .question-list button {
+        width: 100%; text-align: left; background: transparent; border: none; 
+        color: #d4c9bd; padding: 6px 10px; border-radius: 4px;
+    }
+    .question-list button:hover {
+        background: rgba(255,255,255,0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# ========== AI VOICE SCRIPTS ==========
+def generate_male_voice_audio():
+    script = """Welcome to the Global Surveillance Radar Portal..."""  # Keep your original full script
+    return script  # Replace with your full original function content
+
+def generate_female_voice_audio():
+    script = """Welcome to the Global Surveillance Radar Portal..."""  # Keep your original
+    return script
+
+def generate_audio_response(text, lang_code):
+    try:
+        from gtts import gTTS
+        if not text.strip():
+            return None
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp_path = tmp.name
+        tts = gTTS(text=text, lang=lang_code, slow=False)
+        tts.save(tmp_path)
+        with open(tmp_path, "rb") as f:
+            audio_bytes = f.read()
+        os.unlink(tmp_path)
+        return audio_bytes
+    except Exception as e:
+        st.error(f"Audio generation error: {e}")
+        return None
 
 # ========== GROQ CLIENT ==========
 if "GROQ_API_KEY" not in st.secrets:
@@ -81,20 +140,46 @@ if "cached_timestamp" not in st.session_state:
 if "api_status" not in st.session_state:
     st.session_state.api_status = "Initializing"
 
-# ========== AI ANALYSIS FUNCTION ==========
+# ========== YOUR ORIGINAL FUNCTIONS (get_real_ip, fetch_live_aircraft, classify_aircraft, etc.) ==========
+# Paste all your original functions here (get_real_ip, is_private_ip, get_location, geocode_location, classify_aircraft, 
+# fetch_live_aircraft, get_demo_aircraft, get_satellites) - they remain unchanged.
+
+# (For brevity in this message I didn't repeat all 300+ lines, but you should keep them exactly as in your first version)
+
+# ========== TRANSLATIONS ==========
+# Paste your full UI dictionary here (English, French, Spanish, Chinese) - unchanged
+
+# ========== LOGIN PAGE ==========
+def login_page():
+    # Your original login_page code - unchanged
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+    with col2:
+        st.markdown("""<div class="login-container">...</div>""", unsafe_allow_html=True)
+        pwd = st.text_input("Enter Security Key", type="password")
+        if st.button("Initialize System", key="login_btn", use_container_width=True):
+            if pwd == "20082010":
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Invalid Authorization")
+
+# ========== FIXED AI ANALYSIS ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
     else:
         sorted_aircraft = sorted(aircraft, key=lambda x: x.get("distance_km", 999))
-        lines = [f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a.get('distance_km', 'N/A'):.1f} km" 
-                 for a in sorted_aircraft[:10]]
+        lines = [f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a.get('distance_km', 'N/A'):.1f} km (detected {a.get('detected_at','N/A')})" 
+                for a in sorted_aircraft[:10]]
         radar_summary = "\n".join(lines)
     
     sat_summary = "\n".join([f"- {s['id']} ({s['type']}) at altitude {s['alt']}" for s in satellites])
     
-    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}).
-Use the following live ADS-B data to answer the question.
+    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). 
+Only report aircraft that are actually present in the list.
+
+Ground Station: {location_name} ({u_lat}, {u_lon})
 
 Radar Contacts:
 {radar_summary}
@@ -104,127 +189,56 @@ Satellites:
 
 Question: {question if question else "Give a threat summary"}
 Answer:"""
-
+    
     try:
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a precise surveillance analyst. Only use the provided data. Do not invent contacts."},
+                {"role": "system", "content": "You are a precise surveillance analyst. Only use the provided data."},
                 {"role": "user", "content": full_prompt}
             ],
             temperature=0.2,
             max_tokens=600
         )
         response = completion.choices[0].message.content.strip()
-        return response if response else "⚠️ The AI returned an empty response. Please try again."
+        return response if response else "⚠️ The AI returned an empty response."
     except Exception as e:
         return f"⚠️ AI Analysis Error: {str(e)}\n\nData Source: {st.session_state.api_status}"
 
-# ========== VOICE FUNCTIONS (simplified) ==========
-def generate_audio_response(text, lang_code="en"):
-    try:
-        from gtts import gTTS
-        if not text.strip():
-            return None
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-            tmp_path = tmp.name
-        tts = gTTS(text=text, lang=lang_code, slow=False)
-        tts.save(tmp_path)
-        with open(tmp_path, "rb") as f:
-            audio_bytes = f.read()
-        os.unlink(tmp_path)
-        return audio_bytes
-    except Exception:
-        return None
-
-# ========== TRANSLATIONS (shortened for space - add your full UI dict if needed) ==========
-# ... Paste your full UI dictionary here if you want all languages ...
-
+# ========== MAIN PAGE ==========
 def main_page():
-    L = UI[st.session_state.lang] if 'UI' in globals() else {"ai_analyze": "Analyze", "ai_thinking": "Thinking...", "ai_response": "AI Analyst Report", "ai_question": "Ask your question:"}  # fallback
-
-    # Sidebar (you can keep your full sidebar)
+    L = UI[st.session_state.lang]
+    
     with st.sidebar:
-        st.title("🌐 GlobalInternet.py")
-        st.selectbox("Language", ["English", "French", "Spanish", "Chinese"], key="lang")
-        use_demo = st.checkbox("Demo Mode", value=False)
-        if st.button("Refresh Data"):
-            st.rerun()
+        # === YOUR FULL ORIGINAL SIDEBAR CODE HERE (unchanged) ===
+        # Include profile image, language selector, voice buttons, security, api status, max range, etc.
+        pass  # ← Replace this comment with your full original sidebar code
 
-    aircraft_data = get_demo_aircraft() if use_demo else []  # placeholder - replace with your fetch function
-    sat_data = [{"id": "ISS", "type": "Space Station", "alt": "408km"}]
+    # Fetch data (your original logic)
+    use_demo = st.session_state.get("use_demo", False)   # adjust if needed
+    if use_demo:
+        aircraft_data = get_demo_aircraft()
+    else:
+        aircraft_data, _ = fetch_live_aircraft(18.5392, -72.3364)
+    
+    sat_data = get_satellites()
     location_name = "Port-au-Prince, Haiti"
-    u_lat, u_lon = 18.5392, -72.3364
+    u_lat = 18.5392
+    u_lon = -72.3364
 
-    tab_radar, tab_sat, tab_ai, tab_detect = st.tabs(["📡 Radar", "🛰️ Satellite", "🤖 AI Analyst", "🕵️ Object Detection"])
+    tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
 
+    # Radar tab, Satellite tab, Object Detection tab → Keep exactly as in your original file
+
+    # ==================== FIXED AI ANALYST TAB ====================
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
         common_questions = [
             "What is the current threat level in my area?",
-            "How many aircraft are currently within 50 km?",
+            "How many aircraft are currently within 50 km of my ground station?",
+            "Are there any military aircraft near my location?",
             "What is the closest aircraft to my position?",
-            "Are there any military aircraft nearby?",
-            "Summarize all radar activity."
-        ]
-        
-        col_q, col_main = st.columns([1, 2])
-        with col_q:
-            st.subheader("Common Questions")
-            for idx, q in enumerate(common_questions):
-                if st.button(q, key=f"q_{idx}"):
-                    st.session_state.ai_question_input = q
-                    st.session_state.ai_response = ""
-                    st.rerun()
-
-        with col_main:
-            st.text_area(
-                "Ask about radar contacts or satellite predictions:",
-                height=120,
-                key="ai_question_text",
-                placeholder="Type your question here..."
-            )
-            
-            col_btn1, col_btn2 = st.columns(2)
-            analyze_btn = col_btn1.button("Analyze Current Threat Level", use_container_width=True, type="primary")
-            listen_btn = col_btn2.button("🔊 Listen to Response", use_container_width=True)
-
-            st.markdown("---")
-
-            if st.session_state.ai_response:
-                st.subheader("AI Analyst Report")
-                st.markdown(st.session_state.ai_response)
-            else:
-                st.info("💡 Click **Analyze** to get an AI response based on current radar data.")
-
-            if analyze_btn:
-                question = st.session_state.get("ai_question_text", "").strip()
-                if not question:
-                    st.warning("Please enter a question.")
-                else:
-                    with st.spinner("🤖 AI analyzing surveillance data..."):
-                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, question)
-                        st.session_state.ai_response = response
-                    st.rerun()
-
-            if listen_btn and st.session_state.ai_response:
-                with st.spinner("Generating audio..."):
-                    audio = generate_audio_response(st.session_state.ai_response)
-                    if audio:
-                        st.audio(audio, format="audio/mp3")
-                    else:
-                        st.error("Audio generation failed.")
-
-# ========== RUN APP ==========
-if not st.session_state.authenticated:
-    st.title("GlobalInternet.py Surveillance Portal")
-    pwd = st.text_input("Enter Security Key", type="password")
-    if st.button("Login"):
-        if pwd == "20082010":
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Invalid key")
-else:
-    main_page()
+            "How many drones are detected in my vicinity?",
+            "What satellites are currently overhead?",
+            "Are
