@@ -1454,7 +1454,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab (FIXED)
+    # AI Analyst tab (FIXED – now always shows a response)
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1505,12 +1505,14 @@ def main_page():
             with col_btn2:
                 listen_btn = st.button(L['listen_response'], use_container_width=True)
             
-            # Always show any existing AI response
-            if st.session_state.ai_response:
+            # Always show the response container with a default placeholder if empty
+            if not st.session_state.ai_response:
+                st.info("💡 Click 'Analyze' to get an AI response based on the current radar data.")
+            else:
                 st.markdown(f"### {L['ai_response']}")
                 st.markdown(st.session_state.ai_response)
             
-            # If the user clicked Analyze, update the response
+            # If the user clicked Analyze, process and update the response
             if analyze_btn:
                 if not user_question.strip():
                     st.warning("Please enter a question.")
@@ -1518,7 +1520,7 @@ def main_page():
                     with st.spinner(L['ai_thinking']):
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
-                    # Rerun to refresh the display
+                    # Update the display without a full rerun – the next render will show it
                     st.rerun()
             
             # Listen button
