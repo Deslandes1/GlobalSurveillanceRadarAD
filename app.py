@@ -503,12 +503,12 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== LIVE AIRCRAFT FETCH (with detection timestamp) ==========
+# ========== LIVE AIRCRAFT FETCH (with AM/PM timestamp) ==========
 def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
     """
     Fetches ADS-B data from OpenSky and filters with strict sanity checks.
     Uses max_range from session state (default 180 km) to control detection radius.
-    Adds a 'detected_at' timestamp for each aircraft.
+    Adds a 'detected_at' timestamp in 12-hour AM/PM format.
     """
     max_range = st.session_state.get("max_range", 180)
     
@@ -524,7 +524,7 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                 if not states:
                     return [], "no_data"
                 aircraft_list = []
-                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -566,7 +566,7 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
                         "lat": lat,
                         "lon": lon,
                         "verified": False,
-                        "detected_at": now_str   # <-- NEW timestamp field
+                        "detected_at": now_str
                     })
                 
                 aircraft_list = sorted(aircraft_list, key=lambda x: x["distance_km"])[:20]
@@ -596,7 +596,7 @@ def fetch_live_aircraft(ground_lat, ground_lon, max_retries=3):
         return demo, "demo"
 
 def get_demo_aircraft():
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
     return [
         {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 60, "detected_at": now_str},
         {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30, "detected_at": now_str},
@@ -897,7 +897,7 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== AI ANALYSIS (honest) ==========
+# ========== AI ANALYSIS ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
@@ -1356,10 +1356,9 @@ def main_page():
                     st.write(f"**Altitude:** {d['alt']}")
                     if "distance_km" in d:
                         st.write(f"**Distance:** {d['distance_km']:.1f} km")
-                    st.write(f"**Detected at:** {d.get('detected_at', 'N/A')}")   # <-- NEW
+                    st.write(f"**Detected at:** {d.get('detected_at', 'N/A')}")
                     if not use_demo and 'lat' in d:
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
-                    # Include timestamp in download
                     report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
