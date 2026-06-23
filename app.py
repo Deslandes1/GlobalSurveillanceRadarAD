@@ -1041,7 +1041,7 @@ def main_page():
 
         st.divider()
         
-        # ----- NEW: MAX RANGE SLIDER -----
+        # ----- MAX RANGE SLIDER -----
         st.markdown("### 📡 Max Detection Range")
         max_range = st.slider(
             "Distance from ground station (km)",
@@ -1049,7 +1049,7 @@ def main_page():
             max_value=300,
             value=180,
             step=10,
-            key="max_range",  # stored in session state
+            key="max_range",
             help="Adjust the maximum distance to include aircraft. 180 km covers all of Haiti."
         )
         st.caption(f"Current range: **{max_range} km**")
@@ -1078,21 +1078,16 @@ def main_page():
         st.info("**Port-au-Prince, Haiti** (18.5392, -72.3364)")
         st.caption("Radar is fixed to cover all of Haiti.")
         
-        # Display the coordinates as read-only inputs (or hidden)
-        # but we still need to pass them to the rest of the app
         location_name = "Port-au-Prince, Haiti"
         u_lat = 18.5392
         u_lon = -72.3364
 
-        # We still keep the override fields for future flexibility, but default to Haiti
-        # and we can hide the location override if not needed, but we'll keep them for now.
         st.markdown("---")
         st.markdown("#### Override (optional)")
         location_name_override = st.text_input("Location Name (override)", value=location_name, key="loc_name_override")
         u_lat_override = st.number_input("Latitude", value=u_lat, format="%.4f", key="lat_override")
         u_lon_override = st.number_input("Longitude", value=u_lon, format="%.4f", key="lon_override")
         
-        # Use the override values if changed, else use defaults
         if location_name_override != location_name or u_lat_override != u_lat or u_lon_override != u_lon:
             location_name = location_name_override
             u_lat = u_lat_override
@@ -1156,6 +1151,7 @@ def main_page():
             """
             st.markdown(legend_html, unsafe_allow_html=True)
             radar_json = json.dumps(aircraft_data)
+            # ----- UPDATED radar_html with alert sound -----
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
                 <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14; cursor:pointer;"></canvas>
@@ -1166,6 +1162,7 @@ def main_page():
                     let angle = 0;
                     let audioCtx = null;
                     let soundEnabled = false;
+                    let alertPlayed = false;   // track if we've played the alert sound for current aircraft presence
                     
                     canvas.addEventListener('click', () => {{
                         if (!audioCtx) {{
@@ -1179,6 +1176,7 @@ def main_page():
                         setTimeout(() => {{ canvas.style.borderColor = '#2a1f14'; }}, 200);
                     }});
                     
+                    // Existing ping sound (unchanged)
                     function ping() {{
                         if (!audioCtx || !soundEnabled) return;
                         try {{
@@ -1189,6 +1187,25 @@ def main_page():
                             osc.frequency.setValueAtTime(400, now);
                             osc.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
                             gain.gain.setValueAtTime(0.2, now);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start(now);
+                            osc.stop(now + 0.35);
+                        }} catch (e) {{}}
+                    }}
+                    
+                    // New alert sound for aircraft detection
+                    function playAlert() {{
+                        if (!audioCtx) return;
+                        try {{
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            const now = audioCtx.currentTime;
+                            osc.type = 'square';
+                            osc.frequency.setValueAtTime(880, now);
+                            osc.frequency.exponentialRampToValueAtTime(660, now + 0.25);
+                            gain.gain.setValueAtTime(0.12, now);
                             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
                             osc.connect(gain);
                             gain.connect(audioCtx.destination);
@@ -1278,6 +1295,16 @@ def main_page():
                             const dist = d.distance_km ? d.distance_km.toFixed(0) : 'N/A';
                             drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse, dist);
                         }});
+                        
+                        // --- Alert sound logic ---
+                        if (data.length > 0) {{
+                            if (!alertPlayed) {{
+                                playAlert();
+                                alertPlayed = true;
+                            }}
+                        }} else {{
+                            alertPlayed = false;   // reset when radar is empty
+                        }}
                         
                         let oldA = angle;
                         angle -= 0.03;
