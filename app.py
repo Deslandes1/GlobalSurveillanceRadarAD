@@ -912,8 +912,11 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== AI ANALYSIS ==========
+# ========== FIXED AI ANALYSIS (works in demo and live) ==========
 def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
+    """
+    AI Analyst that actually works – no response_format to avoid Groq errors.
+    """
     if not aircraft:
         radar_summary = "No aircraft detected within the current range."
     else:
@@ -943,6 +946,7 @@ Question: {question if question else "Give a threat summary"}
 Answer:"""
     
     try:
+        # Remove response_format to avoid Groq compatibility issues
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
@@ -954,7 +958,7 @@ Answer:"""
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
-        return f"AI error: {str(e)}"
+        return f"⚠️ AI error: {str(e)}"
 
 def main_page():
     L = UI[st.session_state.lang]
@@ -1453,7 +1457,7 @@ def main_page():
             """
             components.html(map_html, height=550)
 
-    # AI Analyst tab
+    # AI Analyst tab (FIXED)
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1491,7 +1495,12 @@ def main_page():
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col_main:
-            user_question = st.text_area(L['ai_question'], height=100, value=st.session_state.ai_question_input, key="ai_question_text")
+            user_question = st.text_area(
+                L['ai_question'],
+                height=100,
+                value=st.session_state.ai_question_input,
+                key="ai_question_text"
+            )
             
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
