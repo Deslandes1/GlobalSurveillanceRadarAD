@@ -386,6 +386,8 @@ if "satellite_cache_time" not in st.session_state:
     st.session_state.satellite_cache_time = None
 if "satellite_positions" not in st.session_state:
     st.session_state.satellite_positions = None
+if "satellite_error" not in st.session_state:
+    st.session_state.satellite_error = False
 
 # ========== IP & LOCATION DETECTION ==========
 def get_real_ip():
@@ -630,7 +632,7 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
-# ========== SATELLITE TRACKING (lazy loading) ==========
+# ========== SATELLITE TRACKING (lazy loading, no fallback) ==========
 
 @st.cache_data(ttl=21600)
 def fetch_tle_from_celestrak(catnr, timeout=10, retries=2):
@@ -658,8 +660,8 @@ def fetch_tle_from_celestrak(catnr, timeout=10, retries=2):
 
 def get_satellite_tle():
     """
-    Fetch real-time TLE data from Celestrak with fallback to local cache.
-    Returns a dictionary of satellite objects.
+    Fetch real-time TLE data from Celestrak.
+    Returns a dictionary of satellite objects or None if fetch fails.
     """
     if not SKYFIELD_AVAILABLE:
         return None
@@ -698,8 +700,10 @@ def get_satellite_tle():
     if tle_data:
         st.session_state.satellite_tle_cache = tle_data
         st.session_state.satellite_cache_time = datetime.now()
+        st.session_state.satellite_error = False
         return tle_data
     else:
+        st.session_state.satellite_error = True
         return None
 
 def compute_satellite_positions(target_time, ground_lat, ground_lon):
@@ -749,27 +753,21 @@ def compute_satellite_positions(target_time, ground_lat, ground_lon):
         
         return positions
     except Exception as e:
-        st.warning(f"Error computing satellite positions: {e}")
+        st.session_state.satellite_error = True
         return None
-
-def get_satellites_fallback():
-    """Fallback satellite data if TLE fetch fails."""
-    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-    return [
-        {"id": "STAR-V2", "type": "Satellite", "color": "#00ff64", "alt": "550km", "name": "Starlink-1007", "lat": 23.09, "lon": -80.00, "detected_at": now_str},
-        {"id": "NAV-GPS", "type": "Satellite", "color": "#00bfff", "alt": "20,200km", "name": "GPS III-6", "lat": 19.24, "lon": -60.00, "detected_at": now_str},
-        {"id": "KH-11-S", "type": "Satellite", "color": "#ff3300", "alt": "380km", "name": "USA-224 (KH-11)", "lat": 13.74, "lon": -100.00, "detected_at": now_str},
-        {"id": "ISS", "type": "Satellite", "color": "#ffffff", "alt": "408km", "name": "ISS (ZARYA)", "lat": 19.24, "lon": -40.00, "detected_at": now_str}
-    ]
 
 def get_satellite_data(u_lat, u_lon):
     """
     Lazy load satellite positions – only called when needed.
+    Returns list of positions or None if failed.
     """
-    # Check if we have recent positions in session state
+    # If we have positions stored and they are recent (within 1 hour), use them
     if st.session_state.satellite_positions:
-        # If we have positions, return them (they are updated on demand)
-        return st.session_state.satellite_positions
+        # Check if we have a timestamp for them
+        if st.session_state.satellite_cache_time:
+            age = (datetime.now() - st.session_state.satellite_cache_time).total_seconds()
+            if age < 3600:  # 1 hour
+                return st.session_state.satellite_positions
     
     # Compute fresh positions
     if SKYFIELD_AVAILABLE:
@@ -777,15 +775,14 @@ def get_satellite_data(u_lat, u_lon):
         positions = compute_satellite_positions(target_time, u_lat, u_lon)
         if positions:
             st.session_state.satellite_positions = positions
+            st.session_state.satellite_error = False
             return positions
         else:
-            fallback = get_satellites_fallback()
-            st.session_state.satellite_positions = fallback
-            return fallback
+            st.session_state.satellite_error = True
+            return None
     else:
-        fallback = get_satellites_fallback()
-        st.session_state.satellite_positions = fallback
-        return fallback
+        st.session_state.satellite_error = True
+        return None
 
 # ========== TRANSLATIONS ==========
 UI = {
@@ -1084,7 +1081,7 @@ def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None
             lines.append(f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})")
         radar_summary = "\n".join(lines)
     
-    sat_summary = "\n".join([f"- {s['id']} ({s['name']}) at altitude {s['alt']}, position {s['lat']:.2f}N, {s['lon']:.2f}W" for s in satellites])
+    sat_summary = "\n".join([f"- {s['id']} ({s['name']}) at altitude {s['alt']}, position {s['lat']:.2f}N, {s['lon']:.2f}W" for s in satellites]) if satellites else "No satellite data available."
     
     full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). 
 Use the following live ADS-B data to answer the question. 
@@ -1570,62 +1567,73 @@ def main_page():
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
         
-        # Lazy load satellite data with spinner
-        with st.spinner("🛰️ Fetching satellite positions from Celestrak..."):
-            sat_data = get_satellite_data(u_lat, u_lon)
-        
-        if SKYFIELD_AVAILABLE:
-            st.success("✅ Using real-time satellite tracking data from Celestrak (TLE)")
+        if not SKYFIELD_AVAILABLE:
+            st.error("❌ Skyfield library is not installed. Please install it with: pip install skyfield")
         else:
-            st.warning("⚠️ Skyfield library not installed. Install with: pip install skyfield")
-        
-        col_ctrl, col_map = st.columns([1, 2])
-        with col_ctrl:
-            st.subheader("Live Satellite Positions")
-            st.caption("Positions calculated from real TLE data (updated every 6 hours)")
+            # Try to get satellite data with a spinner
+            with st.spinner("🛰️ Fetching real-time satellite positions from Celestrak..."):
+                sat_data = get_satellite_data(u_lat, u_lon)
             
-            if sat_data:
-                for s in sat_data:
-                    with st.container(border=True):
-                        st.write(f"**{s['id']}** ({s['name']})")
-                        st.caption(f"Position: {s['lat']:.2f}°N, {s['lon']:.2f}°W")
-                        st.caption(f"Altitude: {s['alt']}")
-                        st.caption(f"Updated: {s['detected_at']}")
+            if st.session_state.satellite_error or sat_data is None or len(sat_data) == 0:
+                st.error("❌ Unable to fetch real-time satellite data from Celestrak. Please check your internet connection and try again.")
+                if st.button("🔄 Retry Satellite Fetch"):
+                    # Clear cache and force refetch
+                    st.session_state.satellite_tle_cache = None
+                    st.session_state.satellite_cache_time = None
+                    st.session_state.satellite_positions = None
+                    st.session_state.satellite_error = False
+                    st.rerun()
+                # Show a fallback message but NOT fallback data
+                st.info("ℹ️ Satellite positions will appear here once the TLE data is successfully retrieved.")
+                # Do not display any fake positions.
             else:
-                st.warning("No satellite data available.")
-        
-        with col_map:
-            st.subheader(L['sky_view'])
-            tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
-            markers = ""
-            
-            # Aircraft markers
-            if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
-                for a in aircraft_data:
-                    if "lat" in a and "lon" in a:
-                        markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('✈️ {a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
-            
-            # Satellite markers (accurate positions)
-            for s in sat_data:
-                markers += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color:'{s['color']}', radius:10, weight:2}}).addTo(map).bindPopup('🛰️ {s['id']}<br>{s['name']}<br>Alt: {s['alt']}');"
-            
-            map_html = f"""
-            <html><head>
-                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-                <style>#map {{ height: 500px; border-radius: 15px; border: 2px solid #2a1f14; }}</style>
-            </head><body>
-                <div id="map"></div>
-                <script>
-                    const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 10);
-                    L.tileLayer('{tiles}', {{ attribution: '{attribution}' }}).addTo(map);
-                    L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 12, weight: 3}}).addTo(map).bindPopup('📍 Ground Station');
-                    {markers}
-                </script>
-            </body></html>
-            """
-            components.html(map_html, height=550)
+                st.success("✅ Real-time satellite positions successfully loaded from Celestrak (TLE)")
+                col_ctrl, col_map = st.columns([1, 2])
+                with col_ctrl:
+                    st.subheader("Live Satellite Positions")
+                    st.caption("Positions calculated from real TLE data (updated every 6 hours)")
+                    if sat_data:
+                        for s in sat_data:
+                            with st.container(border=True):
+                                st.write(f"**{s['id']}** ({s['name']})")
+                                st.caption(f"Position: {s['lat']:.2f}°N, {s['lon']:.2f}°W")
+                                st.caption(f"Altitude: {s['alt']}")
+                                st.caption(f"Updated: {s['detected_at']}")
+                    else:
+                        st.warning("No satellite data available.")
+                
+                with col_map:
+                    st.subheader(L['sky_view'])
+                    tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    attribution = "AIP Imagery: Esri, Maxar, Earthstar Geographics"
+                    markers = ""
+                    
+                    # Aircraft markers
+                    if not use_demo and aircraft_data and aircraft_data != get_demo_aircraft():
+                        for a in aircraft_data:
+                            if "lat" in a and "lon" in a:
+                                markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('✈️ {a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
+                    
+                    # Satellite markers (accurate positions)
+                    for s in sat_data:
+                        markers += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color:'{s['color']}', radius:10, weight:2}}).addTo(map).bindPopup('🛰️ {s['id']}<br>{s['name']}<br>Alt: {s['alt']}');"
+                    
+                    map_html = f"""
+                    <html><head>
+                        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                        <style>#map {{ height: 500px; border-radius: 15px; border: 2px solid #2a1f14; }}</style>
+                    </head><body>
+                        <div id="map"></div>
+                        <script>
+                            const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 10);
+                            L.tileLayer('{tiles}', {{ attribution: '{attribution}' }}).addTo(map);
+                            L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 12, weight: 3}}).addTo(map).bindPopup('📍 Ground Station');
+                            {markers}
+                        </script>
+                    </body></html>
+                    """
+                    components.html(map_html, height=550)
 
     # AI Analyst tab – also lazy loads satellites if needed
     with tab_ai:
@@ -1691,6 +1699,8 @@ def main_page():
                     with st.spinner(L['ai_thinking']):
                         # Lazy load satellite data if needed for the analysis
                         sat_data = get_satellite_data(u_lat, u_lon)
+                        if sat_data is None:
+                            sat_data = []  # pass empty list if not available
                         response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
                     st.rerun()
