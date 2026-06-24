@@ -29,7 +29,7 @@ st.set_page_config(
     page_icon="🌐"
 )
 
-# ========== CUSTOM CSS – LEOPARD BLACK THEME ==========
+# ========== CUSTOM CSS – LEOPARD BLACK THEME + BRIGHT WHITE TEXT ==========
 st.markdown("""
 <style>
     .stApp {
@@ -39,7 +39,7 @@ st.markdown("""
             radial-gradient(circle at 70% 60%, rgba(60, 40, 20, 0.10) 0%, transparent 35%),
             radial-gradient(circle at 40% 80%, rgba(80, 50, 25, 0.12) 0%, transparent 30%),
             radial-gradient(circle at 85% 20%, rgba(40, 30, 15, 0.08) 0%, transparent 40%);
-        color: #e0d5c8;
+        color: #ffffff;
     }
     [data-testid="stSidebar"] {
         background: #0d0d12;
@@ -50,8 +50,22 @@ st.markdown("""
     }
     [data-testid="stSidebar"] .stMarkdown,
     [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] .stCaption {
-        color: #d4c9bd !important;
+    [data-testid="stSidebar"] .stCaption,
+    [data-testid="stSidebar"] .stSelectbox label {
+        color: #ffffff !important;
+    }
+    [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] span {
+        color: #ffffff !important;
+    }
+    div[data-baseweb="select"] ul {
+        background-color: #1a1a2e !important;
+    }
+    div[data-baseweb="select"] ul li {
+        color: #ffffff !important;
+        background-color: #1a1a2e !important;
+    }
+    div[data-baseweb="select"] ul li:hover {
+        background-color: #2a1f14 !important;
     }
     .login-container {
         background: #0d0d12;
@@ -63,15 +77,16 @@ st.markdown("""
         padding: 2.5rem;
         box-shadow: 0 8px 32px rgba(0,0,0,0.8);
     }
-    h1, h2, h3, h4, h5, h6 {
-        color: #e8ddd0 !important;
+    .login-container h2, .login-container p {
+        color: #ffffff !important;
     }
-    p, li, .stMarkdown {
-        color: #d4c9bd !important;
+    /* BRIGHT WHITE TEXT FOR ALL ELEMENTS */
+    h1, h2, h3, h4, h5, h6, p, li, .stMarkdown, .stCaption, label, .stTextInput, .stSelectbox, .stTextArea, .stButton, .stAlert, .stInfo, .stSuccess, .stWarning, .stError {
+        color: #ffffff !important;
     }
     .stButton>button {
         background: linear-gradient(135deg, #1a120a, #2a1f14) !important;
-        color: #e8ddd0 !important;
+        color: #ffffff !important;
         border: 1px solid #4a3520 !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
@@ -84,7 +99,7 @@ st.markdown("""
     }
     .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
         background-color: #141018 !important;
-        color: #d4c9bd !important;
+        color: #ffffff !important;
         border: 1px solid #2a1f14 !important;
         border-radius: 8px !important;
     }
@@ -99,16 +114,16 @@ st.markdown("""
         padding: 0.8rem;
     }
     .stMetric label {
-        color: #a09080 !important;
+        color: #ffffff !important;
     }
     .stMetric .stMetricValue {
-        color: #e8ddd0 !important;
+        color: #ffffff !important;
     }
     .streamlit-expanderHeader {
         background: rgba(20, 16, 24, 0.6) !important;
         border: 1px solid #1f1610 !important;
         border-radius: 8px !important;
-        color: #d4c9bd !important;
+        color: #ffffff !important;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
@@ -125,7 +140,7 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
         background: rgba(40, 30, 20, 0.6);
-        color: #e8ddd0;
+        color: #ffffff;
         border: 1px solid #3d2a18;
     }
     .security-badge {
@@ -134,7 +149,7 @@ st.markdown("""
         border-radius: 30px;
         padding: 8px 15px;
         text-align: center;
-        color: #b8a898;
+        color: #ffffff;
         font-weight: bold;
         font-family: monospace;
     }
@@ -144,7 +159,7 @@ st.markdown("""
     .stAlert {
         background: rgba(20, 16, 24, 0.6) !important;
         border: 1px solid #2a1f14 !important;
-        color: #d4c9bd !important;
+        color: #ffffff !important;
     }
     .profile-img {
         border-radius: 50%;
@@ -169,7 +184,7 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 6px;
-        color: #d4c9bd;
+        color: #ffffff;
         font-size: 0.9rem;
     }
     .legend-shape {
@@ -193,7 +208,7 @@ st.markdown("""
         text-align: left;
         background: transparent;
         border: none;
-        color: #d4c9bd;
+        color: #ffffff;
         padding: 6px 10px;
         border-radius: 4px;
         font-size: 0.85rem;
@@ -232,7 +247,7 @@ st.markdown("""
         padding: 10px 12px;
         margin: 10px 0;
         font-size: 0.85rem;
-        color: #d4c9bd;
+        color: #ffffff;
     }
     .local-instructions code {
         background: rgba(255,255,255,0.1);
@@ -240,6 +255,64 @@ st.markdown("""
         border-radius: 4px;
         color: #00ff64;
         font-size: 0.8rem;
+    }
+    /* Flight Tracker iframe container improvements */
+    iframe {
+        background-color: #0a0a0f !important;
+        border: 1px solid #2a1f14 !important;
+        border-radius: 10px !important;
+    }
+    .flight-tracker-container {
+        background: rgba(10, 10, 15, 0.9);
+        border-radius: 15px;
+        padding: 15px;
+        border: 1px solid #2a1f14;
+    }
+    .main-title h1 {
+        color: #ffffff !important;
+    }
+    .main-title p {
+        color: #ffffff !important;
+    }
+    .chat-message {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 10px;
+        margin: 5px 0;
+        color: #ffffff !important;
+    }
+    .email-log {
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 3px solid #4a3520;
+        padding: 10px;
+        margin: 5px 0;
+        font-family: monospace;
+        font-size: 0.9rem;
+        color: #ffffff !important;
+    }
+    .warning-box {
+        background: rgba(255, 193, 7, 0.15);
+        border-left: 4px solid #ffc107;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+        color: #ffffff !important;
+    }
+    .stInfo, .stSuccess, .stWarning, .stError {
+        color: #ffffff !important;
+    }
+    /* Additional selectors for maximum white text coverage */
+    .stSelectbox label, .stTextInput label, .stTextArea label, .stNumberInput label, .stDateInput label, .stTimeInput label {
+        color: #ffffff !important;
+    }
+    .stMarkdown a {
+        color: #00bfff !important;
+    }
+    .stMarkdown a:hover {
+        color: #87ceeb !important;
+    }
+    .stDownloadButton button {
+        color: #ffffff !important;
     }
 </style>
 """, unsafe_allow_html=True)
