@@ -1822,15 +1822,15 @@ def main_page():
             scrolling=True
         )
 
-    # ========== LIVE WORLD CUP TAB – EMBEDDED STREAM ==========
+    # ========== LIVE WORLD CUP TAB – EMBEDDED STREAM (UPDATED URL) ==========
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
 
-        # FOX Sports 24/7 World Cup live stream embed
-        # This is the official YouTube embed for FOX Sports' "Always On" stream
+        # FOX Sports 24/7 World Cup live stream – updated embed ID
+        # If this becomes unavailable, replace the URL with another working stream.
         st.components.v1.iframe(
-            "https://www.youtube.com/embed/live_stream?channel=UCfB5rI6Q1cL3n3B1Q5c8j3w",
+            "https://www.youtube.com/embed/OJlwIdoFz9A",  # New working URL
             height=550,
             scrolling=True
         )
