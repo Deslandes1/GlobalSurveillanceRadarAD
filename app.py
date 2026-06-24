@@ -322,7 +322,7 @@ def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
-    This application features five main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, and Live World Cup.
+    This application features six main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, Live World Cup, and YouTube Feeds.
     
     The Radar Control tab shows a 360-degree live radar display with a classic fetching sound. Click the radar screen to enable the audio and hear a sonar ping on every sweep. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation.
     
@@ -334,7 +334,9 @@ def generate_male_voice_audio():
     
     You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
+    The Live World Cup tab features two embedded free live streams from a third-party provider, so you can watch the 2026 World Cup matches live.
+    
+    The new YouTube Feeds tab lets you embed any number of YouTube videos by pasting their URLs into a text area. It comes with a sample link and you can add as many as you like.
     
     The sidebar includes automatic location detection, language selection, a demo mode toggle, and secure logout. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -362,7 +364,9 @@ def generate_female_voice_audio():
     
     You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
+    The Live World Cup tab now offers two live streams for the 2026 World Cup matches.
+    
+    The new YouTube Feeds tab is an independent player that lets you embed multiple YouTube videos at once. Just paste your URLs and click Load.
     
     The sidebar provides automatic location detection, language selection, a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -436,6 +440,10 @@ if "satellite_positions" not in st.session_state:
     st.session_state.satellite_positions = None
 if "satellite_error" not in st.session_state:
     st.session_state.satellite_error = False
+
+# ========== YOUTUBE FEEDS STATE ==========
+if "youtube_videos" not in st.session_state:
+    st.session_state.youtube_videos = []  # list of dicts: {id, embed_url, original_url}
 
 # ========== IP & LOCATION DETECTION ==========
 def get_real_ip():
@@ -792,6 +800,25 @@ def get_satellite_data(u_lat, u_lon):
         st.session_state.satellite_error = True
         return None
 
+# ========== YOUTUBE HELPER ==========
+def extract_youtube_id(url):
+    """
+    Extract video ID from various YouTube URL formats.
+    Returns None if not a valid YouTube URL.
+    """
+    patterns = [
+        r'(?:youtube\.com\/watch\?v=)([\w-]+)',
+        r'(?:youtu\.be\/)([\w-]+)',
+        r'(?:youtube\.com\/embed\/)([\w-]+)',
+        r'(?:youtube\.com\/v\/)([\w-]+)',
+        r'(?:youtube\.com\/shorts\/)([\w-]+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
 # ========== TRANSLATIONS ==========
 UI = {
     "English": {
@@ -800,6 +827,7 @@ UI = {
         "ai_tab": "🤖 AI Analyst",
         "detect_tab": "✈️ Flight Tracker",
         "worldcup_tab": "⚽ Live World Cup",
+        "youtube_tab": "🎥 YouTube Feeds",
         "title": "GLOBAL SURVEILLANCE RADAR",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
@@ -867,7 +895,14 @@ UI = {
         "enter_flight": "Please enter a flight ID.",
         "worldcup_title": "🏆 FIFA World Cup 2026 – Live Stream (FREE)",
         "worldcup_desc": "Watch every match live for free via the embedded stream.",
-        "stream_note": "ℹ️ Stream provided by a third-party site."
+        "stream_note": "ℹ️ Stream provided by a third-party site.",
+        "youtube_title": "🎥 YouTube Video Feeds",
+        "youtube_desc": "Paste YouTube URLs (one per line) to embed multiple videos.",
+        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
+        "youtube_load_btn": "Load Videos",
+        "youtube_clear_btn": "Clear All",
+        "youtube_loaded": "Loaded {count} video(s).",
+        "youtube_error": "No valid YouTube URLs found."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -875,6 +910,7 @@ UI = {
         "ai_tab": "🤖 Analyste IA",
         "detect_tab": "✈️ Trafic Aérien",
         "worldcup_tab": "⚽ Coupe du Monde en direct",
+        "youtube_tab": "🎥 Flux YouTube",
         "title": "RADAR DE SURVEILLANCE MONDIAL",
         "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion",
@@ -942,7 +978,14 @@ UI = {
         "enter_flight": "Veuillez entrer un ID de vol.",
         "worldcup_title": "🏆 Coupe du Monde 2026 – Streaming en direct (GRATUIT)",
         "worldcup_desc": "Regardez chaque match en direct gratuitement via le stream intégré.",
-        "stream_note": "ℹ️ Flux fourni par un site tiers."
+        "stream_note": "ℹ️ Flux fourni par un site tiers.",
+        "youtube_title": "🎥 Flux vidéo YouTube",
+        "youtube_desc": "Collez les URLs YouTube (une par ligne) pour intégrer plusieurs vidéos.",
+        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
+        "youtube_load_btn": "Charger les vidéos",
+        "youtube_clear_btn": "Tout effacer",
+        "youtube_loaded": "{count} vidéo(s) chargée(s).",
+        "youtube_error": "Aucune URL YouTube valide trouvée."
     },
     "Spanish": {
         "radar_tab": "📡 Control de Radar",
@@ -950,6 +993,7 @@ UI = {
         "ai_tab": "🤖 Analista IA",
         "detect_tab": "✈️ Rastreador de Vuelos",
         "worldcup_tab": "⚽ Copa del Mundo en vivo",
+        "youtube_tab": "🎥 Feeds de YouTube",
         "title": "RADAR DE VIGILANCIA GLOBAL",
         "author_tag": "Construido por Gesner Deslandes",
         "logout": "Cerrar Sesión",
@@ -1017,7 +1061,14 @@ UI = {
         "enter_flight": "Por favor, ingrese un ID de vuelo.",
         "worldcup_title": "🏆 Copa Mundial 2026 – Transmisión en vivo (GRATIS)",
         "worldcup_desc": "Mira cada partido en vivo gratis a través del stream integrado.",
-        "stream_note": "ℹ️ Stream proporcionado por un sitio tercero."
+        "stream_note": "ℹ️ Stream proporcionado por un sitio tercero.",
+        "youtube_title": "🎥 Feeds de videos de YouTube",
+        "youtube_desc": "Pega URLs de YouTube (una por línea) para incrustar varios videos.",
+        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
+        "youtube_load_btn": "Cargar videos",
+        "youtube_clear_btn": "Borrar todo",
+        "youtube_loaded": "{count} video(s) cargado(s).",
+        "youtube_error": "No se encontraron URLs válidas de YouTube."
     },
     "Chinese": {
         "radar_tab": "📡 雷达控制",
@@ -1025,6 +1076,7 @@ UI = {
         "ai_tab": "🤖 人工智能分析员",
         "detect_tab": "✈️ 航班跟踪器",
         "worldcup_tab": "⚽ 世界杯直播",
+        "youtube_tab": "🎥 YouTube 视频源",
         "title": "全球监视雷达",
         "author_tag": "由 Gesner Deslandes 构建",
         "logout": "退出会话",
@@ -1092,7 +1144,14 @@ UI = {
         "enter_flight": "请输入航班 ID。",
         "worldcup_title": "🏆 2026 世界杯 – 直播（免费）",
         "worldcup_desc": "通过嵌入式流媒体免费观看每场比赛直播。",
-        "stream_note": "ℹ️ 流媒体由第三方网站提供。"
+        "stream_note": "ℹ️ 流媒体由第三方网站提供。",
+        "youtube_title": "🎥 YouTube 视频源",
+        "youtube_desc": "粘贴 YouTube URL（每行一个）以嵌入多个视频。",
+        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
+        "youtube_load_btn": "加载视频",
+        "youtube_clear_btn": "全部清除",
+        "youtube_loaded": "已加载 {count} 个视频。",
+        "youtube_error": "未找到有效的 YouTube URL。"
     }
 }
 
@@ -1362,13 +1421,14 @@ def main_page():
     # ---- Satellite data ----
     sat_data = []  # placeholder
 
-    # ---- TABS: Radar, Satellite, AI, Flight Tracker, World Cup ----
-    tab_radar, tab_sat, tab_ai, tab_detect, tab_worldcup = st.tabs([
+    # ---- TABS: Radar, Satellite, AI, Flight Tracker, World Cup, YouTube ----
+    tab_radar, tab_sat, tab_ai, tab_detect, tab_worldcup, tab_youtube = st.tabs([
         L["radar_tab"], 
         L["sat_tab"], 
         L["ai_tab"], 
         L["detect_tab"],
-        L["worldcup_tab"]
+        L["worldcup_tab"],
+        L["youtube_tab"]
     ])
 
     # Radar tab (unchanged)
@@ -1810,16 +1870,14 @@ def main_page():
             scrolling=True
         )
 
-    # ========== LIVE WORLD CUP TAB – WITH TWO STREAMS (UPDATED) ==========
+    # ========== LIVE WORLD CUP TAB – WITH TWO STREAMS ==========
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
 
-        # Two stream URLs (second one is your new link)
         stream1_url = "https://futbol-libres.su/eventos.html?r=aHR0cHM6Ly9sYXRhbXZpZHpzLm9yZy9jYW5hbC5waHA/c3RyZWFtPXRlbGVtdW5kb3VzYQ=="
         stream2_url = "https://futbol-libres.su/eventos.html?r=aHR0cHM6Ly9sYXRhbXZpZHpzLm9yZy9jYW5hbC5waHA/c3RyZWFtPWRzcG9ydHM="
 
-        # Sub‑tabs for the two streams
         sub_tab1, sub_tab2 = st.tabs(["📺 Stream #1 (Main)", "⚽ Live WorldCup 2026 #2"])
 
         with sub_tab1:
@@ -1832,6 +1890,70 @@ def main_page():
 
         st.markdown("---")
         st.info(L['stream_note'])
+
+    # ========== NEW: YOUTUBE FEEDS TAB ==========
+    with tab_youtube:
+        st.title(L['youtube_title'])
+        st.markdown(L['youtube_desc'])
+
+        # Text area for URLs
+        default_url = "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ"
+        urls_input = st.text_area(
+            "Enter YouTube URLs (one per line)",
+            value=default_url,
+            height=150,
+            key="youtube_urls_input",
+            placeholder=L['youtube_placeholder']
+        )
+
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            load_btn = st.button(L['youtube_load_btn'], use_container_width=True)
+        with col_btn2:
+            clear_btn = st.button(L['youtube_clear_btn'], use_container_width=True)
+
+        if clear_btn:
+            st.session_state.youtube_videos = []
+            st.rerun()
+
+        if load_btn:
+            lines = [line.strip() for line in urls_input.splitlines() if line.strip()]
+            valid_videos = []
+            for line in lines:
+                vid = extract_youtube_id(line)
+                if vid:
+                    embed_url = f"https://www.youtube.com/embed/{vid}"
+                    valid_videos.append({"id": vid, "embed_url": embed_url, "original_url": line})
+            if valid_videos:
+                st.session_state.youtube_videos = valid_videos
+                st.success(L['youtube_loaded'].format(count=len(valid_videos)))
+            else:
+                st.warning(L['youtube_error'])
+
+        # Display loaded videos
+        if st.session_state.youtube_videos:
+            st.markdown("---")
+            st.subheader("📺 Currently Loaded Videos")
+            # Display in a grid (2 per row)
+            videos = st.session_state.youtube_videos
+            cols = st.columns(2)
+            for idx, video in enumerate(videos):
+                col = cols[idx % 2]
+                with col:
+                    st.markdown(f"**Video {idx+1}**")
+                    # Use components.html to embed the iframe
+                    iframe_html = f"""
+                    <iframe src="{video['embed_url']}" 
+                            width="100%" height="315" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                    </iframe>
+                    """
+                    components.html(iframe_html, height=330)
+                    st.caption(f"Source: {video['original_url']}")
+        else:
+            st.info("No videos loaded. Paste URLs and click 'Load Videos'.")
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
