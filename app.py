@@ -334,7 +334,7 @@ def generate_male_voice_audio():
     
     You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features an embedded 24/7 live stream from FOX Sports' YouTube channel, covering the entire 2026 FIFA World Cup tournament.
+    The Live World Cup tab features an embedded free live stream from FIFA+, the official FIFA platform, where you can watch the 2026 World Cup matches for free.
     
     The sidebar includes automatic location detection, language selection, a demo mode toggle, and secure logout. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -362,7 +362,7 @@ def generate_female_voice_audio():
     
     You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features an embedded 24/7 live stream from FOX Sports' YouTube channel, covering the entire 2026 FIFA World Cup tournament.
+    The Live World Cup tab features an embedded free live stream from FIFA+, the official FIFA platform, where you can watch the 2026 World Cup matches for free.
     
     The sidebar provides automatic location detection, language selection, a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -865,12 +865,12 @@ UI = {
         "track_flight_on": "🔗 Click here to track **{}** on FlightAware",
         "fr24_link": "✈️ Also check on Flightradar24: [Link]({})",
         "enter_flight": "Please enter a flight ID.",
-        "worldcup_title": "🏆 FIFA World Cup 2026 – Live Stream",
-        "worldcup_desc": "24/7 live coverage from FOX Sports' YouTube channel. Stream is always on throughout the tournament.",
+        "worldcup_title": "🏆 FIFA World Cup 2026 – Live Stream (FREE)",
+        "worldcup_desc": "Watch every match live and for free on the official FIFA+ platform. No subscription required.",
         "watch_live": "▶ Watch Live",
         "select_match": "Select a match",
         "match_time": "Kick-off",
-        "stream_note": "Note: Streams may require a subscription to the respective broadcaster."
+        "stream_note": "ℹ️ This free stream is provided by FIFA+. Availability may be subject to regional restrictions."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -943,12 +943,12 @@ UI = {
         "track_flight_on": "🔗 Cliquez ici pour suivre **{}** sur FlightAware",
         "fr24_link": "✈️ Vérifiez aussi sur Flightradar24 : [Lien]({})",
         "enter_flight": "Veuillez entrer un ID de vol.",
-        "worldcup_title": "🏆 Coupe du Monde 2026 – Streaming en direct",
-        "worldcup_desc": "Couverture 24/7 en direct depuis la chaîne YouTube de FOX Sports. Le stream est actif tout au long du tournoi.",
+        "worldcup_title": "🏆 Coupe du Monde 2026 – Streaming en direct (GRATUIT)",
+        "worldcup_desc": "Regardez chaque match en direct et gratuitement sur la plateforme officielle FIFA+. Aucun abonnement requis.",
         "watch_live": "▶ Regarder en direct",
         "select_match": "Choisissez un match",
         "match_time": "Coup d'envoi",
-        "stream_note": "Remarque : les flux peuvent nécessiter un abonnement au diffuseur respectif."
+        "stream_note": "ℹ️ Ce flux gratuit est fourni par FIFA+. La disponibilité peut être soumise à des restrictions régionales."
     },
     "Spanish": {
         "radar_tab": "📡 Control de Radar",
@@ -1021,12 +1021,12 @@ UI = {
         "track_flight_on": "🔗 Haga clic aquí para seguir **{}** en FlightAware",
         "fr24_link": "✈️ También consulte en Flightradar24: [Enlace]({})",
         "enter_flight": "Por favor, ingrese un ID de vuelo.",
-        "worldcup_title": "🏆 Copa Mundial 2026 – Transmisión en vivo",
-        "worldcup_desc": "Cobertura 24/7 en vivo desde el canal de YouTube de FOX Sports. El stream está activo durante todo el torneo.",
+        "worldcup_title": "🏆 Copa Mundial 2026 – Transmisión en vivo (GRATIS)",
+        "worldcup_desc": "Mira cada partido en vivo y gratis en la plataforma oficial FIFA+. No se requiere suscripción.",
         "watch_live": "▶ Ver en vivo",
         "select_match": "Selecciona un partido",
         "match_time": "Inicio",
-        "stream_note": "Nota: las transmisiones pueden requerir suscripción al respectivo canal."
+        "stream_note": "ℹ️ Esta transmisión gratuita es proporcionada por FIFA+. La disponibilidad puede estar sujeta a restricciones regionales."
     },
     "Chinese": {
         "radar_tab": "📡 雷达控制",
@@ -1099,12 +1099,12 @@ UI = {
         "track_flight_on": "🔗 点击此处跟踪 **{}** 在 FlightAware 上",
         "fr24_link": "✈️ 也可以在 Flightradar24 上查看：[链接]({})",
         "enter_flight": "请输入航班 ID。",
-        "worldcup_title": "🏆 2026 世界杯 – 直播",
-        "worldcup_desc": "FOX Sports YouTube 频道 24/7 直播。整个锦标赛期间持续播放。",
+        "worldcup_title": "🏆 2026 世界杯 – 直播（免费）",
+        "worldcup_desc": "在官方 FIFA+ 平台免费观看每场比赛，无需订阅。",
         "watch_live": "▶ 观看直播",
         "select_match": "选择比赛",
         "match_time": "开球时间",
-        "stream_note": "注意：流媒体可能需要订阅相应的广播公司。"
+        "stream_note": "ℹ️ 此免费流媒体由 FIFA+ 提供。可用性可能受地区限制。"
     }
 }
 
@@ -1822,23 +1822,24 @@ def main_page():
             scrolling=True
         )
 
-    # ========== LIVE WORLD CUP TAB – EMBEDDED STREAM (UPDATED URL) ==========
+    # ========== LIVE WORLD CUP TAB – FREE FIFA+ STREAM ==========
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
 
-        # FOX Sports 24/7 World Cup live stream – updated embed ID
-        # If this becomes unavailable, replace the URL with another working stream.
+        # FREE live stream from FIFA+ (official FIFA platform)
+        # No subscription required – watch every match live.
+        # If this URL changes, update it accordingly.
         st.components.v1.iframe(
-            "https://www.youtube.com/embed/OJlwIdoFz9A",  # New working URL
+            "https://www.fifa.com/fifaplus/",
             height=550,
             scrolling=True
         )
 
-        st.caption("📺 24/7 live coverage from FOX Sports – available throughout the tournament.")
+        st.caption("📺 Free and official stream from FIFA+ – watch the 2026 World Cup live.")
 
         st.markdown("---")
-        st.info("ℹ️ **Note:** The stream is provided by FOX Sports via YouTube. Availability may vary by region. A subscription may be required for full match access.")
+        st.info(L['stream_note'])
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
