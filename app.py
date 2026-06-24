@@ -1810,21 +1810,25 @@ def main_page():
             scrolling=True
         )
 
-    # ========== LIVE WORLD CUP TAB – EMBED YOUR PROVIDED LINK ==========
+    # ========== LIVE WORLD CUP TAB – WITH TWO STREAMS (UPDATED) ==========
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
 
-        # Embed the provided URL (free soccer stream)
-        # Prepended "https://" to make it a valid URL
-        stream_url = "https://futbol-libres.su/eventos.html?r=aHR0cHM6Ly9sYXRhbXZpZHpzLm9yZy9jYW5hbC5waHA/c3RyZWFtPXRlbGVtdW5kb3VzYQ=="
-        st.components.v1.iframe(
-            stream_url,
-            height=600,
-            scrolling=True
-        )
+        # Two stream URLs (second one is your new link)
+        stream1_url = "https://futbol-libres.su/eventos.html?r=aHR0cHM6Ly9sYXRhbXZpZHpzLm9yZy9jYW5hbC5waHA/c3RyZWFtPXRlbGVtdW5kb3VzYQ=="
+        stream2_url = "https://futbol-libres.su/eventos.html?r=aHR0cHM6Ly9sYXRhbXZpZHpzLm9yZy9jYW5hbC5waHA/c3RyZWFtPWRzcG9ydHM="
 
-        st.caption("📺 Live soccer stream – watch the 2026 World Cup matches for free.")
+        # Sub‑tabs for the two streams
+        sub_tab1, sub_tab2 = st.tabs(["📺 Stream #1 (Main)", "⚽ Live WorldCup 2026 #2"])
+
+        with sub_tab1:
+            st.components.v1.iframe(stream1_url, height=600, scrolling=True)
+            st.caption("📺 Live soccer stream – watch the 2026 World Cup matches for free.")
+
+        with sub_tab2:
+            st.components.v1.iframe(stream2_url, height=600, scrolling=True)
+            st.caption("⚽ Alternative live stream – enjoy the matches via the second feed.")
 
         st.markdown("---")
         st.info(L['stream_note'])
