@@ -257,7 +257,7 @@ def generate_male_voice_audio():
     
     The AI Analyst is powered by Groq's Llama 3.1. You can ask any question about radar contacts or satellite predictions, and the AI provides a detailed threat analysis and recommendations.
     
-    The Flight Tracker tab embeds a live map from Flightradar24, allowing you to see real-time aircraft movements around the world.
+    The Flight Tracker tab embeds a live map from FlightAware, allowing you to see real-time aircraft movements around the world.
     
     The sidebar includes automatic location detection, language selection (now also Spanish and Chinese), a demo mode toggle, and secure logout. You can search for any location and the app will update the radar to that area. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -281,7 +281,7 @@ def generate_female_voice_audio():
     
     The AI Analyst tab uses Groq's Llama 3.1 to answer your questions about radar contacts and satellite predictions, providing threat analysis and recommendations.
     
-    The Flight Tracker tab embeds a live map from Flightradar24, giving you a global view of real‑time air traffic.
+    The Flight Tracker tab embeds a live map from FlightAware, giving you a global view of real‑time air traffic.
     
     The sidebar provides automatic location detection, language selection (now also Spanish and Chinese), a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -778,7 +778,7 @@ UI = {
         "security_badge": "🔐 Global Security Shield active",
         "security_caption": "All data is secured and anonymized",
         "flight_tracker_title": "✈️ Live Flight Tracker",
-        "flight_tracker_desc": "Real-time aircraft tracking powered by Flightradar24",
+        "flight_tracker_desc": "Real-time aircraft tracking powered by FlightAware",
         "refresh_btn": "Refresh Live Data",
         "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
@@ -849,7 +849,7 @@ UI = {
         "security_badge": "🔐 Bouclier de sécurité actif",
         "security_caption": "Toutes les données sont sécurisées",
         "flight_tracker_title": "✈️ Suivi de vol en direct",
-        "flight_tracker_desc": "Suivi aérien en temps réel avec Flightradar24",
+        "flight_tracker_desc": "Suivi aérien en temps réel avec FlightAware",
         "refresh_btn": "Actualiser",
         "live_note": "💻 Pour exécuter cette application sur votre propre ordinateur et obtenir des données en direct, cliquez sur les instructions ci‑dessous.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
@@ -920,7 +920,7 @@ UI = {
         "security_badge": "🔐 Escudo de seguridad global activo",
         "security_caption": "Todos los datos están cifrados y anonimizados",
         "flight_tracker_title": "✈️ Rastreador de vuelos en vivo",
-        "flight_tracker_desc": "Seguimiento de aeronaves en tiempo real con Flightradar24",
+        "flight_tracker_desc": "Seguimiento de aeronaves en tiempo real con FlightAware",
         "refresh_btn": "Actualizar Datos",
         "live_note": "💻 Para ejecutar esta aplicación en tu propia computadora y obtener datos en vivo, haz clic en las instrucciones abajo.",
         "voice_male_explain": "🎙️ Voz IA Masculina – Explicar App",
@@ -991,7 +991,7 @@ UI = {
         "security_badge": "🔐 全球安全盾牌已激活",
         "security_caption": "所有数据均已加密并匿名化",
         "flight_tracker_title": "✈️ 实时航班跟踪",
-        "flight_tracker_desc": "由 Flightradar24 提供支持的实时飞机跟踪",
+        "flight_tracker_desc": "由 FlightAware 提供支持的实时飞机跟踪",
         "refresh_btn": "刷新实时数据",
         "live_note": "💻 要在您自己的计算机上运行此应用程序以获取完整的实时数据，请单击下面的说明。",
         "voice_male_explain": "🎙️ 男性人工智能语音 – 解释应用",
@@ -1691,12 +1691,12 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # Flight Tracker tab – including manual verification tool
+    # Flight Tracker tab – now using FlightAware embed
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
 
-        # Manual Flight Verification Tool
+        # Manual Flight Verification Tool (unchanged)
         st.markdown(f"### {L['verify_flight']}")
         st.markdown(L['verify_flight_hint'])
 
@@ -1719,9 +1719,9 @@ def main_page():
 
         st.markdown("---")
 
-        # Live RadarBox map (or Flightradar24 wrapper)
+        # FlightAware free embed map (fullpage delay map)
         st.components.v1.iframe(
-            "https://innovation.world/online-tool/flightradar24/",
+            "https://embed.flightaware.com/commercial/integrated/web/delay_map_fullpage.rvt",
             height=600,
             scrolling=True
         )
