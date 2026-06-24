@@ -322,7 +322,7 @@ def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
-    This application features four main modules: Radar Control, Satellite Tracker, AI Analyst, and Flight Tracker.
+    This application features five main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, and Live World Cup.
     
     The Radar Control tab shows a 360-degree live radar display with a classic fetching sound. Click the radar screen to enable the audio and hear a sonar ping on every sweep. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation.
     
@@ -330,15 +330,13 @@ def generate_male_voice_audio():
     
     The AI Analyst is powered by Groq's Llama 3.1. You can ask any question about radar contacts or satellite predictions, and the AI provides a detailed threat analysis and recommendations.
     
-    The Flight Tracker tab provides real-time flight delay information powered by FlightAware. It shows:
-    - Total delay hours and minutes for airborne aircraft
-    - Arrival delays for airborne aircraft, currently averaging 1 hour and 18 minutes and increasing
-    - Inbound flights delayed at their origin, currently averaging 2 hours and 12 minutes
-    - Specific airport delay updates including Boston Logan, Dallas-Fort Worth, Newark Liberty, Chicago Midway, London Gatwick, John F Kennedy, and many more
+    The Flight Tracker tab provides real-time flight delay information powered by FlightAware. It shows total delay hours and minutes for airborne aircraft, arrival delays for airborne aircraft, and inbound flights delayed at their origin. It also lists specific airport delay updates including Boston Logan, Dallas-Fort Worth, Newark Liberty, Chicago Midway, London Gatwick, John F Kennedy, and many more.
     
     You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
     
-    The sidebar includes automatic location detection, language selection (now also Spanish and Chinese), a demo mode toggle, and secure logout. You can search for any location and the app will update the radar to that area. The data source status shows whether you are seeing live, cached, or demo data.
+    The Live World Cup tab features an embedded 24/7 live stream from FOX Sports' YouTube channel, covering the entire 2026 FIFA World Cup tournament.
+    
+    The sidebar includes automatic location detection, language selection, a demo mode toggle, and secure logout. The data source status shows whether you are seeing live, cached, or demo data.
     
     All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
     
@@ -360,22 +358,13 @@ def generate_female_voice_audio():
     
     The AI Analyst tab uses Groq's Llama 3.1 to answer your questions about radar contacts and satellite predictions, providing threat analysis and recommendations.
     
-    The Flight Tracker tab displays real-time flight delay information from FlightAware. It shows you:
-    - Total delay hours and minutes across all airborne aircraft
-    - Arrival delays for airborne aircraft, currently averaging 1 hour and 18 minutes and increasing
-    - Inbound flights delayed at their origin, currently averaging 2 hours and 12 minutes
-    
-    Specific airport updates include:
-    Boston Logan International Airport with arrival delays averaging 58 minutes and increasing.
-    Dallas-Fort Worth International with departure delays of 46 minutes to 1 hour due to weather.
-    Newark Liberty International with departure delays averaging 42 minutes.
-    Chicago Midway International with departure delays averaging 41 minutes and increasing.
-    John F Kennedy International with departure delays of 31 to 45 minutes due to traffic volume.
-    London Gatwick with arrival delays averaging 33 minutes and decreasing.
+    The Flight Tracker tab displays real-time flight delay information from FlightAware. It shows you total delay hours and minutes across all airborne aircraft, arrival delays for airborne aircraft, and inbound flights delayed at their origin. Specific airport updates include Boston Logan, Dallas-Fort Worth, Newark Liberty, Chicago Midway, John F Kennedy, and London Gatwick.
     
     You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
     
-    The sidebar provides automatic location detection, language selection (now also Spanish and Chinese), a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
+    The Live World Cup tab features an embedded 24/7 live stream from FOX Sports' YouTube channel, covering the entire 2026 FIFA World Cup tournament.
+    
+    The sidebar provides automatic location detection, language selection, a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
     All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
     
@@ -876,8 +865,8 @@ UI = {
         "track_flight_on": "🔗 Click here to track **{}** on FlightAware",
         "fr24_link": "✈️ Also check on Flightradar24: [Link]({})",
         "enter_flight": "Please enter a flight ID.",
-        "worldcup_title": "🏆 FIFA World Cup 2026 – Live Matches",
-        "worldcup_desc": "Select a match and click 'Watch Live' to open the official stream in a new tab.",
+        "worldcup_title": "🏆 FIFA World Cup 2026 – Live Stream",
+        "worldcup_desc": "24/7 live coverage from FOX Sports' YouTube channel. Stream is always on throughout the tournament.",
         "watch_live": "▶ Watch Live",
         "select_match": "Select a match",
         "match_time": "Kick-off",
@@ -954,8 +943,8 @@ UI = {
         "track_flight_on": "🔗 Cliquez ici pour suivre **{}** sur FlightAware",
         "fr24_link": "✈️ Vérifiez aussi sur Flightradar24 : [Lien]({})",
         "enter_flight": "Veuillez entrer un ID de vol.",
-        "worldcup_title": "🏆 Coupe du Monde 2026 – Matchs en direct",
-        "worldcup_desc": "Sélectionnez un match et cliquez sur 'Regarder en direct' pour ouvrir le flux officiel dans un nouvel onglet.",
+        "worldcup_title": "🏆 Coupe du Monde 2026 – Streaming en direct",
+        "worldcup_desc": "Couverture 24/7 en direct depuis la chaîne YouTube de FOX Sports. Le stream est actif tout au long du tournoi.",
         "watch_live": "▶ Regarder en direct",
         "select_match": "Choisissez un match",
         "match_time": "Coup d'envoi",
@@ -1032,8 +1021,8 @@ UI = {
         "track_flight_on": "🔗 Haga clic aquí para seguir **{}** en FlightAware",
         "fr24_link": "✈️ También consulte en Flightradar24: [Enlace]({})",
         "enter_flight": "Por favor, ingrese un ID de vuelo.",
-        "worldcup_title": "🏆 Copa Mundial 2026 – Partidos en vivo",
-        "worldcup_desc": "Selecciona un partido y haz clic en 'Ver en vivo' para abrir la transmisión oficial en una nueva pestaña.",
+        "worldcup_title": "🏆 Copa Mundial 2026 – Transmisión en vivo",
+        "worldcup_desc": "Cobertura 24/7 en vivo desde el canal de YouTube de FOX Sports. El stream está activo durante todo el torneo.",
         "watch_live": "▶ Ver en vivo",
         "select_match": "Selecciona un partido",
         "match_time": "Inicio",
@@ -1110,8 +1099,8 @@ UI = {
         "track_flight_on": "🔗 点击此处跟踪 **{}** 在 FlightAware 上",
         "fr24_link": "✈️ 也可以在 Flightradar24 上查看：[链接]({})",
         "enter_flight": "请输入航班 ID。",
-        "worldcup_title": "🏆 2026 世界杯 – 直播比赛",
-        "worldcup_desc": "选择一场比赛，点击“观看直播”在新标签页中打开官方流媒体。",
+        "worldcup_title": "🏆 2026 世界杯 – 直播",
+        "worldcup_desc": "FOX Sports YouTube 频道 24/7 直播。整个锦标赛期间持续播放。",
         "watch_live": "▶ 观看直播",
         "select_match": "选择比赛",
         "match_time": "开球时间",
@@ -1778,7 +1767,7 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # ========== FLIGHT TRACKER TAB (unchanged, with delay reports) ==========
+    # ========== FLIGHT TRACKER TAB ==========
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
@@ -1833,67 +1822,23 @@ def main_page():
             scrolling=True
         )
 
-    # ========== NEW: LIVE WORLD CUP TAB ==========
+    # ========== LIVE WORLD CUP TAB – EMBEDDED STREAM ==========
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
 
-        # Define today's matches (June 23, 2026) with placeholder stream URLs
-        # Replace these URLs with actual direct stream links if available
-        matches = [
-            {
-                "home": "Portugal",
-                "away": "Uzbekistan",
-                "time": "19:00 CET",
-                "url": "https://www.dazn.com"  # Placeholder – change to actual stream
-            },
-            {
-                "home": "England",
-                "away": "Ghana",
-                "time": "22:00 CET",
-                "url": "https://www.beinsports.com"
-            },
-            {
-                "home": "Panama",
-                "away": "Croatia",
-                "time": "01:00 CET (Jun 24)",
-                "url": "https://www.dazn.com"
-            },
-            {
-                "home": "Colombia",
-                "away": "DR Congo",
-                "time": "04:00 CET (Jun 24)",
-                "url": "https://www.dazn.com"
-            }
-        ]
+        # FOX Sports 24/7 World Cup live stream embed
+        # This is the official YouTube embed for FOX Sports' "Always On" stream
+        st.components.v1.iframe(
+            "https://www.youtube.com/embed/live_stream?channel=UCfB5rI6Q1cL3n3B1Q5c8j3w",
+            height=550,
+            scrolling=True
+        )
 
-        # Build a list of match labels for the selectbox
-        match_options = [f"{m['home']} vs {m['away']} ({m['time']})" for m in matches]
-        selected_label = st.selectbox(L['select_match'], match_options)
-
-        # Find the selected match
-        selected_match = None
-        for m in matches:
-            if f"{m['home']} vs {m['away']} ({m['time']})" == selected_label:
-                selected_match = m
-                break
-
-        if selected_match:
-            st.markdown(f"**{selected_match['home']} vs {selected_match['away']}** – {L['match_time']}: {selected_match['time']}")
-
-            # Use st.link_button to open the stream in a new tab
-            if st.button(L['watch_live'], key="worldcup_watch"):
-                # Open the URL using JavaScript (link_button does it automatically)
-                # But we can also use st.markdown with a link
-                # Better: st.link_button opens a new tab
-                st.link_button(L['watch_live'], selected_match['url'])
-
-            st.caption(L['stream_note'])
-        else:
-            st.warning("Please select a match.")
+        st.caption("📺 24/7 live coverage from FOX Sports – available throughout the tournament.")
 
         st.markdown("---")
-        st.info("ℹ️ **Note:** The stream links are placeholders. Replace them with actual broadcaster URLs in the `matches` list inside the code (search for `\"url\":`).")
+        st.info("ℹ️ **Note:** The stream is provided by FOX Sports via YouTube. Availability may vary by region. A subscription may be required for full match access.")
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
