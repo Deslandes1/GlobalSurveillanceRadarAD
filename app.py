@@ -244,7 +244,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ========== AI VOICE SCRIPTS ==========
+# ========== AI VOICE SCRIPTS (UPDATED WITH FLIGHT AWARE DELAY INFO) ==========
 def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
@@ -257,7 +257,13 @@ def generate_male_voice_audio():
     
     The AI Analyst is powered by Groq's Llama 3.1. You can ask any question about radar contacts or satellite predictions, and the AI provides a detailed threat analysis and recommendations.
     
-    The Flight Tracker tab embeds a live map from FlightAware, allowing you to see real-time aircraft movements around the world.
+    The Flight Tracker tab provides real-time flight delay information powered by FlightAware. It shows:
+    - Total delay hours and minutes for airborne aircraft
+    - Arrival delays for airborne aircraft, currently averaging 1 hour and 18 minutes and increasing
+    - Inbound flights delayed at their origin, currently averaging 2 hours and 12 minutes
+    - Specific airport delay updates including Boston Logan, Dallas-Fort Worth, Newark Liberty, Chicago Midway, London Gatwick, John F Kennedy, and many more
+    
+    You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
     
     The sidebar includes automatic location detection, language selection (now also Spanish and Chinese), a demo mode toggle, and secure logout. You can search for any location and the app will update the radar to that area. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -281,7 +287,20 @@ def generate_female_voice_audio():
     
     The AI Analyst tab uses Groq's Llama 3.1 to answer your questions about radar contacts and satellite predictions, providing threat analysis and recommendations.
     
-    The Flight Tracker tab embeds a live map from FlightAware, giving you a global view of real‑time air traffic.
+    The Flight Tracker tab displays real-time flight delay information from FlightAware. It shows you:
+    - Total delay hours and minutes across all airborne aircraft
+    - Arrival delays for airborne aircraft, currently averaging 1 hour and 18 minutes and increasing
+    - Inbound flights delayed at their origin, currently averaging 2 hours and 12 minutes
+    
+    Specific airport updates include:
+    Boston Logan International Airport with arrival delays averaging 58 minutes and increasing.
+    Dallas-Fort Worth International with departure delays of 46 minutes to 1 hour due to weather.
+    Newark Liberty International with departure delays averaging 42 minutes.
+    Chicago Midway International with departure delays averaging 41 minutes and increasing.
+    John F Kennedy International with departure delays of 31 to 45 minutes due to traffic volume.
+    London Gatwick with arrival delays averaging 33 minutes and decreasing.
+    
+    You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
     
     The sidebar provides automatic location detection, language selection (now also Spanish and Chinese), a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -778,7 +797,7 @@ UI = {
         "security_badge": "🔐 Global Security Shield active",
         "security_caption": "All data is secured and anonymized",
         "flight_tracker_title": "✈️ Live Flight Tracker",
-        "flight_tracker_desc": "Real-time aircraft tracking powered by FlightAware",
+        "flight_tracker_desc": "Real-time flight delay information powered by FlightAware",
         "refresh_btn": "Refresh Live Data",
         "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
@@ -849,7 +868,7 @@ UI = {
         "security_badge": "🔐 Bouclier de sécurité actif",
         "security_caption": "Toutes les données sont sécurisées",
         "flight_tracker_title": "✈️ Suivi de vol en direct",
-        "flight_tracker_desc": "Suivi aérien en temps réel avec FlightAware",
+        "flight_tracker_desc": "Informations de retard en temps réel fournies par FlightAware",
         "refresh_btn": "Actualiser",
         "live_note": "💻 Pour exécuter cette application sur votre propre ordinateur et obtenir des données en direct, cliquez sur les instructions ci‑dessous.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
@@ -920,7 +939,7 @@ UI = {
         "security_badge": "🔐 Escudo de seguridad global activo",
         "security_caption": "Todos los datos están cifrados y anonimizados",
         "flight_tracker_title": "✈️ Rastreador de vuelos en vivo",
-        "flight_tracker_desc": "Seguimiento de aeronaves en tiempo real con FlightAware",
+        "flight_tracker_desc": "Información de retrasos en tiempo real por FlightAware",
         "refresh_btn": "Actualizar Datos",
         "live_note": "💻 Para ejecutar esta aplicación en tu propia computadora y obtener datos en vivo, haz clic en las instrucciones abajo.",
         "voice_male_explain": "🎙️ Voz IA Masculina – Explicar App",
@@ -991,7 +1010,7 @@ UI = {
         "security_badge": "🔐 全球安全盾牌已激活",
         "security_caption": "所有数据均已加密并匿名化",
         "flight_tracker_title": "✈️ 实时航班跟踪",
-        "flight_tracker_desc": "由 FlightAware 提供支持的实时飞机跟踪",
+        "flight_tracker_desc": "由 FlightAware 提供的实时航班延误信息",
         "refresh_btn": "刷新实时数据",
         "live_note": "💻 要在您自己的计算机上运行此应用程序以获取完整的实时数据，请单击下面的说明。",
         "voice_male_explain": "🎙️ 男性人工智能语音 – 解释应用",
@@ -1691,12 +1710,12 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # Flight Tracker tab – now using FlightAware embed
+    # Flight Tracker tab – using FlightAware embed + manual verification
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
 
-        # Manual Flight Verification Tool (unchanged)
+        # Manual Flight Verification Tool
         st.markdown(f"### {L['verify_flight']}")
         st.markdown(L['verify_flight_hint'])
 
@@ -1719,7 +1738,7 @@ def main_page():
 
         st.markdown("---")
 
-        # FlightAware free embed map (fullpage delay map)
+        # FlightAware free embed (fullpage delay map)
         st.components.v1.iframe(
             "https://embed.flightaware.com/commercial/integrated/web/delay_map_fullpage.rvt",
             height=600,
