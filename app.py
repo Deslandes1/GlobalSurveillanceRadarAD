@@ -334,7 +334,7 @@ def generate_male_voice_audio():
     
     You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features an embedded free live stream from FIFA+, the official FIFA platform, where you can watch the 2026 World Cup matches for free.
+    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
     
     The sidebar includes automatic location detection, language selection, a demo mode toggle, and secure logout. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -362,7 +362,7 @@ def generate_female_voice_audio():
     
     You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features an embedded free live stream from FIFA+, the official FIFA platform, where you can watch the 2026 World Cup matches for free.
+    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
     
     The sidebar provides automatic location detection, language selection, a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -866,11 +866,8 @@ UI = {
         "fr24_link": "✈️ Also check on Flightradar24: [Link]({})",
         "enter_flight": "Please enter a flight ID.",
         "worldcup_title": "🏆 FIFA World Cup 2026 – Live Stream (FREE)",
-        "worldcup_desc": "Watch every match live and for free on the official FIFA+ platform. No subscription required.",
-        "watch_live": "▶ Watch Live",
-        "select_match": "Select a match",
-        "match_time": "Kick-off",
-        "stream_note": "ℹ️ This free stream is provided by FIFA+. Availability may be subject to regional restrictions."
+        "worldcup_desc": "Watch every match live for free via the embedded stream.",
+        "stream_note": "ℹ️ Stream provided by a third-party site."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -944,11 +941,8 @@ UI = {
         "fr24_link": "✈️ Vérifiez aussi sur Flightradar24 : [Lien]({})",
         "enter_flight": "Veuillez entrer un ID de vol.",
         "worldcup_title": "🏆 Coupe du Monde 2026 – Streaming en direct (GRATUIT)",
-        "worldcup_desc": "Regardez chaque match en direct et gratuitement sur la plateforme officielle FIFA+. Aucun abonnement requis.",
-        "watch_live": "▶ Regarder en direct",
-        "select_match": "Choisissez un match",
-        "match_time": "Coup d'envoi",
-        "stream_note": "ℹ️ Ce flux gratuit est fourni par FIFA+. La disponibilité peut être soumise à des restrictions régionales."
+        "worldcup_desc": "Regardez chaque match en direct gratuitement via le stream intégré.",
+        "stream_note": "ℹ️ Flux fourni par un site tiers."
     },
     "Spanish": {
         "radar_tab": "📡 Control de Radar",
@@ -1022,11 +1016,8 @@ UI = {
         "fr24_link": "✈️ También consulte en Flightradar24: [Enlace]({})",
         "enter_flight": "Por favor, ingrese un ID de vuelo.",
         "worldcup_title": "🏆 Copa Mundial 2026 – Transmisión en vivo (GRATIS)",
-        "worldcup_desc": "Mira cada partido en vivo y gratis en la plataforma oficial FIFA+. No se requiere suscripción.",
-        "watch_live": "▶ Ver en vivo",
-        "select_match": "Selecciona un partido",
-        "match_time": "Inicio",
-        "stream_note": "ℹ️ Esta transmisión gratuita es proporcionada por FIFA+. La disponibilidad puede estar sujeta a restricciones regionales."
+        "worldcup_desc": "Mira cada partido en vivo gratis a través del stream integrado.",
+        "stream_note": "ℹ️ Stream proporcionado por un sitio tercero."
     },
     "Chinese": {
         "radar_tab": "📡 雷达控制",
@@ -1100,11 +1091,8 @@ UI = {
         "fr24_link": "✈️ 也可以在 Flightradar24 上查看：[链接]({})",
         "enter_flight": "请输入航班 ID。",
         "worldcup_title": "🏆 2026 世界杯 – 直播（免费）",
-        "worldcup_desc": "在官方 FIFA+ 平台免费观看每场比赛，无需订阅。",
-        "watch_live": "▶ 观看直播",
-        "select_match": "选择比赛",
-        "match_time": "开球时间",
-        "stream_note": "ℹ️ 此免费流媒体由 FIFA+ 提供。可用性可能受地区限制。"
+        "worldcup_desc": "通过嵌入式流媒体免费观看每场比赛直播。",
+        "stream_note": "ℹ️ 流媒体由第三方网站提供。"
     }
 }
 
@@ -1822,21 +1810,21 @@ def main_page():
             scrolling=True
         )
 
-    # ========== LIVE WORLD CUP TAB – FREE FIFA+ STREAM ==========
+    # ========== LIVE WORLD CUP TAB – EMBED YOUR PROVIDED LINK ==========
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
 
-        # FREE live stream from FIFA+ (official FIFA platform)
-        # No subscription required – watch every match live.
-        # If this URL changes, update it accordingly.
+        # Embed the provided URL (free soccer stream)
+        # Prepended "https://" to make it a valid URL
+        stream_url = "https://futbol-libres.su/eventos.html?r=aHR0cHM6Ly9sYXRhbXZpZHpzLm9yZy9jYW5hbC5waHA/c3RyZWFtPXRlbGVtdW5kb3VzYQ=="
         st.components.v1.iframe(
-            "https://www.fifa.com/fifaplus/",
-            height=550,
+            stream_url,
+            height=600,
             scrolling=True
         )
 
-        st.caption("📺 Free and official stream from FIFA+ – watch the 2026 World Cup live.")
+        st.caption("📺 Live soccer stream – watch the 2026 World Cup matches for free.")
 
         st.markdown("---")
         st.info(L['stream_note'])
