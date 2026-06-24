@@ -814,7 +814,15 @@ UI = {
         "voice_lang_en": "English",
         "voice_lang_fr": "Français",
         "voice_lang_es": "Español",
-        "voice_lang_zh": "中文"
+        "voice_lang_zh": "中文",
+        "verify_flight": "🔍 Verify a Specific Flight",
+        "verify_flight_hint": "Enter a flight number (e.g., AAL674) to check its current status on FlightAware.",
+        "flight_id": "Flight ID",
+        "check_flight_btn": "🔍 Check Flight",
+        "example_flight": "✈️ Example: AAL674",
+        "track_flight_on": "🔗 Click here to track **{}** on FlightAware",
+        "fr24_link": "✈️ Also check on Flightradar24: [Link]({})",
+        "enter_flight": "Please enter a flight ID."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -877,7 +885,15 @@ UI = {
         "voice_lang_en": "English",
         "voice_lang_fr": "Français",
         "voice_lang_es": "Español",
-        "voice_lang_zh": "中文"
+        "voice_lang_zh": "中文",
+        "verify_flight": "🔍 Vérifier un vol spécifique",
+        "verify_flight_hint": "Entrez un numéro de vol (ex. AAL674) pour vérifier son statut sur FlightAware.",
+        "flight_id": "ID du vol",
+        "check_flight_btn": "🔍 Vérifier le vol",
+        "example_flight": "✈️ Exemple: AAL674",
+        "track_flight_on": "🔗 Cliquez ici pour suivre **{}** sur FlightAware",
+        "fr24_link": "✈️ Vérifiez aussi sur Flightradar24 : [Lien]({})",
+        "enter_flight": "Veuillez entrer un ID de vol."
     },
     "Spanish": {
         "radar_tab": "📡 Control de Radar",
@@ -940,7 +956,15 @@ UI = {
         "voice_lang_en": "English",
         "voice_lang_fr": "Français",
         "voice_lang_es": "Español",
-        "voice_lang_zh": "中文"
+        "voice_lang_zh": "中文",
+        "verify_flight": "🔍 Verificar un vuelo específico",
+        "verify_flight_hint": "Ingrese un número de vuelo (ej. AAL674) para ver su estado en FlightAware.",
+        "flight_id": "ID del vuelo",
+        "check_flight_btn": "🔍 Verificar vuelo",
+        "example_flight": "✈️ Ejemplo: AAL674",
+        "track_flight_on": "🔗 Haga clic aquí para seguir **{}** en FlightAware",
+        "fr24_link": "✈️ También consulte en Flightradar24: [Enlace]({})",
+        "enter_flight": "Por favor, ingrese un ID de vuelo."
     },
     "Chinese": {
         "radar_tab": "📡 雷达控制",
@@ -1003,7 +1027,15 @@ UI = {
         "voice_lang_en": "English",
         "voice_lang_fr": "Français",
         "voice_lang_es": "Español",
-        "voice_lang_zh": "中文"
+        "voice_lang_zh": "中文",
+        "verify_flight": "🔍 验证特定航班",
+        "verify_flight_hint": "输入航班号（例如 AAL674）以在 FlightAware 上查看其当前状态。",
+        "flight_id": "航班 ID",
+        "check_flight_btn": "🔍 检查航班",
+        "example_flight": "✈️ 示例：AAL674",
+        "track_flight_on": "🔗 点击此处跟踪 **{}** 在 FlightAware 上",
+        "fr24_link": "✈️ 也可以在 Flightradar24 上查看：[链接]({})",
+        "enter_flight": "请输入航班 ID。"
     }
 }
 
@@ -1659,10 +1691,35 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # Flight Tracker tab – using Innovation.world wrapper (works without login)
+    # Flight Tracker tab – including manual verification tool
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
+
+        # Manual Flight Verification Tool
+        st.markdown(f"### {L['verify_flight']}")
+        st.markdown(L['verify_flight_hint'])
+
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            flight_id = st.text_input(L['flight_id'], placeholder="e.g., AAL674 or AA674", key="flight_check_input")
+        with col2:
+            check_btn = st.button(L['check_flight_btn'], use_container_width=True)
+        with col3:
+            st.markdown(f"[{L['example_flight']}](https://hi.flightaware.com/live/flight/AAL674)", unsafe_allow_html=True)
+
+        if check_btn and flight_id:
+            clean_id = flight_id.strip().upper()
+            fa_link = f"https://hi.flightaware.com/live/flight/{clean_id}"
+            fr_link = f"https://www.flightradar24.com/{clean_id}"
+            st.markdown(L['track_flight_on'].format(clean_id, fa_link))
+            st.info(L['fr24_link'].format(fr_link))
+        elif check_btn:
+            st.warning(L['enter_flight'])
+
+        st.markdown("---")
+
+        # Live RadarBox map (or Flightradar24 wrapper)
         st.components.v1.iframe(
             "https://innovation.world/online-tool/flightradar24/",
             height=600,
