@@ -1783,12 +1783,12 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # Flight Tracker tab – using FlightAware embed + manual verification
+    # ========== MODIFIED FLIGHT TRACKER TAB ==========
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
 
-        # Manual Flight Verification Tool
+        # --- Manual Flight Verification ---
         st.markdown(f"### {L['verify_flight']}")
         st.markdown(L['verify_flight_hint'])
 
@@ -1811,7 +1811,31 @@ def main_page():
 
         st.markdown("---")
 
-        # FlightAware free embed (fullpage delay map)
+        # --- NEW: Display Airport Delay Reports (bright white via CSS) ---
+        st.markdown("### 📋 Current Airport Delay Reports")
+        st.markdown("""
+        - **LaGuardia (KLGA)**: departure delays avg 1h 13m; arrival delays avg 1h 18m (increasing); inbound flights delayed avg 2h 12m.
+        - **Malpensa Int'l (LIMC / MXP)**: arrival delays avg 1h 7m (decreasing).
+        - **Edinburgh (EGPH / EDI)**: arrival delays avg 1h (increasing).
+        - **Boston Logan Intl (KBOS)**: departure delays avg 48m (decreasing); arrival delays avg 58m (increasing).
+        - **Minneapolis/St Paul Intl (KMSP)**: departure delays avg 50m (increasing).
+        - **Dallas-Fort Worth Intl (KDFW)**: departure delays 46m to 1h (increasing) due to weather.
+        - **Newark Liberty Intl (KEWR)**: departure delays avg 42m.
+        - **Chicago Midway Intl (KMDW)**: departure delays avg 41m (increasing).
+        - **London Stansted (EGSS / STN)**: arrival delays avg 40m (decreasing).
+        - **Dallas Love Fld (KDAL)**: departure delays avg 38m (increasing).
+        - **Ben Gurion Int'l (LLBG / TLV)**: arrival delays avg 38m.
+        - **San Francisco Int'l (KSFO)**: inbound flights delayed avg 36m.
+        - **St Louis Lambert Intl (KSTL)**: departure delays avg 35m.
+        - **London Gatwick (EGKK / LGW)**: arrival delays avg 33m (decreasing).
+        - **John F Kennedy Intl (KJFK)**: departure delays 31m to 45m (increasing) due to traffic volume.
+        - **Reagan National (KDCA)**: departure delays avg 27m (increasing).
+        - **William P Hobby (KHOU)**: departure delays avg 26m (increasing).
+        """)
+
+        st.markdown("---")
+
+        # --- FlightAware embed (delay map) ---
         st.components.v1.iframe(
             "https://embed.flightaware.com/commercial/integrated/web/delay_map_fullpage.rvt",
             height=600,
