@@ -317,7 +317,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ========== AI VOICE SCRIPTS (UPDATED WITH FLIGHT AWARE DELAY INFO) ==========
+# ========== AI VOICE SCRIPTS ==========
 def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
@@ -383,7 +383,7 @@ def generate_female_voice_audio():
     """
     return script
 
-# ========== AUDIO GENERATION FOR RESPONSES ==========
+# ========== AUDIO GENERATION ==========
 def generate_audio_response(text, lang_code):
     try:
         from gtts import gTTS
@@ -407,7 +407,7 @@ if "GROQ_API_KEY" not in st.secrets:
     st.stop()
 groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# ========== SUPABASE CLIENT (optional) ==========
+# ========== SUPABASE (optional) ==========
 try:
     from supabase import create_client, Client
     if "SUPABASE_URL" in st.secrets and "SUPABASE_KEY" in st.secrets:
@@ -544,7 +544,7 @@ def geocode_location(location_name):
     except Exception:
         return None, None, None
 
-# ========== IMPROVED AIRCRAFT CLASSIFICATION ==========
+# ========== AIRCRAFT CLASSIFICATION ==========
 def classify_aircraft(alt_ft, callsign=""):
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
@@ -581,16 +581,11 @@ def classify_aircraft(alt_ft, callsign=""):
 
     return "Other", "#95a5a6", "❓ Unknown"
 
-# ========== OPTIMIZED LIVE AIRCRAFT FETCH (fast) ==========
+# ========== LIVE AIRCRAFT FETCH ==========
 def fetch_live_aircraft(ground_lat, ground_lon):
-    """
-    Fast fetch with immediate cache return if data is recent.
-    Returns (aircraft_list, status) always.
-    """
     max_range = st.session_state.get("max_range", 180)
     haiti_tz = pytz.timezone('America/Port-au-Prince')
     
-    # Check for recent cached data
     if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
         age = (datetime.now() - st.session_state.cached_timestamp).total_seconds()
         if age < 60:
@@ -673,7 +668,6 @@ def fetch_live_aircraft(ground_lat, ground_lon):
             time.sleep(0.5)
             continue
     
-    # Retries exhausted
     if st.session_state.cached_aircraft_data:
         st.session_state.api_status = "Cached (Live unavailable – retrying)"
         return st.session_state.cached_aircraft_data, "cached"
@@ -691,14 +685,9 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
-# ========== SATELLITE TRACKING (lazy loading, no fallback) ==========
-
+# ========== SATELLITE TRACKING ==========
 @st.cache_data(ttl=21600)
 def fetch_tle_from_celestrak(catnr, timeout=10, retries=2):
-    """
-    Fetch TLE for a given NORAD catalog number from Celestrak.
-    Tries both celestrak.org and celestrak.com with retries.
-    """
     urls = [
         f"https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=TLE",
         f"https://celestrak.com/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=TLE",
@@ -718,34 +707,26 @@ def fetch_tle_from_celestrak(catnr, timeout=10, retries=2):
     return None, None
 
 def get_satellite_tle():
-    """
-    Fetch real-time TLE data from Celestrak.
-    Returns a dictionary of satellite objects or None if fetch fails.
-    """
     if not SKYFIELD_AVAILABLE:
         return None
     
-    # Check if we have a successful fetch in session state
     if st.session_state.satellite_tle_cache and st.session_state.satellite_cache_time:
         age = (datetime.now() - st.session_state.satellite_cache_time).total_seconds()
-        if age < 21600:  # 6 hours
+        if age < 21600:
             return st.session_state.satellite_tle_cache
     
-    # Define the satellites we want to track (NORAD IDs)
     satellites_catalog = {
-        "ISS": 25544,          # ISS (ZARYA)
-        "NAV-GPS": 46825,      # GPS III-6
-        "STAR-V2": 44713,      # Starlink-1007
-        "KH-11-S": 37348,      # USA-224 (KH-11)
+        "ISS": 25544,
+        "NAV-GPS": 46825,
+        "STAR-V2": 44713,
+        "KH-11-S": 37348,
     }
-    
     satellite_names = {
         "ISS": "ISS (ZARYA)",
         "NAV-GPS": "GPS III-6",
         "STAR-V2": "Starlink-1007",
         "KH-11-S": "USA-224 (KH-11)"
     }
-    
     tle_data = {}
     for sat_id, catnr in satellites_catalog.items():
         line1, line2 = fetch_tle_from_celestrak(catnr)
@@ -755,7 +736,6 @@ def get_satellite_tle():
                 "line1": line1,
                 "line2": line2
             }
-    
     if tle_data:
         st.session_state.satellite_tle_cache = tle_data
         st.session_state.satellite_cache_time = datetime.now()
@@ -766,22 +746,15 @@ def get_satellite_tle():
         return None
 
 def compute_satellite_positions(target_time, ground_lat, ground_lon):
-    """
-    Compute satellite positions at the given time using real TLE data.
-    Returns a list of satellite position dictionaries.
-    """
     if not SKYFIELD_AVAILABLE:
         return None
-    
     tle_data = get_satellite_tle()
     if not tle_data:
         return None
-    
     try:
         ts = load.timescale()
         t = ts.utc(target_time.year, target_time.month, target_time.day,
                    target_time.hour, target_time.minute, target_time.second)
-        
         positions = []
         color_map = {
             "STAR-V2": "#00ff64",
@@ -789,16 +762,13 @@ def compute_satellite_positions(target_time, ground_lat, ground_lon):
             "KH-11-S": "#ff3300",
             "ISS": "#ffffff"
         }
-        
         for sat_id, data in tle_data.items():
             satellite = EarthSatellite(data["line1"], data["line2"], data["name"], ts)
             geocentric = satellite.at(t)
             subpoint = geocentric.subpoint()
-            
             lat = subpoint.latitude.degrees
             lon = subpoint.longitude.degrees
             alt_km = subpoint.elevation.km
-            
             positions.append({
                 "id": sat_id,
                 "type": "Satellite",
@@ -809,26 +779,16 @@ def compute_satellite_positions(target_time, ground_lat, ground_lon):
                 "alt": f"{alt_km:.0f}km" if alt_km > 0 else "N/A",
                 "detected_at": target_time.strftime("%Y-%m-%d %I:%M:%S %p")
             })
-        
         return positions
-    except Exception as e:
+    except Exception:
         st.session_state.satellite_error = True
         return None
 
 def get_satellite_data(u_lat, u_lon):
-    """
-    Lazy load satellite positions – only called when needed.
-    Returns list of positions or None if failed.
-    """
-    # If we have positions stored and they are recent (within 1 hour), use them
-    if st.session_state.satellite_positions:
-        # Check if we have a timestamp for them
-        if st.session_state.satellite_cache_time:
-            age = (datetime.now() - st.session_state.satellite_cache_time).total_seconds()
-            if age < 3600:  # 1 hour
-                return st.session_state.satellite_positions
-    
-    # Compute fresh positions
+    if st.session_state.satellite_positions and st.session_state.satellite_cache_time:
+        age = (datetime.now() - st.session_state.satellite_cache_time).total_seconds()
+        if age < 3600:
+            return st.session_state.satellite_positions
     if SKYFIELD_AVAILABLE:
         target_time = datetime.now()
         positions = compute_satellite_positions(target_time, u_lat, u_lon)
@@ -850,6 +810,7 @@ UI = {
         "sat_tab": "🛰️ Satellite Tracker",
         "ai_tab": "🤖 AI Analyst",
         "detect_tab": "✈️ Flight Tracker",
+        "worldcup_tab": "⚽ Live World Cup",
         "title": "GLOBAL SURVEILLANCE RADAR",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
@@ -914,13 +875,20 @@ UI = {
         "example_flight": "✈️ Example: AAL674",
         "track_flight_on": "🔗 Click here to track **{}** on FlightAware",
         "fr24_link": "✈️ Also check on Flightradar24: [Link]({})",
-        "enter_flight": "Please enter a flight ID."
+        "enter_flight": "Please enter a flight ID.",
+        "worldcup_title": "🏆 FIFA World Cup 2026 – Live Matches",
+        "worldcup_desc": "Select a match and click 'Watch Live' to open the official stream in a new tab.",
+        "watch_live": "▶ Watch Live",
+        "select_match": "Select a match",
+        "match_time": "Kick-off",
+        "stream_note": "Note: Streams may require a subscription to the respective broadcaster."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
         "sat_tab": "🛰️ Suivi Satellite",
         "ai_tab": "🤖 Analyste IA",
         "detect_tab": "✈️ Trafic Aérien",
+        "worldcup_tab": "⚽ Coupe du Monde en direct",
         "title": "RADAR DE SURVEILLANCE MONDIAL",
         "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion",
@@ -985,13 +953,20 @@ UI = {
         "example_flight": "✈️ Exemple: AAL674",
         "track_flight_on": "🔗 Cliquez ici pour suivre **{}** sur FlightAware",
         "fr24_link": "✈️ Vérifiez aussi sur Flightradar24 : [Lien]({})",
-        "enter_flight": "Veuillez entrer un ID de vol."
+        "enter_flight": "Veuillez entrer un ID de vol.",
+        "worldcup_title": "🏆 Coupe du Monde 2026 – Matchs en direct",
+        "worldcup_desc": "Sélectionnez un match et cliquez sur 'Regarder en direct' pour ouvrir le flux officiel dans un nouvel onglet.",
+        "watch_live": "▶ Regarder en direct",
+        "select_match": "Choisissez un match",
+        "match_time": "Coup d'envoi",
+        "stream_note": "Remarque : les flux peuvent nécessiter un abonnement au diffuseur respectif."
     },
     "Spanish": {
         "radar_tab": "📡 Control de Radar",
         "sat_tab": "🛰️ Rastreador de Satélites",
         "ai_tab": "🤖 Analista IA",
         "detect_tab": "✈️ Rastreador de Vuelos",
+        "worldcup_tab": "⚽ Copa del Mundo en vivo",
         "title": "RADAR DE VIGILANCIA GLOBAL",
         "author_tag": "Construido por Gesner Deslandes",
         "logout": "Cerrar Sesión",
@@ -1056,13 +1031,20 @@ UI = {
         "example_flight": "✈️ Ejemplo: AAL674",
         "track_flight_on": "🔗 Haga clic aquí para seguir **{}** en FlightAware",
         "fr24_link": "✈️ También consulte en Flightradar24: [Enlace]({})",
-        "enter_flight": "Por favor, ingrese un ID de vuelo."
+        "enter_flight": "Por favor, ingrese un ID de vuelo.",
+        "worldcup_title": "🏆 Copa Mundial 2026 – Partidos en vivo",
+        "worldcup_desc": "Selecciona un partido y haz clic en 'Ver en vivo' para abrir la transmisión oficial en una nueva pestaña.",
+        "watch_live": "▶ Ver en vivo",
+        "select_match": "Selecciona un partido",
+        "match_time": "Inicio",
+        "stream_note": "Nota: las transmisiones pueden requerir suscripción al respectivo canal."
     },
     "Chinese": {
         "radar_tab": "📡 雷达控制",
         "sat_tab": "🛰️ 卫星跟踪器",
         "ai_tab": "🤖 人工智能分析员",
         "detect_tab": "✈️ 航班跟踪器",
+        "worldcup_tab": "⚽ 世界杯直播",
         "title": "全球监视雷达",
         "author_tag": "由 Gesner Deslandes 构建",
         "logout": "退出会话",
@@ -1127,7 +1109,13 @@ UI = {
         "example_flight": "✈️ 示例：AAL674",
         "track_flight_on": "🔗 点击此处跟踪 **{}** 在 FlightAware 上",
         "fr24_link": "✈️ 也可以在 Flightradar24 上查看：[链接]({})",
-        "enter_flight": "请输入航班 ID。"
+        "enter_flight": "请输入航班 ID。",
+        "worldcup_title": "🏆 2026 世界杯 – 直播比赛",
+        "worldcup_desc": "选择一场比赛，点击“观看直播”在新标签页中打开官方流媒体。",
+        "watch_live": "▶ 观看直播",
+        "select_match": "选择比赛",
+        "match_time": "开球时间",
+        "stream_note": "注意：流媒体可能需要订阅相应的广播公司。"
     }
 }
 
@@ -1397,9 +1385,16 @@ def main_page():
     # ---- Satellite data ----
     sat_data = []  # placeholder
 
-    tab_radar, tab_sat, tab_ai, tab_detect = st.tabs([L["radar_tab"], L["sat_tab"], L["ai_tab"], L["detect_tab"]])
+    # ---- TABS: Radar, Satellite, AI, Flight Tracker, World Cup ----
+    tab_radar, tab_sat, tab_ai, tab_detect, tab_worldcup = st.tabs([
+        L["radar_tab"], 
+        L["sat_tab"], 
+        L["ai_tab"], 
+        L["detect_tab"],
+        L["worldcup_tab"]
+    ])
 
-    # Radar tab
+    # Radar tab (unchanged)
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
@@ -1640,7 +1635,7 @@ def main_page():
                     report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
-    # Satellite tab – lazy load
+    # Satellite tab (unchanged)
     with tab_sat:
         st.title(f"🛰️ {L['sat_tab']}")
         st.subheader(L['author_tag'])
@@ -1701,7 +1696,7 @@ def main_page():
                     """
                     components.html(map_html, height=550)
 
-    # AI Analyst tab
+    # AI Analyst tab (unchanged)
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
@@ -1783,12 +1778,11 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # ========== MODIFIED FLIGHT TRACKER TAB ==========
+    # ========== FLIGHT TRACKER TAB (unchanged, with delay reports) ==========
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
 
-        # --- Manual Flight Verification ---
         st.markdown(f"### {L['verify_flight']}")
         st.markdown(L['verify_flight_hint'])
 
@@ -1811,7 +1805,6 @@ def main_page():
 
         st.markdown("---")
 
-        # --- NEW: Display Airport Delay Reports (bright white via CSS) ---
         st.markdown("### 📋 Current Airport Delay Reports")
         st.markdown("""
         - **LaGuardia (KLGA)**: departure delays avg 1h 13m; arrival delays avg 1h 18m (increasing); inbound flights delayed avg 2h 12m.
@@ -1834,13 +1827,73 @@ def main_page():
         """)
 
         st.markdown("---")
-
-        # --- FlightAware embed (delay map) ---
         st.components.v1.iframe(
             "https://embed.flightaware.com/commercial/integrated/web/delay_map_fullpage.rvt",
             height=600,
             scrolling=True
         )
+
+    # ========== NEW: LIVE WORLD CUP TAB ==========
+    with tab_worldcup:
+        st.title(L['worldcup_title'])
+        st.markdown(L['worldcup_desc'])
+
+        # Define today's matches (June 23, 2026) with placeholder stream URLs
+        # Replace these URLs with actual direct stream links if available
+        matches = [
+            {
+                "home": "Portugal",
+                "away": "Uzbekistan",
+                "time": "19:00 CET",
+                "url": "https://www.dazn.com"  # Placeholder – change to actual stream
+            },
+            {
+                "home": "England",
+                "away": "Ghana",
+                "time": "22:00 CET",
+                "url": "https://www.beinsports.com"
+            },
+            {
+                "home": "Panama",
+                "away": "Croatia",
+                "time": "01:00 CET (Jun 24)",
+                "url": "https://www.dazn.com"
+            },
+            {
+                "home": "Colombia",
+                "away": "DR Congo",
+                "time": "04:00 CET (Jun 24)",
+                "url": "https://www.dazn.com"
+            }
+        ]
+
+        # Build a list of match labels for the selectbox
+        match_options = [f"{m['home']} vs {m['away']} ({m['time']})" for m in matches]
+        selected_label = st.selectbox(L['select_match'], match_options)
+
+        # Find the selected match
+        selected_match = None
+        for m in matches:
+            if f"{m['home']} vs {m['away']} ({m['time']})" == selected_label:
+                selected_match = m
+                break
+
+        if selected_match:
+            st.markdown(f"**{selected_match['home']} vs {selected_match['away']}** – {L['match_time']}: {selected_match['time']}")
+
+            # Use st.link_button to open the stream in a new tab
+            if st.button(L['watch_live'], key="worldcup_watch"):
+                # Open the URL using JavaScript (link_button does it automatically)
+                # But we can also use st.markdown with a link
+                # Better: st.link_button opens a new tab
+                st.link_button(L['watch_live'], selected_match['url'])
+
+            st.caption(L['stream_note'])
+        else:
+            st.warning("Please select a match.")
+
+        st.markdown("---")
+        st.info("ℹ️ **Note:** The stream links are placeholders. Replace them with actual broadcaster URLs in the `matches` list inside the code (search for `\"url\":`).")
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
