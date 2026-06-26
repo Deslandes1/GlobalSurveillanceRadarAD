@@ -322,7 +322,7 @@ def generate_male_voice_audio():
     script = """
     Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
     
-    This application features six main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, Live World Cup, and YouTube Feeds.
+    This application features five main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, and Live World Cup.
     
     The Radar Control tab shows a 360-degree live radar display with a classic fetching sound. Click the radar screen to enable the audio and hear a sonar ping on every sweep. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation.
     
@@ -334,9 +334,7 @@ def generate_male_voice_audio():
     
     You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab features two embedded free live streams from a third-party provider, so you can watch the 2026 World Cup matches live.
-    
-    The new YouTube Feeds tab lets you embed any number of YouTube videos by pasting their URLs into a text area. It comes with a sample link and you can add as many as you like.
+    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
     
     The sidebar includes automatic location detection, language selection, a demo mode toggle, and secure logout. The data source status shows whether you are seeing live, cached, or demo data.
     
@@ -364,9 +362,7 @@ def generate_female_voice_audio():
     
     You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
     
-    The Live World Cup tab now offers two live streams for the 2026 World Cup matches.
-    
-    The new YouTube Feeds tab is an independent player that lets you embed multiple YouTube videos at once. Just paste your URLs and click Load.
+    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
     
     The sidebar provides automatic location detection, language selection, a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
     
@@ -440,10 +436,6 @@ if "satellite_positions" not in st.session_state:
     st.session_state.satellite_positions = None
 if "satellite_error" not in st.session_state:
     st.session_state.satellite_error = False
-
-# ========== YOUTUBE FEEDS STATE ==========
-if "youtube_videos" not in st.session_state:
-    st.session_state.youtube_videos = []  # list of dicts: {id, embed_url, original_url}
 
 # ========== IP & LOCATION DETECTION ==========
 def get_real_ip():
@@ -541,7 +533,7 @@ def geocode_location(location_name):
     except Exception:
         return None, None, None
 
-# ========== AIRCRAFT CLASSIFICATION ==========
+# ========== AIRCRAFT CLASSIFICATION (UPDATED FOR REAL DRONES) ==========
 def classify_aircraft(alt_ft, callsign=""):
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
@@ -549,13 +541,23 @@ def classify_aircraft(alt_ft, callsign=""):
 
     callsign = str(callsign).upper()
 
-    if "DRN" in callsign or "UAV" in callsign:
-        return "Drone", "#f39c12", "🚁 Drone"
+    # ---------- DRONE DETECTION (REAL ADS-B DRONES) ----------
+    drone_keywords = ["UAV", "DRN", "DRONE", "QUAD", "HEX", "OCTO", "RQ", "MQ", 
+                      "EAGLE", "SHADOW", "PREDATOR", "REAPER", "GLOBAL", "HAWK", "PHANTOM"]
+    if any(keyword in callsign for keyword in drone_keywords):
+        if alt_ft < 1000:
+            return "Low Altitude Drone", "#ff6b35", "🛸 Drone (Low)"
+        elif alt_ft > 15000:
+            return "High Altitude Drone", "#ff00ff", "🛸 Drone (High)"
+        else:
+            return "Drone", "#ff9900", "🛸 Drone"
 
+    # Military (existing)
     military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-", "B-2"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
+    # Commercial Airline (existing)
     airline_codes = ["AAL", "UAL", "SWA", "DAL", "NKS", "JBU", "FFT", "EJA", "LXJ", "N456", "N123", "TAM", "LATAM", "GOL", "AZU", "VRG"]
     if any(callsign.startswith(code) for code in airline_codes):
         if alt_ft > 25000:
@@ -563,16 +565,19 @@ def classify_aircraft(alt_ft, callsign=""):
         else:
             return "General Aviation", "#3498db", "🛩️ General"
 
+    # Cargo (existing)
     cargo_codes = ["FDX", "UPS", "CKS", "GTI"]
     if any(callsign.startswith(code) for code in cargo_codes) and alt_ft > 20000:
         return "Cargo", "#f1c40f", "📦 Cargo"
 
+    # Private / General Aviation (existing)
     if callsign.startswith("N") and len(callsign) >= 5:
         if alt_ft < 10000:
             return "General Aviation", "#3498db", "🛩️ General"
         else:
             return "Commercial Airplane", "#2ecc71", "🛩️ Commercial"
 
+    # UFO / Unknown (existing)
     if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
         return "UFO", "#9b59b6", "🛸 UFO"
 
@@ -678,7 +683,7 @@ def get_demo_aircraft():
     now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     return [
         {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 60, "detected_at": now_str},
-        {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🚁 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30, "detected_at": now_str},
+        {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🛸 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30, "detected_at": now_str},
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
     ]
 
@@ -800,25 +805,6 @@ def get_satellite_data(u_lat, u_lon):
         st.session_state.satellite_error = True
         return None
 
-# ========== YOUTUBE HELPER ==========
-def extract_youtube_id(url):
-    """
-    Extract video ID from various YouTube URL formats.
-    Returns None if not a valid YouTube URL.
-    """
-    patterns = [
-        r'(?:youtube\.com\/watch\?v=)([\w-]+)',
-        r'(?:youtu\.be\/)([\w-]+)',
-        r'(?:youtube\.com\/embed\/)([\w-]+)',
-        r'(?:youtube\.com\/v\/)([\w-]+)',
-        r'(?:youtube\.com\/shorts\/)([\w-]+)',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    return None
-
 # ========== TRANSLATIONS ==========
 UI = {
     "English": {
@@ -827,7 +813,6 @@ UI = {
         "ai_tab": "🤖 AI Analyst",
         "detect_tab": "✈️ Flight Tracker",
         "worldcup_tab": "⚽ Live World Cup",
-        "youtube_tab": "🎥 YouTube Feeds",
         "title": "GLOBAL SURVEILLANCE RADAR",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
@@ -895,14 +880,7 @@ UI = {
         "enter_flight": "Please enter a flight ID.",
         "worldcup_title": "🏆 FIFA World Cup 2026 – Live Stream (FREE)",
         "worldcup_desc": "Watch every match live for free via the embedded stream.",
-        "stream_note": "ℹ️ Stream provided by a third-party site.",
-        "youtube_title": "🎥 YouTube Video Feeds",
-        "youtube_desc": "Paste YouTube URLs (one per line) to embed multiple videos.",
-        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
-        "youtube_load_btn": "Load Videos",
-        "youtube_clear_btn": "Clear All",
-        "youtube_loaded": "Loaded {count} video(s).",
-        "youtube_error": "No valid YouTube URLs found."
+        "stream_note": "ℹ️ Stream provided by a third-party site."
     },
     "French": {
         "radar_tab": "📡 Contrôle Radar",
@@ -910,7 +888,6 @@ UI = {
         "ai_tab": "🤖 Analyste IA",
         "detect_tab": "✈️ Trafic Aérien",
         "worldcup_tab": "⚽ Coupe du Monde en direct",
-        "youtube_tab": "🎥 Flux YouTube",
         "title": "RADAR DE SURVEILLANCE MONDIAL",
         "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion",
@@ -978,14 +955,7 @@ UI = {
         "enter_flight": "Veuillez entrer un ID de vol.",
         "worldcup_title": "🏆 Coupe du Monde 2026 – Streaming en direct (GRATUIT)",
         "worldcup_desc": "Regardez chaque match en direct gratuitement via le stream intégré.",
-        "stream_note": "ℹ️ Flux fourni par un site tiers.",
-        "youtube_title": "🎥 Flux vidéo YouTube",
-        "youtube_desc": "Collez les URLs YouTube (une par ligne) pour intégrer plusieurs vidéos.",
-        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
-        "youtube_load_btn": "Charger les vidéos",
-        "youtube_clear_btn": "Tout effacer",
-        "youtube_loaded": "{count} vidéo(s) chargée(s).",
-        "youtube_error": "Aucune URL YouTube valide trouvée."
+        "stream_note": "ℹ️ Flux fourni par un site tiers."
     },
     "Spanish": {
         "radar_tab": "📡 Control de Radar",
@@ -993,7 +963,6 @@ UI = {
         "ai_tab": "🤖 Analista IA",
         "detect_tab": "✈️ Rastreador de Vuelos",
         "worldcup_tab": "⚽ Copa del Mundo en vivo",
-        "youtube_tab": "🎥 Feeds de YouTube",
         "title": "RADAR DE VIGILANCIA GLOBAL",
         "author_tag": "Construido por Gesner Deslandes",
         "logout": "Cerrar Sesión",
@@ -1061,14 +1030,7 @@ UI = {
         "enter_flight": "Por favor, ingrese un ID de vuelo.",
         "worldcup_title": "🏆 Copa Mundial 2026 – Transmisión en vivo (GRATIS)",
         "worldcup_desc": "Mira cada partido en vivo gratis a través del stream integrado.",
-        "stream_note": "ℹ️ Stream proporcionado por un sitio tercero.",
-        "youtube_title": "🎥 Feeds de videos de YouTube",
-        "youtube_desc": "Pega URLs de YouTube (una por línea) para incrustar varios videos.",
-        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
-        "youtube_load_btn": "Cargar videos",
-        "youtube_clear_btn": "Borrar todo",
-        "youtube_loaded": "{count} video(s) cargado(s).",
-        "youtube_error": "No se encontraron URLs válidas de YouTube."
+        "stream_note": "ℹ️ Stream proporcionado por un sitio tercero."
     },
     "Chinese": {
         "radar_tab": "📡 雷达控制",
@@ -1076,7 +1038,6 @@ UI = {
         "ai_tab": "🤖 人工智能分析员",
         "detect_tab": "✈️ 航班跟踪器",
         "worldcup_tab": "⚽ 世界杯直播",
-        "youtube_tab": "🎥 YouTube 视频源",
         "title": "全球监视雷达",
         "author_tag": "由 Gesner Deslandes 构建",
         "logout": "退出会话",
@@ -1144,14 +1105,7 @@ UI = {
         "enter_flight": "请输入航班 ID。",
         "worldcup_title": "🏆 2026 世界杯 – 直播（免费）",
         "worldcup_desc": "通过嵌入式流媒体免费观看每场比赛直播。",
-        "stream_note": "ℹ️ 流媒体由第三方网站提供。",
-        "youtube_title": "🎥 YouTube 视频源",
-        "youtube_desc": "粘贴 YouTube URL（每行一个）以嵌入多个视频。",
-        "youtube_placeholder": "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ",
-        "youtube_load_btn": "加载视频",
-        "youtube_clear_btn": "全部清除",
-        "youtube_loaded": "已加载 {count} 个视频。",
-        "youtube_error": "未找到有效的 YouTube URL。"
+        "stream_note": "ℹ️ 流媒体由第三方网站提供。"
     }
 }
 
@@ -1421,17 +1375,16 @@ def main_page():
     # ---- Satellite data ----
     sat_data = []  # placeholder
 
-    # ---- TABS: Radar, Satellite, AI, Flight Tracker, World Cup, YouTube ----
-    tab_radar, tab_sat, tab_ai, tab_detect, tab_worldcup, tab_youtube = st.tabs([
+    # ---- TABS: Radar, Satellite, AI, Flight Tracker, World Cup ----
+    tab_radar, tab_sat, tab_ai, tab_detect, tab_worldcup = st.tabs([
         L["radar_tab"], 
         L["sat_tab"], 
         L["ai_tab"], 
         L["detect_tab"],
-        L["worldcup_tab"],
-        L["youtube_tab"]
+        L["worldcup_tab"]
     ])
 
-    # ========== RADAR TAB – BRIGHTENED VERSION ==========
+    # Radar tab with updated legend and drone detection
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
@@ -1446,12 +1399,15 @@ def main_page():
         
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
+            # Updated legend to include drone categories
             st.markdown(f"### {L['legend_title']}")
             legend_html = """
             <div class="legend">
                 <span class="legend-item"><span class="legend-shape" style="color:#2ecc71;">⬤</span> Commercial Airplane</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#e74c3c;">▲</span> Military</span>
-                <span class="legend-item"><span class="legend-shape" style="color:#f39c12;">◆</span> Drone</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#ff6b35;">◆</span> Drone (Low)</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#ff00ff;">◆</span> Drone (High)</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#ff9900;">◆</span> Drone (Mid)</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#f1c40f;">⬛</span> Cargo</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#9b59b6;">■</span> UFO</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#3498db;">●</span> General Aviation</span>
@@ -1460,10 +1416,9 @@ def main_page():
             """
             st.markdown(legend_html, unsafe_allow_html=True)
             radar_json = json.dumps(aircraft_data)
-            # MODIFIED: brighter radar canvas
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
-                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:2px solid #4a8aff; cursor:pointer; box-shadow: 0 0 30px rgba(74,138,255,0.2);"></canvas>
+                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14; cursor:pointer;"></canvas>
                 <script>
                     const canvas = document.getElementById('radar');
                     const ctx = canvas.getContext('2d');
@@ -1482,11 +1437,7 @@ def main_page():
                         }}
                         soundEnabled = true;
                         canvas.style.borderColor = '#00ff64';
-                        canvas.style.boxShadow = '0 0 40px rgba(0,255,100,0.5)';
-                        setTimeout(() => {{ 
-                            canvas.style.borderColor = '#4a8aff';
-                            canvas.style.boxShadow = '0 0 30px rgba(74,138,255,0.2)';
-                        }}, 300);
+                        setTimeout(() => {{ canvas.style.borderColor = '#2a1f14'; }}, 200);
                     }});
                     
                     function ping() {{
@@ -1526,93 +1477,78 @@ def main_page():
                     }}
                     
                     function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance) {{
-                        const size = 10;
+                        const size = 9;
                         ctx.save();
-                        ctx.shadowBlur = 25;
+                        ctx.shadowBlur = 20;
                         ctx.shadowColor = color;
                         ctx.fillStyle = color;
                         ctx.strokeStyle = '#ffffff';
-                        ctx.lineWidth = 1.5;
+                        ctx.lineWidth = 1.2;
                         
-                        switch(type) {{
-                            case 'Military':
-                                ctx.beginPath();
-                                ctx.moveTo(x, y - size);
-                                ctx.lineTo(x - size, y + size*0.7);
-                                ctx.lineTo(x + size, y + size*0.7);
-                                ctx.closePath();
-                                ctx.fill();
-                                ctx.stroke();
-                                break;
-                            case 'Drone':
-                                ctx.beginPath();
-                                ctx.moveTo(x, y - size);
-                                ctx.lineTo(x + size, y);
-                                ctx.lineTo(x, y + size);
-                                ctx.lineTo(x - size, y);
-                                ctx.closePath();
-                                ctx.fill();
-                                ctx.stroke();
-                                break;
-                            case 'UFO':
-                                ctx.fillRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
-                                ctx.strokeRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
-                                break;
-                            default:
-                                ctx.beginPath();
-                                ctx.arc(x, y, size*0.6, 0, 2*Math.PI);
-                                ctx.fill();
-                                ctx.stroke();
+                        // Use diamond shape for drones
+                        if (type.includes('Drone')) {{
+                            ctx.beginPath();
+                            ctx.moveTo(x, y - size);
+                            ctx.lineTo(x + size, y);
+                            ctx.lineTo(x, y + size);
+                            ctx.lineTo(x - size, y);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.stroke();
+                        }} else if (type === 'Military') {{
+                            ctx.beginPath();
+                            ctx.moveTo(x, y - size);
+                            ctx.lineTo(x - size, y + size*0.7);
+                            ctx.lineTo(x + size, y + size*0.7);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.stroke();
+                        }} else if (type === 'UFO') {{
+                            ctx.fillRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
+                            ctx.strokeRect(x - size*0.7, y - size*0.7, size*1.4, size*1.4);
+                        }} else {{
+                            ctx.beginPath();
+                            ctx.arc(x, y, size*0.6, 0, 2*Math.PI);
+                            ctx.fill();
+                            ctx.stroke();
                         }}
                         ctx.shadowBlur = 0;
                         ctx.restore();
                         
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 10px monospace';
+                        ctx.fillStyle = '#e8ddd0';
+                        ctx.font = '9px monospace';
                         ctx.shadowBlur = 0;
                         ctx.fillText(id, x + 14, y - 4);
-                        ctx.fillStyle = 'rgba(220,220,220,0.8)';
-                        ctx.font = '8px monospace';
-                        ctx.fillText(alt, x + 14, y + 10);
-                        ctx.fillStyle = 'rgba(200,200,200,0.5)';
+                        ctx.fillStyle = 'rgba(200,200,200,0.6)';
                         ctx.font = '7px monospace';
+                        ctx.fillText(alt, x + 14, y + 10);
+                        ctx.fillStyle = 'rgba(200,200,200,0.4)';
+                        ctx.font = '6px monospace';
                         ctx.fillText(distance + 'km', x + 14, y + 20);
                     }}
                     
                     function draw() {{
                         ctx.clearRect(0,0,550,550);
-                        // Background glow
-                        const bgGrad = ctx.createRadialGradient(275,275,50,275,275,280);
-                        bgGrad.addColorStop(0, 'rgba(20,40,80,0.3)');
-                        bgGrad.addColorStop(0.5, 'rgba(10,20,50,0.2)');
-                        bgGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
-                        ctx.fillStyle = bgGrad;
-                        ctx.fillRect(0,0,550,550);
-                        
                         const cx = 275, cy = 275, r = 250;
-                        // Brighter range rings
-                        ctx.strokeStyle = 'rgba(100,200,255,0.5)';
-                        ctx.lineWidth = 1.2;
+                        ctx.strokeStyle = 'rgba(40,30,20,0.6)';
+                        ctx.lineWidth = 1;
                         for(let i = 1; i <= 4; i++) {{
                             ctx.beginPath();
                             ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                             ctx.stroke();
                         }}
-                        // Brighter crosshairs
-                        ctx.strokeStyle = 'rgba(0,255,200,0.4)';
-                        ctx.lineWidth = 1;
-                        ctx.setLineDash([5,5]);
+                        ctx.strokeStyle = 'rgba(40,30,20,0.3)';
+                        ctx.lineWidth = 0.5;
                         ctx.beginPath();
                         ctx.moveTo(cx - r, cy);
                         ctx.lineTo(cx + r, cy);
                         ctx.moveTo(cx, cy - r);
                         ctx.lineTo(cx, cy + r);
                         ctx.stroke();
-                        ctx.setLineDash([]);
                         
                         const pulse = Date.now() / 300;
                         data.forEach((d, i) => {{
-                            const angleRad = i * 1.2 + 0.2;
+                            const angleRad = i * 1.2;
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
                             const dy = cy + Math.sin(angleRad) * (r * d.dist);
                             const dist = d.distance_km ? d.distance_km.toFixed(0) : 'N/A';
@@ -1637,13 +1573,12 @@ def main_page():
                         ctx.translate(cx, cy);
                         ctx.rotate(angle);
                         const grad = ctx.createRadialGradient(0,0,0,0,0,r);
-                        grad.addColorStop(0, 'rgba(0,255,180,0.1)');
-                        grad.addColorStop(0.5, 'rgba(0,200,255,0.15)');
-                        grad.addColorStop(1, 'rgba(0,150,255,0.25)');
+                        grad.addColorStop(0, 'transparent');
+                        grad.addColorStop(1, 'rgba(0,255,100,0.15)');
                         ctx.fillStyle = grad;
                         ctx.beginPath();
                         ctx.moveTo(0,0);
-                        ctx.arc(0,0,r,0,0.5);
+                        ctx.arc(0,0,r,0,0.4);
                         ctx.fill();
                         ctx.restore();
                         requestAnimationFrame(draw);
@@ -1908,70 +1843,6 @@ def main_page():
 
         st.markdown("---")
         st.info(L['stream_note'])
-
-    # ========== NEW: YOUTUBE FEEDS TAB ==========
-    with tab_youtube:
-        st.title(L['youtube_title'])
-        st.markdown(L['youtube_desc'])
-
-        # Text area for URLs
-        default_url = "https://youtu.be/H2hlD5GjjPQ?si=tXSH1KfIgiB-3RgJ"
-        urls_input = st.text_area(
-            "Enter YouTube URLs (one per line)",
-            value=default_url,
-            height=150,
-            key="youtube_urls_input",
-            placeholder=L['youtube_placeholder']
-        )
-
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            load_btn = st.button(L['youtube_load_btn'], use_container_width=True)
-        with col_btn2:
-            clear_btn = st.button(L['youtube_clear_btn'], use_container_width=True)
-
-        if clear_btn:
-            st.session_state.youtube_videos = []
-            st.rerun()
-
-        if load_btn:
-            lines = [line.strip() for line in urls_input.splitlines() if line.strip()]
-            valid_videos = []
-            for line in lines:
-                vid = extract_youtube_id(line)
-                if vid:
-                    embed_url = f"https://www.youtube.com/embed/{vid}"
-                    valid_videos.append({"id": vid, "embed_url": embed_url, "original_url": line})
-            if valid_videos:
-                st.session_state.youtube_videos = valid_videos
-                st.success(L['youtube_loaded'].format(count=len(valid_videos)))
-            else:
-                st.warning(L['youtube_error'])
-
-        # Display loaded videos
-        if st.session_state.youtube_videos:
-            st.markdown("---")
-            st.subheader("📺 Currently Loaded Videos")
-            # Display in a grid (2 per row)
-            videos = st.session_state.youtube_videos
-            cols = st.columns(2)
-            for idx, video in enumerate(videos):
-                col = cols[idx % 2]
-                with col:
-                    st.markdown(f"**Video {idx+1}**")
-                    # Use components.html to embed the iframe
-                    iframe_html = f"""
-                    <iframe src="{video['embed_url']}" 
-                            width="100%" height="315" 
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen>
-                    </iframe>
-                    """
-                    components.html(iframe_html, height=330)
-                    st.caption(f"Source: {video['original_url']}")
-        else:
-            st.info("No videos loaded. Paste URLs and click 'Load Videos'.")
 
 # ========== RUN ==========
 if not st.session_state.authenticated:
