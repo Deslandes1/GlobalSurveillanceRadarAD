@@ -1384,7 +1384,7 @@ def main_page():
         L["worldcup_tab"]
     ])
 
-    # Radar tab with updated legend and drone detection
+    # ========== RADAR TAB – BRIGHTENED VERSION WITH DRONE DETECTION ==========
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
@@ -1399,7 +1399,7 @@ def main_page():
         
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
-            # Updated legend to include drone categories
+            # Updated legend with drone categories
             st.markdown(f"### {L['legend_title']}")
             legend_html = """
             <div class="legend">
@@ -1416,9 +1416,10 @@ def main_page():
             """
             st.markdown(legend_html, unsafe_allow_html=True)
             radar_json = json.dumps(aircraft_data)
+            # BRIGHT RADAR INTERFACE – restored glow, bright rings, and border
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
-                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:1px solid #2a1f14; cursor:pointer;"></canvas>
+                <canvas id="radar" width="550" height="550" style="border-radius:50%; border:2px solid #4a8aff; cursor:pointer; box-shadow:0 0 30px rgba(74,138,255,0.3);"></canvas>
                 <script>
                     const canvas = document.getElementById('radar');
                     const ctx = canvas.getContext('2d');
@@ -1437,7 +1438,11 @@ def main_page():
                         }}
                         soundEnabled = true;
                         canvas.style.borderColor = '#00ff64';
-                        setTimeout(() => {{ canvas.style.borderColor = '#2a1f14'; }}, 200);
+                        canvas.style.boxShadow = '0 0 40px rgba(0,255,100,0.5)';
+                        setTimeout(() => {{ 
+                            canvas.style.borderColor = '#4a8aff';
+                            canvas.style.boxShadow = '0 0 30px rgba(74,138,255,0.3)';
+                        }}, 300);
                     }});
                     
                     function ping() {{
@@ -1479,13 +1484,13 @@ def main_page():
                     function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance) {{
                         const size = 9;
                         ctx.save();
-                        ctx.shadowBlur = 20;
+                        ctx.shadowBlur = 25;
                         ctx.shadowColor = color;
                         ctx.fillStyle = color;
                         ctx.strokeStyle = '#ffffff';
-                        ctx.lineWidth = 1.2;
+                        ctx.lineWidth = 1.5;
                         
-                        // Use diamond shape for drones
+                        // Drone shape: diamond
                         if (type.includes('Drone')) {{
                             ctx.beginPath();
                             ctx.moveTo(x, y - size);
@@ -1515,40 +1520,53 @@ def main_page():
                         ctx.shadowBlur = 0;
                         ctx.restore();
                         
-                        ctx.fillStyle = '#e8ddd0';
-                        ctx.font = '9px monospace';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 10px monospace';
                         ctx.shadowBlur = 0;
                         ctx.fillText(id, x + 14, y - 4);
-                        ctx.fillStyle = 'rgba(200,200,200,0.6)';
-                        ctx.font = '7px monospace';
+                        ctx.fillStyle = 'rgba(220,220,220,0.8)';
+                        ctx.font = '8px monospace';
                         ctx.fillText(alt, x + 14, y + 10);
-                        ctx.fillStyle = 'rgba(200,200,200,0.4)';
-                        ctx.font = '6px monospace';
+                        ctx.fillStyle = 'rgba(200,200,200,0.5)';
+                        ctx.font = '7px monospace';
                         ctx.fillText(distance + 'km', x + 14, y + 20);
                     }}
                     
                     function draw() {{
                         ctx.clearRect(0,0,550,550);
+                        
+                        // --- Background glow (bright) ---
+                        const bgGrad = ctx.createRadialGradient(275,275,50,275,275,280);
+                        bgGrad.addColorStop(0, 'rgba(20,40,80,0.35)');
+                        bgGrad.addColorStop(0.5, 'rgba(10,20,50,0.25)');
+                        bgGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+                        ctx.fillStyle = bgGrad;
+                        ctx.fillRect(0,0,550,550);
+                        
                         const cx = 275, cy = 275, r = 250;
-                        ctx.strokeStyle = 'rgba(40,30,20,0.6)';
-                        ctx.lineWidth = 1;
+                        // --- Bright range rings ---
+                        ctx.strokeStyle = 'rgba(100,200,255,0.6)';
+                        ctx.lineWidth = 1.2;
                         for(let i = 1; i <= 4; i++) {{
                             ctx.beginPath();
                             ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                             ctx.stroke();
                         }}
-                        ctx.strokeStyle = 'rgba(40,30,20,0.3)';
-                        ctx.lineWidth = 0.5;
+                        // --- Bright crosshairs ---
+                        ctx.strokeStyle = 'rgba(0,255,200,0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5,5]);
                         ctx.beginPath();
                         ctx.moveTo(cx - r, cy);
                         ctx.lineTo(cx + r, cy);
                         ctx.moveTo(cx, cy - r);
                         ctx.lineTo(cx, cy + r);
                         ctx.stroke();
+                        ctx.setLineDash([]);
                         
                         const pulse = Date.now() / 300;
                         data.forEach((d, i) => {{
-                            const angleRad = i * 1.2;
+                            const angleRad = i * 1.2 + 0.2;
                             const dx = cx + Math.cos(angleRad) * (r * d.dist);
                             const dy = cy + Math.sin(angleRad) * (r * d.dist);
                             const dist = d.distance_km ? d.distance_km.toFixed(0) : 'N/A';
@@ -1572,13 +1590,15 @@ def main_page():
                         ctx.save();
                         ctx.translate(cx, cy);
                         ctx.rotate(angle);
+                        // --- Bright sweep ---
                         const grad = ctx.createRadialGradient(0,0,0,0,0,r);
-                        grad.addColorStop(0, 'transparent');
-                        grad.addColorStop(1, 'rgba(0,255,100,0.15)');
+                        grad.addColorStop(0, 'rgba(0,255,180,0.15)');
+                        grad.addColorStop(0.5, 'rgba(0,200,255,0.2)');
+                        grad.addColorStop(1, 'rgba(0,150,255,0.3)');
                         ctx.fillStyle = grad;
                         ctx.beginPath();
                         ctx.moveTo(0,0);
-                        ctx.arc(0,0,r,0,0.4);
+                        ctx.arc(0,0,r,0,0.5);
                         ctx.fill();
                         ctx.restore();
                         requestAnimationFrame(draw);
