@@ -668,62 +668,63 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 120, "detected_at": now_str}
     ]
 
-# ========== MARITIME DETECTION (UPDATED WITH REAL API) ==========
+# ========== MARITIME DETECTION (UPDATED WITH AISSTREAM.IO) ==========
 def fetch_live_ships(ground_lat, ground_lon):
     """
-    Fetch real vessel data from MarineTraffic API using the key from secrets.
+    Fetch real vessel data from aisstream.io using the key from secrets.
     Falls back to demo data if the API call fails.
     """
-    api_key = st.secrets.get("MARITIME_API_KEY")
+    api_key = st.secrets.get("AISSTREAM_API_KEY")
     
     # If no API key is configured, use demo data
     if not api_key:
-        st.warning("⚠️ MARITIME_API_KEY not found in secrets. Using demo ship data.")
+        st.warning("⚠️ AISSTREAM_API_KEY not found in secrets. Using demo ship data.")
         return get_demo_ships()
     
-    # MarineTraffic API endpoint for vessel positions
-    # Using the modern exportvessels endpoint with extended fields
-    url = f"https://services.marinetraffic.com/api/exportvessels/{api_key}/msgtype:extended/timespan:10/protocol:json"
+    # aisstream.io REST endpoint for vessels in a bounding box (Persian Gulf area)
+    url = "https://api.aisstream.io/v1/vessels"
+    headers = {"X-API-Key": api_key}
+    # Bounding box: [minLon, minLat, maxLon, maxLat] - covers Persian Gulf
+    params = {"bbox": "48,24,56,30"}  # approximate Persian Gulf
     
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, headers=headers, params=params, timeout=15)
         
         if response.status_code == 200:
             data = response.json()
+            vessels_data = data.get("vessels", [])
             
-            # The API returns a list of vessels
-            if not data or not isinstance(data, list):
-                st.warning("⚠️ No vessel data received from MarineTraffic API.")
+            if not vessels_data:
+                st.warning("⚠️ No vessel data received from aisstream.io.")
                 return get_demo_ships()
             
             vessels = []
-            for vessel in data:
-                # Extract relevant fields
-                lat = vessel.get('LAT')
-                lon = vessel.get('LON')
-                
-                # Skip if no position data
+            max_range = st.session_state.get("max_range", 400)
+            iran_tz = pytz.timezone('Asia/Tehran')
+            now_str = datetime.now(iran_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+            
+            for v in vessels_data:
+                # Extract position (aisstream.io uses 'latitude' and 'longitude')
+                lat = v.get("latitude")
+                lon = v.get("longitude")
                 if lat is None or lon is None:
                     continue
                 
-                # Calculate distance from ground station
+                # Calculate distance
                 R = 6371
                 dlat = math.radians(lat - ground_lat)
                 dlon = math.radians(lon - ground_lon)
                 a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
                 c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
                 dist_km = R * c
-                
-                # Only include vessels within max range
-                max_range = st.session_state.get("max_range", 400)
                 if dist_km > max_range:
                     continue
                 
-                # Determine vessel type based on SHIPTYPE or TYPE_NAME
-                ship_type = vessel.get('TYPE_NAME', vessel.get('SHIPTYPE', 'Unknown'))
-                ship_type_lower = str(ship_type).lower()
+                # Get ship type from the 'shipType' field (may be a code or name)
+                ship_type_code = v.get("shipType", "Unknown")
+                ship_type_lower = str(ship_type_code).lower()
                 
-                # Classify vessel for display
+                # Classification based on ship type text or code
                 if 'military' in ship_type_lower or 'navy' in ship_type_lower or 'warship' in ship_type_lower:
                     vessel_type = "Military Ship"
                     color = "#e74c3c"
@@ -745,52 +746,60 @@ def fetch_live_ships(ground_lat, ground_lon):
                     color = "#9b59b6"
                     label = "🛳️ Passenger"
                 else:
-                    vessel_type = "Other Vessel"
-                    color = "#95a5a6"
-                    label = "🚢 Other"
+                    # Try to classify by MMSI prefix or other hints
+                    mmsi = str(v.get("mmsi", ""))
+                    if mmsi.startswith("422"):  # Iran MMSI prefix
+                        vessel_type = "Iranian Vessel"
+                        color = "#e67e22"
+                        label = "🇮🇷 Iranian"
+                    else:
+                        vessel_type = "Other Vessel"
+                        color = "#95a5a6"
+                        label = "🚢 Other"
                 
                 # Build vessel object
                 vessels.append({
-                    "id": vessel.get('CALLSIGN', vessel.get('SHIP_ID', str(vessel.get('MMSI', 'Unknown')))),
+                    "id": v.get("callsign", str(v.get("mmsi", "Unknown"))),
                     "type": vessel_type,
                     "color": color,
                     "label": label,
-                    "alt": "0ft",  # Ships don't have altitude
+                    "alt": "0ft",
                     "dist": min(dist_km / max_range, 0.95),
                     "distance_km": round(dist_km, 1),
                     "lat": lat,
                     "lon": lon,
                     "verified": True,
-                    "detected_at": datetime.now(pytz.timezone('Asia/Tehran')).strftime("%Y-%m-%d %I:%M:%S %p")
+                    "detected_at": now_str
                 })
             
             if vessels:
                 vessels = sorted(vessels, key=lambda x: x["distance_km"])[:20]
-                st.success(f"🟢 Retrieved {len(vessels)} vessels from MarineTraffic API")
+                st.success(f"🟢 Retrieved {len(vessels)} vessels from aisstream.io")
                 return vessels
             else:
                 st.warning("⚠️ No vessels found within range. Showing demo data.")
                 return get_demo_ships()
                 
         elif response.status_code == 401:
-            st.error("❌ MarineTraffic API key is invalid or expired. Please check your key.")
+            st.error("❌ AISSTREAM_API_KEY is invalid or expired. Please check your key.")
             return get_demo_ships()
         elif response.status_code == 429:
-            st.warning("⏳ MarineTraffic API rate limit exceeded. Please try again later.")
+            st.warning("⏳ aisstream.io rate limit exceeded. Please try again later.")
             return get_demo_ships()
         else:
-            st.warning(f"⚠️ MarineTraffic API returned status {response.status_code}. Using demo data.")
+            st.warning(f"⚠️ aisstream.io returned status {response.status_code}. Using demo data.")
             return get_demo_ships()
             
     except requests.exceptions.Timeout:
-        st.warning("⏳ MarineTraffic API request timed out. Using demo data.")
+        st.warning("⏳ aisstream.io request timed out. Using demo data.")
         return get_demo_ships()
     except requests.exceptions.ConnectionError:
-        st.warning("🌐 Could not connect to MarineTraffic API. Using demo data.")
+        st.warning("🌐 Could not connect to aisstream.io. Using demo data.")
         return get_demo_ships()
     except Exception as e:
         st.warning(f"⚠️ Error fetching vessel data: {str(e)}. Using demo data.")
         return get_demo_ships()
+
 
 def get_demo_ships():
     """Generate demo ship data for testing when API is unavailable."""
@@ -1515,7 +1524,7 @@ def main_page():
         elif status == "demo":
             st.warning("📡 No live signal yet. Waiting for OpenSky data...")
 
-    # ---- Fetch maritime data (using real API or demo) ----
+    # ---- Fetch maritime data (using aisstream.io or demo) ----
     ships_data = fetch_live_ships(u_lat, u_lon)
 
     # ---- Satellite data ----
