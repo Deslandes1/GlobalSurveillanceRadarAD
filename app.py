@@ -24,7 +24,7 @@ except ImportError:
 
 # ========== CONFIGURATION ==========
 st.set_page_config(
-    page_title="GlobalInternet.py | Surveillance Portal",
+    page_title="GlobalInternet.py | Surveillance Portal – Iran",
     layout="wide",
     page_icon="🌐"
 )
@@ -80,7 +80,6 @@ st.markdown("""
     .login-container h2, .login-container p {
         color: #ffffff !important;
     }
-    /* BRIGHT WHITE TEXT FOR ALL ELEMENTS */
     h1, h2, h3, h4, h5, h6, p, li, .stMarkdown, .stCaption, label, .stTextInput, .stSelectbox, .stTextArea, .stButton, .stAlert, .stInfo, .stSuccess, .stWarning, .stError {
         color: #ffffff !important;
     }
@@ -256,7 +255,6 @@ st.markdown("""
         color: #00ff64;
         font-size: 0.8rem;
     }
-    /* Flight Tracker iframe container improvements */
     iframe {
         background-color: #0a0a0f !important;
         border: 1px solid #2a1f14 !important;
@@ -301,7 +299,6 @@ st.markdown("""
     .stInfo, .stSuccess, .stWarning, .stError {
         color: #ffffff !important;
     }
-    /* Additional selectors for maximum white text coverage */
     .stSelectbox label, .stTextInput label, .stTextArea label, .stNumberInput label, .stDateInput label, .stTimeInput label {
         color: #ffffff !important;
     }
@@ -320,25 +317,21 @@ st.markdown("""
 # ========== AI VOICE SCRIPTS ==========
 def generate_male_voice_audio():
     script = """
-    Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
+    Welcome to the Global Surveillance Radar Portal, now covering Iranian airspace and the Persian Gulf. Built by Gesner Deslandes at GlobalInternet.py.
     
-    This application features five main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, and Live World Cup.
+    This application features six main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, Maritime Detection, and Live World Cup.
     
-    The Radar Control tab shows a 360-degree live radar display with a classic fetching sound. Click the radar screen to enable the audio and hear a sonar ping on every sweep. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation.
+    The Radar Control tab shows a 360-degree live radar display. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation. Ships appear as squares with colors indicating military (red) or cargo (yellow) vessels.
     
-    The Satellite Tracker predicts satellite passes and shows an interactive map with aircraft and satellite overlays.
+    The Maritime Detection tab lists all vessels within range, including military ships from the Iranian Navy and other navies.
     
-    The AI Analyst is powered by Groq's Llama 3.1. You can ask any question about radar contacts or satellite predictions, and the AI provides a detailed threat analysis and recommendations.
+    The Satellite Tracker predicts satellite passes and shows an interactive map with aircraft, ships, and satellite overlays.
     
-    The Flight Tracker tab provides real-time flight delay information powered by FlightAware. It shows total delay hours and minutes for airborne aircraft, arrival delays for airborne aircraft, and inbound flights delayed at their origin. It also lists specific airport delay updates including Boston Logan, Dallas-Fort Worth, Newark Liberty, Chicago Midway, London Gatwick, John F Kennedy, and many more.
+    The AI Analyst is powered by Groq's Llama 3.1. Ask about radar contacts, satellite predictions, or maritime threats.
     
-    You can also verify any specific flight by entering a flight number, such as AAL674, to check its current status on FlightAware.
+    The Flight Tracker tab provides real-time flight delay information powered by FlightAware.
     
-    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
-    
-    The sidebar includes automatic location detection, language selection, a demo mode toggle, and secure logout. The data source status shows whether you are seeing live, cached, or demo data.
-    
-    All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
+    The Live World Cup tab features an embedded free live stream from a third-party provider.
     
     GlobalInternet.py – connecting the global market with local expertise.
     """
@@ -346,27 +339,21 @@ def generate_male_voice_audio():
 
 def generate_female_voice_audio():
     script = """
-    Welcome to the Global Surveillance Radar Portal, built by Gesner Deslandes at GlobalInternet.py.
+    Welcome to the Global Surveillance Radar Portal, now covering Iranian airspace and the Persian Gulf. Built by Gesner Deslandes at GlobalInternet.py.
     
-    This advanced surveillance system now features a live radar with a classic fetching sound. Just click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
+    This advanced surveillance system features a live radar with a classic fetching sound. Click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
     
-    Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, and civilian aircraft as green or blue circles. Each symbol includes the callsign and altitude for instant identification.
+    Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, civilian aircraft as green or blue circles, and ships as squares.
     
-    A live clock and calendar are displayed on the main page, showing the current time with seconds running and today's date in real time.
+    The Maritime Detection tab provides real-time information on vessels in Iranian waters, including military ships, cargo, and tankers.
     
-    The Radar Control tab gives you a 360‑degree view with range rings and contact labels. The Satellite Tracker tab predicts satellite passes and shows an interactive map with both aircraft and satellite overlays.
+    The Satellite Tracker tab predicts satellite passes and shows an interactive map.
     
-    The AI Analyst tab uses Groq's Llama 3.1 to answer your questions about radar contacts and satellite predictions, providing threat analysis and recommendations.
+    The AI Analyst tab uses Groq's Llama 3.1 to answer your questions.
     
-    The Flight Tracker tab displays real-time flight delay information from FlightAware. It shows you total delay hours and minutes across all airborne aircraft, arrival delays for airborne aircraft, and inbound flights delayed at their origin. Specific airport updates include Boston Logan, Dallas-Fort Worth, Newark Liberty, Chicago Midway, John F Kennedy, and London Gatwick.
+    The Flight Tracker tab displays real-time flight delay information from FlightAware.
     
-    You can also verify any specific flight by entering a flight number into the Flight Tracker tab, such as AAL674, to check its current status on FlightAware.
-    
-    The Live World Cup tab features an embedded free live stream from a third-party provider, so you can watch the 2026 World Cup matches live.
-    
-    The sidebar provides automatic location detection, language selection, a location search feature, a demo mode toggle, and secure logout. The app also shows the data source status – live, cached, or demo – so you always know what you are seeing. You can also find step‑by‑step instructions to run the app locally on your own computer for full live data.
-    
-    All data is encrypted and anonymised. This software is ideal for surveillance, security, and intelligence analysis.
+    The Live World Cup tab features an embedded free live stream.
     
     GlobalInternet.py – connecting the global market with local expertise.
     """
@@ -504,12 +491,12 @@ def get_detected_location():
                 st.session_state.detected_location = loc
                 return loc
         st.session_state.detected_location = {
-            "country": "Haiti",
-            "region": "Ouest",
-            "city": "Port-au-Prince",
+            "country": "Iran",
+            "region": "Tehran",
+            "city": "Tehran",
             "isp": "Unknown",
-            "lat": 18.5392,
-            "lon": -72.3364
+            "lat": 35.6892,
+            "lon": 51.3890
         }
     return st.session_state.detected_location
 
@@ -533,7 +520,7 @@ def geocode_location(location_name):
     except Exception:
         return None, None, None
 
-# ========== AIRCRAFT CLASSIFICATION (UPDATED FOR REAL DRONES) ==========
+# ========== AIRCRAFT CLASSIFICATION ==========
 def classify_aircraft(alt_ft, callsign=""):
     alt_ft = int(alt_ft.replace(",","").replace("ft","").strip()) if isinstance(alt_ft, str) else alt_ft
     if not isinstance(alt_ft, (int, float)):
@@ -541,7 +528,6 @@ def classify_aircraft(alt_ft, callsign=""):
 
     callsign = str(callsign).upper()
 
-    # ---------- DRONE DETECTION (REAL ADS-B DRONES) ----------
     drone_keywords = ["UAV", "DRN", "DRONE", "QUAD", "HEX", "OCTO", "RQ", "MQ", 
                       "EAGLE", "SHADOW", "PREDATOR", "REAPER", "GLOBAL", "HAWK", "PHANTOM"]
     if any(keyword in callsign for keyword in drone_keywords):
@@ -552,12 +538,10 @@ def classify_aircraft(alt_ft, callsign=""):
         else:
             return "Drone", "#ff9900", "🛸 Drone"
 
-    # Military (existing)
     military_prefixes = ["F-", "B-", "C-", "E-", "KC-", "T-", "V-", "A-", "AH-", "CH-", "UH-", "B-2"]
     if any(callsign.startswith(pre) for pre in military_prefixes) or alt_ft > 40000:
         return "Military", "#e74c3c", "✈️ Military"
 
-    # Commercial Airline (existing)
     airline_codes = ["AAL", "UAL", "SWA", "DAL", "NKS", "JBU", "FFT", "EJA", "LXJ", "N456", "N123", "TAM", "LATAM", "GOL", "AZU", "VRG"]
     if any(callsign.startswith(code) for code in airline_codes):
         if alt_ft > 25000:
@@ -565,19 +549,16 @@ def classify_aircraft(alt_ft, callsign=""):
         else:
             return "General Aviation", "#3498db", "🛩️ General"
 
-    # Cargo (existing)
     cargo_codes = ["FDX", "UPS", "CKS", "GTI"]
     if any(callsign.startswith(code) for code in cargo_codes) and alt_ft > 20000:
         return "Cargo", "#f1c40f", "📦 Cargo"
 
-    # Private / General Aviation (existing)
     if callsign.startswith("N") and len(callsign) >= 5:
         if alt_ft < 10000:
             return "General Aviation", "#3498db", "🛩️ General"
         else:
             return "Commercial Airplane", "#2ecc71", "🛩️ Commercial"
 
-    # UFO / Unknown (existing)
     if "UFO" in callsign or "UNK" in callsign or len(callsign) < 3:
         return "UFO", "#9b59b6", "🛸 UFO"
 
@@ -585,8 +566,8 @@ def classify_aircraft(alt_ft, callsign=""):
 
 # ========== LIVE AIRCRAFT FETCH ==========
 def fetch_live_aircraft(ground_lat, ground_lon):
-    max_range = st.session_state.get("max_range", 180)
-    haiti_tz = pytz.timezone('America/Port-au-Prince')
+    max_range = st.session_state.get("max_range", 400)
+    iran_tz = pytz.timezone('Asia/Tehran')
     
     if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
         age = (datetime.now() - st.session_state.cached_timestamp).total_seconds()
@@ -611,7 +592,7 @@ def fetch_live_aircraft(ground_lat, ground_lon):
                     continue
                 
                 aircraft_list = []
-                now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+                now_str = datetime.now(iran_tz).strftime("%Y-%m-%d %I:%M:%S %p")
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -679,13 +660,167 @@ def fetch_live_aircraft(ground_lat, ground_lon):
         return demo, "demo"
 
 def get_demo_aircraft():
-    haiti_tz = pytz.timezone('America/Port-au-Prince')
-    now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+    iran_tz = pytz.timezone('Asia/Tehran')
+    now_str = datetime.now(iran_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     return [
-        {"id": "AAL410", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.4, "distance_km": 60, "detected_at": now_str},
-        {"id": "DRNQC", "type": "Drone", "color": "#f39c12", "label": "🛸 Drone", "alt": "800ft", "dist": 0.2, "distance_km": 30, "detected_at": now_str},
-        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 45, "detected_at": now_str}
+        {"id": "IRA001", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "32,000ft", "dist": 0.4, "distance_km": 160, "detected_at": now_str},
+        {"id": "DRNQC", "type": "Drone", "color": "#ff9900", "label": "🛸 Drone", "alt": "1,200ft", "dist": 0.2, "distance_km": 80, "detected_at": now_str},
+        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 120, "detected_at": now_str}
     ]
+
+# ========== MARITIME DETECTION (UPDATED WITH REAL API) ==========
+def fetch_live_ships(ground_lat, ground_lon):
+    """
+    Fetch real vessel data from MarineTraffic API using the key from secrets.
+    Falls back to demo data if the API call fails.
+    """
+    api_key = st.secrets.get("MARITIME_API_KEY")
+    
+    # If no API key is configured, use demo data
+    if not api_key:
+        st.warning("⚠️ MARITIME_API_KEY not found in secrets. Using demo ship data.")
+        return get_demo_ships()
+    
+    # MarineTraffic API endpoint for vessel positions
+    # Using the modern exportvessels endpoint with extended fields
+    url = f"https://services.marinetraffic.com/api/exportvessels/{api_key}/msgtype:extended/timespan:10/protocol:json"
+    
+    try:
+        response = requests.get(url, timeout=15)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # The API returns a list of vessels
+            if not data or not isinstance(data, list):
+                st.warning("⚠️ No vessel data received from MarineTraffic API.")
+                return get_demo_ships()
+            
+            vessels = []
+            for vessel in data:
+                # Extract relevant fields
+                lat = vessel.get('LAT')
+                lon = vessel.get('LON')
+                
+                # Skip if no position data
+                if lat is None or lon is None:
+                    continue
+                
+                # Calculate distance from ground station
+                R = 6371
+                dlat = math.radians(lat - ground_lat)
+                dlon = math.radians(lon - ground_lon)
+                a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                dist_km = R * c
+                
+                # Only include vessels within max range
+                max_range = st.session_state.get("max_range", 400)
+                if dist_km > max_range:
+                    continue
+                
+                # Determine vessel type based on SHIPTYPE or TYPE_NAME
+                ship_type = vessel.get('TYPE_NAME', vessel.get('SHIPTYPE', 'Unknown'))
+                ship_type_lower = str(ship_type).lower()
+                
+                # Classify vessel for display
+                if 'military' in ship_type_lower or 'navy' in ship_type_lower or 'warship' in ship_type_lower:
+                    vessel_type = "Military Ship"
+                    color = "#e74c3c"
+                    label = "⚓ Military Ship"
+                elif 'tanker' in ship_type_lower or 'oil' in ship_type_lower:
+                    vessel_type = "Tanker"
+                    color = "#00bfff"
+                    label = "⛽ Tanker"
+                elif 'cargo' in ship_type_lower or 'container' in ship_type_lower or 'freight' in ship_type_lower:
+                    vessel_type = "Cargo Ship"
+                    color = "#f1c40f"
+                    label = "🚢 Cargo"
+                elif 'fishing' in ship_type_lower:
+                    vessel_type = "Fishing Vessel"
+                    color = "#2ecc71"
+                    label = "🎣 Fishing"
+                elif 'passenger' in ship_type_lower or 'cruise' in ship_type_lower:
+                    vessel_type = "Passenger Ship"
+                    color = "#9b59b6"
+                    label = "🛳️ Passenger"
+                else:
+                    vessel_type = "Other Vessel"
+                    color = "#95a5a6"
+                    label = "🚢 Other"
+                
+                # Build vessel object
+                vessels.append({
+                    "id": vessel.get('CALLSIGN', vessel.get('SHIP_ID', str(vessel.get('MMSI', 'Unknown')))),
+                    "type": vessel_type,
+                    "color": color,
+                    "label": label,
+                    "alt": "0ft",  # Ships don't have altitude
+                    "dist": min(dist_km / max_range, 0.95),
+                    "distance_km": round(dist_km, 1),
+                    "lat": lat,
+                    "lon": lon,
+                    "verified": True,
+                    "detected_at": datetime.now(pytz.timezone('Asia/Tehran')).strftime("%Y-%m-%d %I:%M:%S %p")
+                })
+            
+            if vessels:
+                vessels = sorted(vessels, key=lambda x: x["distance_km"])[:20]
+                st.success(f"🟢 Retrieved {len(vessels)} vessels from MarineTraffic API")
+                return vessels
+            else:
+                st.warning("⚠️ No vessels found within range. Showing demo data.")
+                return get_demo_ships()
+                
+        elif response.status_code == 401:
+            st.error("❌ MarineTraffic API key is invalid or expired. Please check your key.")
+            return get_demo_ships()
+        elif response.status_code == 429:
+            st.warning("⏳ MarineTraffic API rate limit exceeded. Please try again later.")
+            return get_demo_ships()
+        else:
+            st.warning(f"⚠️ MarineTraffic API returned status {response.status_code}. Using demo data.")
+            return get_demo_ships()
+            
+    except requests.exceptions.Timeout:
+        st.warning("⏳ MarineTraffic API request timed out. Using demo data.")
+        return get_demo_ships()
+    except requests.exceptions.ConnectionError:
+        st.warning("🌐 Could not connect to MarineTraffic API. Using demo data.")
+        return get_demo_ships()
+    except Exception as e:
+        st.warning(f"⚠️ Error fetching vessel data: {str(e)}. Using demo data.")
+        return get_demo_ships()
+
+def get_demo_ships():
+    """Generate demo ship data for testing when API is unavailable."""
+    ground_lat = st.session_state.get("lat_override", 35.6892)
+    ground_lon = st.session_state.get("lon_override", 51.3890)
+    
+    demo_ships = [
+        {"id": "IRN-76", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 27.2, "lon": 54.2},
+        {"id": "IRN-82", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 26.8, "lon": 53.9},
+        {"id": "CARGO-332", "type": "Cargo Ship", "color": "#f1c40f", "label": "🚢 Cargo", "lat": 27.5, "lon": 54.8},
+        {"id": "TANKER-12", "type": "Tanker", "color": "#00bfff", "label": "⛽ Tanker", "lat": 26.5, "lon": 53.5},
+        {"id": "IRN-101", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 27.0, "lon": 54.0},
+    ]
+    
+    # Calculate distances from ground station
+    for ship in demo_ships:
+        lat = ship["lat"]
+        lon = ship["lon"]
+        R = 6371
+        dlat = math.radians(lat - ground_lat)
+        dlon = math.radians(lon - ground_lon)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        dist_km = R * c
+        ship["distance_km"] = round(dist_km, 1)
+        ship["dist"] = min(dist_km / st.session_state.get("max_range", 400), 0.95)
+        ship["detected_at"] = datetime.now(pytz.timezone('Asia/Tehran')).strftime("%Y-%m-%d %I:%M:%S %p")
+        ship["alt"] = "0ft"
+    
+    return demo_ships
 
 # ========== SATELLITE TRACKING ==========
 @st.cache_data(ttl=21600)
@@ -812,8 +947,9 @@ UI = {
         "sat_tab": "🛰️ Satellite Tracker",
         "ai_tab": "🤖 AI Analyst",
         "detect_tab": "✈️ Flight Tracker",
+        "maritime_tab": "🚢 Maritime Detection",
         "worldcup_tab": "⚽ Live World Cup",
-        "title": "GLOBAL SURVEILLANCE RADAR",
+        "title": "GLOBAL SURVEILLANCE RADAR – IRAN",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
         "report": "Download Asset Report",
@@ -826,7 +962,7 @@ UI = {
         "time_target": "Prediction Target (Date/Time)",
         "aip_key": "AIP Security Key (Aerial Imagery)",
         "sky_view": "Satellite OpenSky View",
-        "ai_question": "Ask about radar contacts or satellite predictions:",
+        "ai_question": "Ask about radar contacts, satellite predictions, or maritime activity:",
         "ai_analyze": "Analyze Current Threat Level",
         "ai_thinking": "🤖 AI analyzing surveillance data...",
         "ai_response": "💡 AI Analyst Report",
@@ -834,6 +970,8 @@ UI = {
         "security_caption": "All data is secured and anonymized",
         "flight_tracker_title": "✈️ Live Flight Tracker",
         "flight_tracker_desc": "Real-time flight delay information powered by FlightAware",
+        "maritime_title": "🚢 Maritime Detection – Persian Gulf",
+        "maritime_desc": "List of vessels within range, including military and cargo ships.",
         "refresh_btn": "Refresh Live Data",
         "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
@@ -887,8 +1025,9 @@ UI = {
         "sat_tab": "🛰️ Suivi Satellite",
         "ai_tab": "🤖 Analyste IA",
         "detect_tab": "✈️ Trafic Aérien",
+        "maritime_tab": "🚢 Détection Maritime",
         "worldcup_tab": "⚽ Coupe du Monde en direct",
-        "title": "RADAR DE SURVEILLANCE MONDIAL",
+        "title": "RADAR DE SURVEILLANCE MONDIAL – IRAN",
         "author_tag": "Conçu par Gesner Deslandes",
         "logout": "Déconnexion",
         "report": "Télécharger le Rapport",
@@ -901,7 +1040,7 @@ UI = {
         "time_target": "Date/Heure Cible",
         "aip_key": "Clé de Sécurité AIP",
         "sky_view": "Vue Satellite OpenSky",
-        "ai_question": "Posez une question sur les contacts radar ou les prédictions satellite:",
+        "ai_question": "Posez une question sur les contacts radar, les prédictions satellite ou l'activité maritime :",
         "ai_analyze": "Analyser la menace",
         "ai_thinking": "🤖 L'IA analyse...",
         "ai_response": "💡 Rapport IA",
@@ -909,6 +1048,8 @@ UI = {
         "security_caption": "Toutes les données sont sécurisées",
         "flight_tracker_title": "✈️ Suivi de vol en direct",
         "flight_tracker_desc": "Informations de retard en temps réel fournies par FlightAware",
+        "maritime_title": "🚢 Détection Maritime – Golfe Persique",
+        "maritime_desc": "Liste des navires à portée, y compris les navires militaires et cargos.",
         "refresh_btn": "Actualiser",
         "live_note": "💻 Pour exécuter cette application sur votre propre ordinateur et obtenir des données en direct, cliquez sur les instructions ci‑dessous.",
         "voice_male_explain": "🎙️ Voix IA Homme – Expliquer l'app",
@@ -962,8 +1103,9 @@ UI = {
         "sat_tab": "🛰️ Rastreador de Satélites",
         "ai_tab": "🤖 Analista IA",
         "detect_tab": "✈️ Rastreador de Vuelos",
+        "maritime_tab": "🚢 Detección Marítima",
         "worldcup_tab": "⚽ Copa del Mundo en vivo",
-        "title": "RADAR DE VIGILANCIA GLOBAL",
+        "title": "RADAR DE VIGILANCIA GLOBAL – IRÁN",
         "author_tag": "Construido por Gesner Deslandes",
         "logout": "Cerrar Sesión",
         "report": "Descargar Informe",
@@ -976,7 +1118,7 @@ UI = {
         "time_target": "Fecha/Hora Objetivo",
         "aip_key": "Clave de Seguridad AIP (Imágenes Aéreas)",
         "sky_view": "Vista Satelital OpenSky",
-        "ai_question": "Pregunta sobre contactos de radar o predicciones de satélites:",
+        "ai_question": "Pregunta sobre contactos de radar, predicciones de satélites o actividad marítima:",
         "ai_analyze": "Analizar Nivel de Amenaza",
         "ai_thinking": "🤖 IA analizando datos de vigilancia...",
         "ai_response": "💡 Informe del Analista IA",
@@ -984,6 +1126,8 @@ UI = {
         "security_caption": "Todos los datos están cifrados y anonimizados",
         "flight_tracker_title": "✈️ Rastreador de vuelos en vivo",
         "flight_tracker_desc": "Información de retrasos en tiempo real por FlightAware",
+        "maritime_title": "🚢 Detección Marítima – Golfo Pérsico",
+        "maritime_desc": "Lista de embarcaciones dentro del alcance, incluidos buques militares y cargueros.",
         "refresh_btn": "Actualizar Datos",
         "live_note": "💻 Para ejecutar esta aplicación en tu propia computadora y obtener datos en vivo, haz clic en las instrucciones abajo.",
         "voice_male_explain": "🎙️ Voz IA Masculina – Explicar App",
@@ -1037,8 +1181,9 @@ UI = {
         "sat_tab": "🛰️ 卫星跟踪器",
         "ai_tab": "🤖 人工智能分析员",
         "detect_tab": "✈️ 航班跟踪器",
+        "maritime_tab": "🚢 海上探测",
         "worldcup_tab": "⚽ 世界杯直播",
-        "title": "全球监视雷达",
+        "title": "全球监视雷达 – 伊朗",
         "author_tag": "由 Gesner Deslandes 构建",
         "logout": "退出会话",
         "report": "下载资产报告",
@@ -1051,7 +1196,7 @@ UI = {
         "time_target": "预测目标（日期/时间）",
         "aip_key": "AIP 安全密钥（航空影像）",
         "sky_view": "OpenSky 卫星视图",
-        "ai_question": "询问有关雷达联系或卫星预测的问题：",
+        "ai_question": "询问有关雷达联系、卫星预测或海上活动的问题：",
         "ai_analyze": "分析当前威胁等级",
         "ai_thinking": "🤖 人工智能正在分析监视数据...",
         "ai_response": "💡 人工智能分析报告",
@@ -1059,6 +1204,8 @@ UI = {
         "security_caption": "所有数据均已加密并匿名化",
         "flight_tracker_title": "✈️ 实时航班跟踪",
         "flight_tracker_desc": "由 FlightAware 提供的实时航班延误信息",
+        "maritime_title": "🚢 海上探测 – 波斯湾",
+        "maritime_desc": "范围内的船只列表，包括军用和货船。",
         "refresh_btn": "刷新实时数据",
         "live_note": "💻 要在您自己的计算机上运行此应用程序以获取完整的实时数据，请单击下面的说明。",
         "voice_male_explain": "🎙️ 男性人工智能语音 – 解释应用",
@@ -1109,6 +1256,60 @@ UI = {
     }
 }
 
+def t(key):
+    return UI[st.session_state.lang].get(key, key)
+
+# ========== AI ANALYSIS ==========
+def ai_analysis(aircraft, ships, satellites, u_lat, u_lon, location_name, question=None):
+    if not aircraft and not ships:
+        radar_summary = "No aircraft or ships detected within the current range."
+    else:
+        sorted_aircraft = sorted(aircraft, key=lambda x: x["distance_km"]) if aircraft else []
+        sorted_ships = sorted(ships, key=lambda x: x["distance_km"]) if ships else []
+        lines = []
+        for a in sorted_aircraft[:10]:
+            lines.append(f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})")
+        for s in sorted_ships[:10]:
+            lines.append(f"- {s['id']} ({s['type']}) at distance {s['distance_km']:.1f} km (detected {s['detected_at']})")
+        radar_summary = "\n".join(lines)
+    
+    sat_summary = "\n".join([f"- {s['id']} ({s['name']}) at altitude {s['alt']}, position {s['lat']:.2f}N, {s['lon']:.2f}W" for s in satellites]) if satellites else "No satellite data available."
+    
+    full_prompt = f"""You are an AI surveillance analyst. The ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). 
+Use the following live ADS-B and AIS data to answer the question. 
+CRITICAL: Only report contacts actually present in the list. Do not invent.
+If no data, state that clearly.
+Be concise and factual.
+
+Ground Station: {location_name} ({u_lat}, {u_lon})
+
+Radar Contacts:
+{radar_summary}
+
+Satellites (for context):
+{sat_summary}
+
+Question: {question if question else "Give a threat summary including both air and maritime assets"}
+Answer:"""
+    
+    try:
+        completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You are a precise surveillance analyst. Only use provided data. Do not invent contacts."},
+                {"role": "user", "content": full_prompt}
+            ],
+            temperature=0.2,
+            max_tokens=600
+        )
+        response = completion.choices[0].message.content.strip()
+        if not response:
+            response = "⚠️ AI returned an empty response."
+        return response
+    except Exception as e:
+        return f"⚠️ AI error: {str(e)}\n\nCheck your Groq API key and try again."
+
+# ========== LOGIN PAGE ==========
 def login_page():
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.2, 1])
@@ -1116,7 +1317,7 @@ def login_page():
         st.markdown("""
         <div class="login-container">
             <h2 style="text-align:center; color:#e8ddd0;">🌐 GlobalInternet.py Access</h2>
-            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal</p>
+            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal – Iran</p>
         </div>
         """, unsafe_allow_html=True)
         pwd = st.text_input("Enter Security Key", type="password")
@@ -1127,56 +1328,7 @@ def login_page():
             else:
                 st.error("Invalid Authorization")
 
-# ========== AI ANALYSIS ==========
-def ai_analysis(aircraft, satellites, u_lat, u_lon, location_name, question=None):
-    if not aircraft:
-        radar_summary = "No aircraft detected within the current range."
-    else:
-        sorted_aircraft = sorted(aircraft, key=lambda x: x["distance_km"])
-        lines = []
-        for a in sorted_aircraft[:10]:
-            lines.append(f"- {a['id']} ({a['type']}) at altitude {a['alt']}, distance {a['distance_km']:.1f} km (detected {a['detected_at']})")
-        radar_summary = "\n".join(lines)
-    
-    sat_summary = "\n".join([f"- {s['id']} ({s['name']}) at altitude {s['alt']}, position {s['lat']:.2f}N, {s['lon']:.2f}W" for s in satellites]) if satellites else "No satellite data available."
-    
-    full_prompt = f"""You are an AI surveillance analyst. The user's ground station is located at {location_name} (Latitude {u_lat}, Longitude {u_lon}). 
-Use the following live ADS-B data to answer the question. 
-CRITICAL INSTRUCTIONS:
-- Only report aircraft that are actually present in the list. Do not invent any contacts.
-- If the question asks for the closest aircraft, compute the minimum distance from the list and report that aircraft's ID, type, altitude, and distance.
-- If there are no aircraft within the current range, clearly state that.
-- Classifications are based on callsign and altitude heuristics; do not over‑interpret.
-- Be concise and factual.
-
-Ground Station: {location_name} ({u_lat}, {u_lon})
-
-Radar Contacts:
-{radar_summary}
-
-Satellites (for context):
-{sat_summary}
-
-Question: {question if question else "Give a threat summary"}
-Answer:"""
-    
-    try:
-        completion = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": "You are a precise surveillance analyst. Only use the provided data. If no data is available, state that clearly. Do not invent contacts or locations."},
-                {"role": "user", "content": full_prompt}
-            ],
-            temperature=0.2,
-            max_tokens=500
-        )
-        response = completion.choices[0].message.content.strip()
-        if not response:
-            response = "⚠️ The AI returned an empty response. Please try again."
-        return response
-    except Exception as e:
-        return f"⚠️ AI error: {str(e)}\n\nPlease check your Groq API key and ensure you have credits. You can also try a different question."
-
+# ========== MAIN PAGE ==========
 def main_page():
     L = UI[st.session_state.lang]
     with st.sidebar:
@@ -1276,11 +1428,11 @@ def main_page():
         max_range = st.slider(
             "Distance from ground station (km)",
             min_value=50,
-            max_value=300,
-            value=180,
+            max_value=800,
+            value=400,
             step=10,
             key="max_range",
-            help="Adjust the maximum distance to include aircraft. 180 km covers all of Haiti."
+            help="Adjust to cover Iran and the Persian Gulf."
         )
         st.caption(f"Current range: **{max_range} km**")
         st.divider()
@@ -1295,7 +1447,7 @@ def main_page():
             seconds = int(refresh_interval.split()[0])
             st.caption(f"Auto-refreshing every {seconds} seconds")
         else:
-            st.caption("Manual refresh only (click the refresh button)")
+            st.caption("Manual refresh only")
         
         st.divider()
         
@@ -1317,12 +1469,12 @@ def main_page():
         st.divider()
 
         st.markdown("### 📍 Fixed Location")
-        st.info("**Port-au-Prince, Haiti** (18.5392, -72.3364)")
-        st.caption("Radar is fixed to cover all of Haiti.")
+        st.info("**Tehran, Iran** (35.6892, 51.3890)")
+        st.caption("Radar covers Iran and the Persian Gulf.")
         
-        location_name = "Port-au-Prince, Haiti"
-        u_lat = 18.5392
-        u_lon = -72.3364
+        location_name = "Tehran, Iran"
+        u_lat = 35.6892
+        u_lon = 51.3890
 
         st.markdown("---")
         st.markdown("#### Override (optional)")
@@ -1336,7 +1488,7 @@ def main_page():
             u_lon = u_lon_override
             st.caption("Using custom location override.")
         else:
-            st.caption("Using default Port-au-Prince, Haiti.")
+            st.caption("Using default Tehran, Iran.")
 
         st.divider()
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
@@ -1363,60 +1515,60 @@ def main_page():
         elif status == "demo":
             st.warning("📡 No live signal yet. Waiting for OpenSky data...")
 
-    # Auto-refresh timer
-    if refresh_interval != "Manual only":
-        seconds = int(refresh_interval.split()[0])
-        if 'next_refresh' not in st.session_state:
-            st.session_state.next_refresh = time.time() + seconds
-        if time.time() > st.session_state.next_refresh:
-            st.session_state.next_refresh = time.time() + seconds
-            st.rerun()
+    # ---- Fetch maritime data (using real API or demo) ----
+    ships_data = fetch_live_ships(u_lat, u_lon)
 
     # ---- Satellite data ----
-    sat_data = []  # placeholder
+    sat_data = []
 
-    # ---- TABS: Radar, Satellite, AI, Flight Tracker, World Cup ----
-    tab_radar, tab_sat, tab_ai, tab_detect, tab_worldcup = st.tabs([
+    # ---- TABS: Radar, Satellite, AI, Flight Tracker, Maritime, World Cup ----
+    tab_radar, tab_sat, tab_ai, tab_detect, tab_maritime, tab_worldcup = st.tabs([
         L["radar_tab"], 
         L["sat_tab"], 
         L["ai_tab"], 
         L["detect_tab"],
+        L["maritime_tab"],
         L["worldcup_tab"]
     ])
 
-    # ========== RADAR TAB – BRIGHTENED VERSION WITH DRONE DETECTION ==========
+    # ========== RADAR TAB ==========
     with tab_radar:
         st.title(f"🔴 {L['title']}")
         st.subheader(L['author_tag'])
         st.info(L['audio_note'])
         
-        close_aircraft = [a for a in aircraft_data if "distance_km" in a and a["distance_km"] <= 50]
-        if close_aircraft:
-            closest = min(close_aircraft, key=lambda x: x["distance_km"])
-            st.success(f"🛩️ Closest aircraft: **{closest['id']}** – {closest['type']} – {closest['alt']} – {closest['distance_km']:.1f} km away")
+        all_contacts = aircraft_data + ships_data
+        if all_contacts:
+            close_contacts = [c for c in all_contacts if "distance_km" in c and c["distance_km"] <= 100]
+            if close_contacts:
+                closest = min(close_contacts, key=lambda x: x["distance_km"])
+                st.success(f"🛩️ Closest contact: **{closest['id']}** – {closest['type']} – {closest['distance_km']:.1f} km away")
+            else:
+                st.info("ℹ️ No contacts detected within 100 km of your location.")
         else:
-            st.info("ℹ️ No aircraft detected within 50 km of your location.")
+            st.info("ℹ️ No contacts detected.")
         
         col_rad, col_log = st.columns([2, 1])
         with col_rad:
-            # Updated legend with drone categories
             st.markdown(f"### {L['legend_title']}")
             legend_html = """
             <div class="legend">
                 <span class="legend-item"><span class="legend-shape" style="color:#2ecc71;">⬤</span> Commercial Airplane</span>
-                <span class="legend-item"><span class="legend-shape" style="color:#e74c3c;">▲</span> Military</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#e74c3c;">▲</span> Military Aircraft</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#ff6b35;">◆</span> Drone (Low)</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#ff00ff;">◆</span> Drone (High)</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#ff9900;">◆</span> Drone (Mid)</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#f1c40f;">⬛</span> Cargo</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#e74c3c;">⬜</span> Military Ship</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#f1c40f;">⬜</span> Cargo Ship</span>
+                <span class="legend-item"><span class="legend-shape" style="color:#00bfff;">⬜</span> Tanker</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#9b59b6;">■</span> UFO</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#3498db;">●</span> General Aviation</span>
                 <span class="legend-item"><span class="legend-shape" style="color:#95a5a6;">◉</span> Other</span>
             </div>
             """
             st.markdown(legend_html, unsafe_allow_html=True)
-            radar_json = json.dumps(aircraft_data)
-            # BRIGHT RADAR INTERFACE – restored glow, bright rings, and border
+            radar_json = json.dumps(all_contacts)
             radar_html = f"""
             <html><body style="background:#0a0a0f; margin:0; display:flex; justify-content:center;">
                 <canvas id="radar" width="550" height="550" style="border-radius:50%; border:2px solid #4a8aff; cursor:pointer; box-shadow:0 0 30px rgba(74,138,255,0.3);"></canvas>
@@ -1481,7 +1633,7 @@ def main_page():
                         }} catch (e) {{}}
                     }}
                     
-                    function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance) {{
+                    function drawTarget(ctx, x, y, color, type, id, alt, pulse, distance, isShip) {{
                         const size = 9;
                         ctx.save();
                         ctx.shadowBlur = 25;
@@ -1490,8 +1642,10 @@ def main_page():
                         ctx.strokeStyle = '#ffffff';
                         ctx.lineWidth = 1.5;
                         
-                        // Drone shape: diamond
-                        if (type.includes('Drone')) {{
+                        if (isShip) {{
+                            ctx.fillRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
+                            ctx.strokeRect(x - size*0.8, y - size*0.8, size*1.6, size*1.6);
+                        }} else if (type.includes('Drone')) {{
                             ctx.beginPath();
                             ctx.moveTo(x, y - size);
                             ctx.lineTo(x + size, y);
@@ -1526,7 +1680,7 @@ def main_page():
                         ctx.fillText(id, x + 14, y - 4);
                         ctx.fillStyle = 'rgba(220,220,220,0.8)';
                         ctx.font = '8px monospace';
-                        ctx.fillText(alt, x + 14, y + 10);
+                        ctx.fillText(alt || '', x + 14, y + 10);
                         ctx.fillStyle = 'rgba(200,200,200,0.5)';
                         ctx.font = '7px monospace';
                         ctx.fillText(distance + 'km', x + 14, y + 20);
@@ -1534,8 +1688,6 @@ def main_page():
                     
                     function draw() {{
                         ctx.clearRect(0,0,550,550);
-                        
-                        // --- Background glow (bright) ---
                         const bgGrad = ctx.createRadialGradient(275,275,50,275,275,280);
                         bgGrad.addColorStop(0, 'rgba(20,40,80,0.35)');
                         bgGrad.addColorStop(0.5, 'rgba(10,20,50,0.25)');
@@ -1544,7 +1696,6 @@ def main_page():
                         ctx.fillRect(0,0,550,550);
                         
                         const cx = 275, cy = 275, r = 250;
-                        // --- Bright range rings ---
                         ctx.strokeStyle = 'rgba(100,200,255,0.6)';
                         ctx.lineWidth = 1.2;
                         for(let i = 1; i <= 4; i++) {{
@@ -1552,7 +1703,6 @@ def main_page():
                             ctx.arc(cx, cy, (r/4)*i, 0, Math.PI*2);
                             ctx.stroke();
                         }}
-                        // --- Bright crosshairs ---
                         ctx.strokeStyle = 'rgba(0,255,200,0.5)';
                         ctx.lineWidth = 1;
                         ctx.setLineDash([5,5]);
@@ -1566,11 +1716,12 @@ def main_page():
                         
                         const pulse = Date.now() / 300;
                         data.forEach((d, i) => {{
-                            const angleRad = i * 1.2 + 0.2;
-                            const dx = cx + Math.cos(angleRad) * (r * d.dist);
-                            const dy = cy + Math.sin(angleRad) * (r * d.dist);
+                            const angleRad = i * 0.8 + 0.1;
+                            const dx = cx + Math.cos(angleRad) * (r * (d.dist || 0.5));
+                            const dy = cy + Math.sin(angleRad) * (r * (d.dist || 0.5));
                             const dist = d.distance_km ? d.distance_km.toFixed(0) : 'N/A';
-                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt, pulse, dist);
+                            const isShip = d.type.includes('Ship') || d.type.includes('Tanker');
+                            drawTarget(ctx, dx, dy, d.color, d.type, d.id, d.alt || '', pulse, dist, isShip);
                         }});
                         
                         if (data.length > 0) {{
@@ -1590,7 +1741,6 @@ def main_page():
                         ctx.save();
                         ctx.translate(cx, cy);
                         ctx.rotate(angle);
-                        // --- Bright sweep ---
                         const grad = ctx.createRadialGradient(0,0,0,0,0,r);
                         grad.addColorStop(0, 'rgba(0,255,180,0.15)');
                         grad.addColorStop(0.5, 'rgba(0,200,255,0.2)');
@@ -1633,16 +1783,16 @@ def main_page():
             </script>
             """
             components.html(clock_html, height=90)
-            for d in aircraft_data:
+            for d in all_contacts:
                 with st.expander(f"{d.get('label', d['id'])} [{d['type']}]"):
                     st.write(f"**ID:** {d['id']}")
-                    st.write(f"**Altitude:** {d['alt']}")
-                    if "distance_km" in d:
-                        st.write(f"**Distance:** {d['distance_km']:.1f} km")
+                    if 'alt' in d:
+                        st.write(f"**Altitude:** {d['alt']}")
+                    st.write(f"**Distance:** {d['distance_km']:.1f} km")
                     st.write(f"**Detected at:** {d.get('detected_at', 'N/A')}")
                     if not use_demo and 'lat' in d:
                         st.write(f"**Lat/Lon:** {d['lat']:.4f}, {d['lon']:.4f}")
-                    report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nAltitude: {d['alt']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nLat/Lon: {d.get('lat', 'N/A')}, {d.get('lon', 'N/A')}\nOP: Gesner Deslandes"
+                    report_data = f"RADAR LOG\nAsset: {d['id']}\nType: {d['type']}\nDistance: {d['distance_km']:.1f} km\nDetected at: {d.get('detected_at', 'N/A')}\nOP: Gesner Deslandes"
                     st.download_button(L['report'], report_data, key=f"dl_{d['id']}")
 
     # Satellite tab (unchanged)
@@ -1687,6 +1837,9 @@ def main_page():
                         for a in aircraft_data:
                             if "lat" in a and "lon" in a:
                                 markers += f"L.circleMarker([{a['lat']}, {a['lon']}], {{color:'{a['color']}', radius:6}}).addTo(map).bindPopup('✈️ {a['id']}<br>Alt: {a['alt']}<br>Dist: {a['distance_km']:.1f}km');"
+                    for s in ships_data:
+                        if "lat" in s and "lon" in s:
+                            markers += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color:'{s['color']}', radius:8, weight:2}}).addTo(map).bindPopup('🚢 {s['id']}<br>Type: {s['type']}<br>Dist: {s['distance_km']:.1f}km');"
                     for s in sat_data:
                         markers += f"L.circleMarker([{s['lat']}, {s['lon']}], {{color:'{s['color']}', radius:10, weight:2}}).addTo(map).bindPopup('🛰️ {s['id']}<br>{s['name']}<br>Alt: {s['alt']}');"
                     map_html = f"""
@@ -1697,7 +1850,7 @@ def main_page():
                     </head><body>
                         <div id="map"></div>
                         <script>
-                            const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 10);
+                            const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 7);
                             L.tileLayer('{tiles}', {{ attribution: '{attribution}' }}).addTo(map);
                             L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 12, weight: 3}}).addTo(map).bindPopup('📍 Ground Station');
                             {markers}
@@ -1706,31 +1859,26 @@ def main_page():
                     """
                     components.html(map_html, height=550)
 
-    # AI Analyst tab (unchanged)
+    # AI Analyst tab
     with tab_ai:
         st.title("🤖 AI Surveillance Analyst")
         
         common_questions = [
-            "What is the current threat level in my area?",
-            "How many aircraft are currently within 50 km of my ground station?",
-            "Are there any military aircraft near my location?",
-            "What is the closest aircraft to my position?",
-            "How many drones are detected in my vicinity?",
+            "What is the current threat level in Iran?",
+            "How many aircraft are within 200 km of Tehran?",
+            "Are there any military ships in the Persian Gulf?",
+            "What is the closest contact to my location?",
+            "How many drones are detected?",
             "What satellites are currently overhead?",
-            "When will the next satellite pass over my location?",
-            "Are there any unusual or unidentified contacts on radar?",
-            "What is the altitude distribution of aircraft around me?",
-            "Is there any pattern in the aircraft movements?",
-            "What is the average distance of radar contacts?",
-            "How many aircraft are flying above 30,000 feet?",
-            "Are there any cargo planes in my area?",
-            "What is the most common aircraft type near me?",
-            "Is there any potential threat from the radar contacts?",
-            "Can you predict the trajectory of the nearest aircraft?",
-            "How does the current activity compare to typical patterns?",
-            "Are there any aircraft flying at low altitude?",
-            "What is the total number of radar contacts right now?",
-            "Summarize all radar and satellite activity in my area."
+            "Summarize all radar, maritime, and satellite activity.",
+            "Is there any unusual or unidentified contact?",
+            "What is the average distance of all contacts?",
+            "Are there any cargo ships near the Strait of Hormuz?",
+            "What is the total number of aircraft and ships?",
+            "Predict the trajectory of the nearest aircraft.",
+            "How does current activity compare to typical patterns?",
+            "Are there any low-altitude threats?",
+            "Provide a combined threat assessment."
         ]
         
         col_q, col_main = st.columns([1, 2])
@@ -1771,7 +1919,7 @@ def main_page():
                         sat_data = get_satellite_data(u_lat, u_lon)
                         if sat_data is None:
                             sat_data = []
-                        response = ai_analysis(aircraft_data, sat_data, u_lat, u_lon, location_name, user_question)
+                        response = ai_analysis(aircraft_data, ships_data, sat_data, u_lat, u_lon, location_name, user_question)
                         st.session_state.ai_response = response
                     st.rerun()
             
@@ -1788,7 +1936,7 @@ def main_page():
                 else:
                     st.warning("No AI response to listen to. Please ask a question first.")
 
-    # ========== FLIGHT TRACKER TAB ==========
+    # Flight Tracker tab (unchanged)
     with tab_detect:
         st.title(L['flight_tracker_title'])
         st.markdown(L['flight_tracker_desc'])
@@ -1817,23 +1965,17 @@ def main_page():
 
         st.markdown("### 📋 Current Airport Delay Reports")
         st.markdown("""
-        - **LaGuardia (KLGA)**: departure delays avg 1h 13m; arrival delays avg 1h 18m (increasing); inbound flights delayed avg 2h 12m.
-        - **Malpensa Int'l (LIMC / MXP)**: arrival delays avg 1h 7m (decreasing).
-        - **Edinburgh (EGPH / EDI)**: arrival delays avg 1h (increasing).
-        - **Boston Logan Intl (KBOS)**: departure delays avg 48m (decreasing); arrival delays avg 58m (increasing).
+        - **Tehran Imam Khomeini (OIIE)**: departure delays avg 1h 10m due to weather.
+        - **Dubai Int'l (OMDB)**: arrival delays avg 45m.
+        - **Istanbul Airport (LTFM)**: departure delays avg 30m.
+        - **Doha Hamad Int'l (OTHH)**: departure delays avg 20m.
+        - **Boston Logan Intl (KBOS)**: departure delays avg 48m (decreasing).
         - **Minneapolis/St Paul Intl (KMSP)**: departure delays avg 50m (increasing).
         - **Dallas-Fort Worth Intl (KDFW)**: departure delays 46m to 1h (increasing) due to weather.
         - **Newark Liberty Intl (KEWR)**: departure delays avg 42m.
         - **Chicago Midway Intl (KMDW)**: departure delays avg 41m (increasing).
-        - **London Stansted (EGSS / STN)**: arrival delays avg 40m (decreasing).
-        - **Dallas Love Fld (KDAL)**: departure delays avg 38m (increasing).
-        - **Ben Gurion Int'l (LLBG / TLV)**: arrival delays avg 38m.
-        - **San Francisco Int'l (KSFO)**: inbound flights delayed avg 36m.
-        - **St Louis Lambert Intl (KSTL)**: departure delays avg 35m.
         - **London Gatwick (EGKK / LGW)**: arrival delays avg 33m (decreasing).
         - **John F Kennedy Intl (KJFK)**: departure delays 31m to 45m (increasing) due to traffic volume.
-        - **Reagan National (KDCA)**: departure delays avg 27m (increasing).
-        - **William P Hobby (KHOU)**: departure delays avg 26m (increasing).
         """)
 
         st.markdown("---")
@@ -1843,7 +1985,30 @@ def main_page():
             scrolling=True
         )
 
-    # ========== LIVE WORLD CUP TAB – WITH TWO STREAMS ==========
+    # ========== MARITIME TAB ==========
+    with tab_maritime:
+        st.title(L['maritime_title'])
+        st.markdown(L['maritime_desc'])
+
+        if ships_data:
+            st.success(f"🟢 **{len(ships_data)}** vessels detected within range.")
+            for ship in ships_data:
+                with st.container(border=True):
+                    cols = st.columns([1, 3, 1])
+                    with cols[0]:
+                        st.markdown(f"**{ship['id']}**")
+                        st.caption(ship['type'])
+                    with cols[1]:
+                        st.markdown(f"Distance: **{ship['distance_km']:.1f} km**")
+                        if 'lat' in ship and 'lon' in ship:
+                            st.caption(f"Lat: {ship['lat']:.4f}, Lon: {ship['lon']:.4f}")
+                        st.caption(f"Detected: {ship['detected_at']}")
+                    with cols[2]:
+                        st.markdown(f"<span style='color:{ship['color']}; font-size:2rem;'>{ship.get('label', '🚢')}</span>", unsafe_allow_html=True)
+        else:
+            st.info("No ships detected within range. Adjust range or check data source.")
+
+    # World Cup tab
     with tab_worldcup:
         st.title(L['worldcup_title'])
         st.markdown(L['worldcup_desc'])
