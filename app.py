@@ -24,7 +24,7 @@ except ImportError:
 
 # ========== CONFIGURATION ==========
 st.set_page_config(
-    page_title="GlobalInternet.py | Surveillance Portal – Iran",
+    page_title="GlobalInternet.py | Surveillance Portal – Haiti & DR",
     layout="wide",
     page_icon="🌐"
 )
@@ -317,13 +317,13 @@ st.markdown("""
 # ========== AI VOICE SCRIPTS ==========
 def generate_male_voice_audio():
     script = """
-    Welcome to the Global Surveillance Radar Portal, now covering Iranian airspace and the Persian Gulf. Built by Gesner Deslandes at GlobalInternet.py.
+    Welcome to the Global Surveillance Radar Portal, now covering Haiti and the Dominican Republic airspace and the Caribbean Sea. Built by Gesner Deslandes at GlobalInternet.py.
     
     This application features six main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, Maritime Detection, and Live World Cup.
     
     The Radar Control tab shows a 360-degree live radar display. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation. Ships appear as squares with colors indicating military (red) or cargo (yellow) vessels.
     
-    The Maritime Detection tab lists all vessels within range, including military ships from the Iranian Navy and other navies.
+    The Maritime Detection tab lists all vessels within range, including military ships and cargo vessels in the Caribbean.
     
     The Satellite Tracker predicts satellite passes and shows an interactive map with aircraft, ships, and satellite overlays.
     
@@ -339,13 +339,13 @@ def generate_male_voice_audio():
 
 def generate_female_voice_audio():
     script = """
-    Welcome to the Global Surveillance Radar Portal, now covering Iranian airspace and the Persian Gulf. Built by Gesner Deslandes at GlobalInternet.py.
+    Welcome to the Global Surveillance Radar Portal, now covering Haiti and the Dominican Republic airspace and the Caribbean Sea. Built by Gesner Deslandes at GlobalInternet.py.
     
     This advanced surveillance system features a live radar with a classic fetching sound. Click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
     
     Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, civilian aircraft as green or blue circles, and ships as squares.
     
-    The Maritime Detection tab provides real-time information on vessels in Iranian waters, including military ships, cargo, and tankers.
+    The Maritime Detection tab provides real-time information on vessels in Caribbean waters, including military ships, cargo, and tankers.
     
     The Satellite Tracker tab predicts satellite passes and shows an interactive map.
     
@@ -491,12 +491,12 @@ def get_detected_location():
                 st.session_state.detected_location = loc
                 return loc
         st.session_state.detected_location = {
-            "country": "Iran",
-            "region": "Tehran",
-            "city": "Tehran",
+            "country": "Haiti",
+            "region": "Ouest",
+            "city": "Port-au-Prince",
             "isp": "Unknown",
-            "lat": 35.6892,
-            "lon": 51.3890
+            "lat": 18.5392,
+            "lon": -72.3364
         }
     return st.session_state.detected_location
 
@@ -567,7 +567,7 @@ def classify_aircraft(alt_ft, callsign=""):
 # ========== LIVE AIRCRAFT FETCH ==========
 def fetch_live_aircraft(ground_lat, ground_lon):
     max_range = st.session_state.get("max_range", 400)
-    iran_tz = pytz.timezone('Asia/Tehran')
+    haiti_tz = pytz.timezone('America/Port-au-Prince')
     
     if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
         age = (datetime.now() - st.session_state.cached_timestamp).total_seconds()
@@ -592,7 +592,7 @@ def fetch_live_aircraft(ground_lat, ground_lon):
                     continue
                 
                 aircraft_list = []
-                now_str = datetime.now(iran_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+                now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
                 for s in states:
                     lat = s[6]
                     lon = s[5]
@@ -660,21 +660,21 @@ def fetch_live_aircraft(ground_lat, ground_lon):
         return demo, "demo"
 
 def get_demo_aircraft():
-    iran_tz = pytz.timezone('Asia/Tehran')
-    now_str = datetime.now(iran_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+    haiti_tz = pytz.timezone('America/Port-au-Prince')
+    now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     return [
-        {"id": "IRA001", "type": "Military", "color": "#e74c3c", "label": "✈️ Military", "alt": "32,000ft", "dist": 0.4, "distance_km": 160, "detected_at": now_str},
-        {"id": "DRNQC", "type": "Drone", "color": "#ff9900", "label": "🛸 Drone", "alt": "1,200ft", "dist": 0.2, "distance_km": 80, "detected_at": now_str},
-        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.3, "distance_km": 120, "detected_at": now_str}
+        {"id": "HAI001", "type": "Commercial Airplane", "color": "#2ecc71", "label": "🛩️ Commercial", "alt": "32,000ft", "dist": 0.3, "distance_km": 120, "detected_at": now_str},
+        {"id": "DR-DRONE", "type": "Drone", "color": "#ff9900", "label": "🛸 Drone", "alt": "1,200ft", "dist": 0.2, "distance_km": 80, "detected_at": now_str},
+        {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.4, "distance_km": 160, "detected_at": now_str}
     ]
 
-# ========== MARITIME DETECTION – ONLY AISSTREAM WITH NEW KEY ==========
+# ========== MARITIME DETECTION – AISSTREAM WITH CARIBBEAN BOUNDING BOX ==========
 
 def parse_aisstream_vessels(vessels_data, ground_lat, ground_lon):
     """Parse vessels from aisstream.io response into unified format"""
     max_range = st.session_state.get("max_range", 400)
-    iran_tz = pytz.timezone('Asia/Tehran')
-    now_str = datetime.now(iran_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+    haiti_tz = pytz.timezone('America/Port-au-Prince')
+    now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     vessels = []
     
     for v in vessels_data:
@@ -708,8 +708,6 @@ def parse_aisstream_vessels(vessels_data, ground_lat, ground_lon):
             vessel_type = "Fishing Vessel"; color = "#2ecc71"; label = "🎣 Fishing"
         elif 'passenger' in ship_type_lower or 'cruise' in ship_type_lower:
             vessel_type = "Passenger Ship"; color = "#9b59b6"; label = "🛳️ Passenger"
-        elif mmsi.startswith("422"):  # Iran prefix
-            vessel_type = "Iranian Vessel"; color = "#e67e22"; label = "🇮🇷 Iranian"
         else:
             vessel_type = "Other Vessel"; color = "#95a5a6"; label = "🚢 Other"
         
@@ -733,19 +731,18 @@ def fetch_live_ships(ground_lat, ground_lon):
     Fetch real vessel data from aisstream.io using the provided API key.
     Key hardcoded as fallback; can also be set in secrets as AISSTREAM_API_KEY.
     """
-    # Use the key provided by the user (hardcoded fallback)
-    # Prefer secret if set, else use the hardcoded key
     ais_key = st.secrets.get("AISSTREAM_API_KEY")
     if not ais_key:
-        ais_key = "e8622757a267cc06fb9ad0126d52ad519d784039"
+        ais_key = "e8622757a267cc06fb9ad0126d52ad519d784039"  # fallback, replace with your own
     
     if not ais_key:
         st.warning("⚠️ No AISStream API key found. Using demo ship data.")
         return get_demo_ships()
     
+    # Caribbean bounding box covering Haiti and DR: lon min, lat min, lon max, lat max
     url = "https://api.aisstream.io/v1/vessels"
     headers = {"X-API-Key": ais_key}
-    params = {"bbox": "48,24,56,30"}  # Persian Gulf
+    params = {"bbox": "-75,17,-68,20"}  # covers Hispaniola and surrounding waters
     
     try:
         r = requests.get(url, headers=headers, params=params, timeout=10)
@@ -758,7 +755,7 @@ def fetch_live_ships(ground_lat, ground_lon):
                     st.success(f"🟢 Retrieved {len(parsed)} vessels from AISStream")
                     return parsed
             else:
-                st.warning("⚠️ No vessels found in the Persian Gulf area.")
+                st.warning("⚠️ No vessels found in the Caribbean area.")
                 return get_demo_ships()
         elif r.status_code == 401:
             st.error("❌ AISStream API key is invalid or expired. Please check your key.")
@@ -781,15 +778,15 @@ def fetch_live_ships(ground_lat, ground_lon):
 
 def get_demo_ships():
     """Generate demo ship data for testing when API is unavailable."""
-    ground_lat = st.session_state.get("lat_override", 35.6892)
-    ground_lon = st.session_state.get("lon_override", 51.3890)
+    ground_lat = st.session_state.get("lat_override", 18.5392)
+    ground_lon = st.session_state.get("lon_override", -72.3364)
     
     demo_ships = [
-        {"id": "IRN-76", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 27.2, "lon": 54.2},
-        {"id": "IRN-82", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 26.8, "lon": 53.9},
-        {"id": "CARGO-332", "type": "Cargo Ship", "color": "#f1c40f", "label": "🚢 Cargo", "lat": 27.5, "lon": 54.8},
-        {"id": "TANKER-12", "type": "Tanker", "color": "#00bfff", "label": "⛽ Tanker", "lat": 26.5, "lon": 53.5},
-        {"id": "IRN-101", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 27.0, "lon": 54.0},
+        {"id": "CARIB-01", "type": "Cargo Ship", "color": "#f1c40f", "label": "🚢 Cargo", "lat": 18.5, "lon": -69.5},
+        {"id": "TANKER-2", "type": "Tanker", "color": "#00bfff", "label": "⛽ Tanker", "lat": 19.0, "lon": -71.0},
+        {"id": "FISH-03", "type": "Fishing Vessel", "color": "#2ecc71", "label": "🎣 Fishing", "lat": 18.8, "lon": -72.0},
+        {"id": "PASS-04", "type": "Passenger Ship", "color": "#9b59b6", "label": "🛳️ Passenger", "lat": 18.2, "lon": -68.5},
+        {"id": "NAVY-05", "type": "Military Ship", "color": "#e74c3c", "label": "⚓ Military Ship", "lat": 19.5, "lon": -70.5},
     ]
     
     # Calculate distances from ground station
@@ -804,7 +801,7 @@ def get_demo_ships():
         dist_km = R * c
         ship["distance_km"] = round(dist_km, 1)
         ship["dist"] = min(dist_km / st.session_state.get("max_range", 400), 0.95)
-        ship["detected_at"] = datetime.now(pytz.timezone('Asia/Tehran')).strftime("%Y-%m-%d %I:%M:%S %p")
+        ship["detected_at"] = datetime.now(pytz.timezone('America/Port-au-Prince')).strftime("%Y-%m-%d %I:%M:%S %p")
         ship["alt"] = "0ft"
     
     return demo_ships
@@ -936,7 +933,7 @@ UI = {
         "detect_tab": "✈️ Flight Tracker",
         "maritime_tab": "🚢 Maritime Detection",
         "worldcup_tab": "⚽ Live World Cup",
-        "title": "GLOBAL SURVEILLANCE RADAR – IRAN",
+        "title": "GLOBAL SURVEILLANCE RADAR – HAITI & DR",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
         "report": "Download Asset Report",
@@ -957,7 +954,7 @@ UI = {
         "security_caption": "All data is secured and anonymized",
         "flight_tracker_title": "✈️ Live Flight Tracker",
         "flight_tracker_desc": "Real-time flight delay information powered by FlightAware",
-        "maritime_title": "🚢 Maritime Detection – Persian Gulf",
+        "maritime_title": "🚢 Maritime Detection – Caribbean",
         "maritime_desc": "List of vessels within range, including military and cargo ships.",
         "refresh_btn": "Refresh Live Data",
         "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
@@ -1071,7 +1068,7 @@ def login_page():
         st.markdown("""
         <div class="login-container">
             <h2 style="text-align:center; color:#e8ddd0;">🌐 GlobalInternet.py Access</h2>
-            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal – Iran</p>
+            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal – Haiti & DR</p>
         </div>
         """, unsafe_allow_html=True)
         pwd = st.text_input("Enter Security Key", type="password")
@@ -1186,7 +1183,7 @@ def main_page():
             value=400,
             step=10,
             key="max_range",
-            help="Adjust to cover Iran and the Persian Gulf."
+            help="Adjust to cover Haiti and the Dominican Republic."
         )
         st.caption(f"Current range: **{max_range} km**")
         st.divider()
@@ -1223,12 +1220,12 @@ def main_page():
         st.divider()
 
         st.markdown("### 📍 Fixed Location")
-        st.info("**Tehran, Iran** (35.6892, 51.3890)")
-        st.caption("Radar covers Iran and the Persian Gulf.")
+        st.info("**Port-au-Prince, Haiti** (18.5392, -72.3364)")
+        st.caption("Radar covers Haiti and the Dominican Republic.")
         
-        location_name = "Tehran, Iran"
-        u_lat = 35.6892
-        u_lon = 51.3890
+        location_name = "Port-au-Prince, Haiti"
+        u_lat = 18.5392
+        u_lon = -72.3364
 
         st.markdown("---")
         st.markdown("#### Override (optional)")
@@ -1242,7 +1239,7 @@ def main_page():
             u_lon = u_lon_override
             st.caption("Using custom location override.")
         else:
-            st.caption("Using default Tehran, Iran.")
+            st.caption("Using default Port-au-Prince, Haiti.")
 
         st.divider()
         aip_key = st.text_input(L['aip_key'], type="password", placeholder="Enter Provider Key...")
@@ -1266,7 +1263,7 @@ def main_page():
                         try:
                             r = requests.get("https://api.aisstream.io/v1/vessels", 
                                              headers={"X-API-Key": ais_key}, 
-                                             params={"bbox": "48,24,56,30"}, timeout=10)
+                                             params={"bbox": "-75,17,-68,20"}, timeout=10)
                             st.write(f"Status: {r.status_code}")
                             st.text(r.text[:1000])
                         except Exception as e:
@@ -1628,7 +1625,7 @@ def main_page():
                     </head><body>
                         <div id="map"></div>
                         <script>
-                            const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 7);
+                            const map = L.map('map', {{zoomControl: false}}).setView([{u_lat}, {u_lon}], 8);
                             L.tileLayer('{tiles}', {{ attribution: '{attribution}' }}).addTo(map);
                             L.circleMarker([{u_lat}, {u_lon}], {{color: '#00ff64', radius: 12, weight: 3}}).addTo(map).bindPopup('📍 Ground Station');
                             {markers}
@@ -1642,16 +1639,16 @@ def main_page():
         st.title("🤖 AI Surveillance Analyst")
         
         common_questions = [
-            "What is the current threat level in Iran?",
-            "How many aircraft are within 200 km of Tehran?",
-            "Are there any military ships in the Persian Gulf?",
+            "What is the current threat level in Haiti/DR?",
+            "How many aircraft are within 200 km of Port-au-Prince?",
+            "Are there any military ships in the Caribbean?",
             "What is the closest contact to my location?",
             "How many drones are detected?",
             "What satellites are currently overhead?",
             "Summarize all radar, maritime, and satellite activity.",
             "Is there any unusual or unidentified contact?",
             "What is the average distance of all contacts?",
-            "Are there any cargo ships near the Strait of Hormuz?",
+            "Are there any cargo ships near the Mona Passage?",
             "What is the total number of aircraft and ships?",
             "Predict the trajectory of the nearest aircraft.",
             "How does current activity compare to typical patterns?",
@@ -1743,17 +1740,15 @@ def main_page():
 
         st.markdown("### 📋 Current Airport Delay Reports")
         st.markdown("""
-        - **Tehran Imam Khomeini (OIIE)**: departure delays avg 1h 10m due to weather.
-        - **Dubai Int'l (OMDB)**: arrival delays avg 45m.
-        - **Istanbul Airport (LTFM)**: departure delays avg 30m.
-        - **Doha Hamad Int'l (OTHH)**: departure delays avg 20m.
-        - **Boston Logan Intl (KBOS)**: departure delays avg 48m (decreasing).
-        - **Minneapolis/St Paul Intl (KMSP)**: departure delays avg 50m (increasing).
-        - **Dallas-Fort Worth Intl (KDFW)**: departure delays 46m to 1h (increasing) due to weather.
-        - **Newark Liberty Intl (KEWR)**: departure delays avg 42m.
-        - **Chicago Midway Intl (KMDW)**: departure delays avg 41m (increasing).
-        - **London Gatwick (EGKK / LGW)**: arrival delays avg 33m (decreasing).
-        - **John F Kennedy Intl (KJFK)**: departure delays 31m to 45m (increasing) due to traffic volume.
+        - **Toussaint Louverture Int'l (MTPP)**: departure delays avg 45m due to weather.
+        - **Las Américas Int'l (MDSD)**: arrival delays avg 30m.
+        - **Miami Int'l (KMIA)**: departure delays avg 1h 15m.
+        - **Newark Liberty (KEWR)**: departure delays avg 42m.
+        - **Boston Logan (KBOS)**: departure delays avg 48m (decreasing).
+        - **Dallas-Fort Worth (KDFW)**: departure delays 46m to 1h (increasing) due to weather.
+        - **Chicago Midway (KMDW)**: departure delays avg 41m (increasing).
+        - **London Gatwick (EGKK)**: arrival delays avg 33m (decreasing).
+        - **John F Kennedy (KJFK)**: departure delays 31m to 45m (increasing) due to traffic volume.
         """)
 
         st.markdown("---")
