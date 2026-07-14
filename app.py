@@ -566,7 +566,7 @@ def classify_aircraft(alt_ft, callsign=""):
 
 # ========== LIVE AIRCRAFT FETCH ==========
 def fetch_live_aircraft(ground_lat, ground_lon):
-    max_range = st.session_state.get("max_range", 400)
+    max_range = st.session_state.get("max_range", 500)  # increased default to 500 km
     haiti_tz = pytz.timezone('America/Port-au-Prince')
     
     if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
@@ -672,7 +672,7 @@ def get_demo_aircraft():
 
 def parse_aisstream_vessels(vessels_data, ground_lat, ground_lon):
     """Parse vessels from aisstream.io response into unified format"""
-    max_range = st.session_state.get("max_range", 400)
+    max_range = st.session_state.get("max_range", 500)
     haiti_tz = pytz.timezone('America/Port-au-Prince')
     now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
     vessels = []
@@ -800,7 +800,7 @@ def get_demo_ships():
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         dist_km = R * c
         ship["distance_km"] = round(dist_km, 1)
-        ship["dist"] = min(dist_km / st.session_state.get("max_range", 400), 0.95)
+        ship["dist"] = min(dist_km / st.session_state.get("max_range", 500), 0.95)
         ship["detected_at"] = datetime.now(pytz.timezone('America/Port-au-Prince')).strftime("%Y-%m-%d %I:%M:%S %p")
         ship["alt"] = "0ft"
     
@@ -1004,7 +1004,7 @@ UI = {
         "worldcup_desc": "Watch every match live for free via the embedded stream.",
         "stream_note": "ℹ️ Stream provided by a third-party site."
     },
-    # Other languages omitted for brevity (keep as in original)
+    # Other languages omitted for brevity
 }
 
 def t(key):
@@ -1180,7 +1180,7 @@ def main_page():
             "Distance from ground station (km)",
             min_value=50,
             max_value=800,
-            value=400,
+            value=500,  # changed default to 500 km for better Haiti coverage
             step=10,
             key="max_range",
             help="Adjust to cover Haiti and the Dominican Republic."
@@ -1232,6 +1232,15 @@ def main_page():
         location_name_override = st.text_input("Location Name (override)", value=location_name, key="loc_name_override")
         u_lat_override = st.number_input("Latitude", value=u_lat, format="%.4f", key="lat_override")
         u_lon_override = st.number_input("Longitude", value=u_lon, format="%.4f", key="lon_override")
+        
+        # ---- NEW: Reset to Haiti Defaults button ----
+        if st.button("🔄 Reset to Haiti Defaults", use_container_width=True):
+            # We need to update the session state keys for the override inputs
+            st.session_state.loc_name_override = "Port-au-Prince, Haiti"
+            st.session_state.lat_override = 18.5392
+            st.session_state.lon_override = -72.3364
+            st.session_state.max_range = 500
+            st.rerun()
         
         if location_name_override != location_name or u_lat_override != u_lat or u_lon_override != u_lon:
             location_name = location_name_override
