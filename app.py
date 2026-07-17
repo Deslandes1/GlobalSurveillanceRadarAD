@@ -24,7 +24,7 @@ except ImportError:
 
 # ========== CONFIGURATION ==========
 st.set_page_config(
-    page_title="GlobalInternet.py | Surveillance Portal – Haiti & DR",
+    page_title="GlobalInternet.py | Surveillance Portal – Haiti",
     layout="wide",
     page_icon="🌐"
 )
@@ -317,13 +317,13 @@ st.markdown("""
 # ========== AI VOICE SCRIPTS ==========
 def generate_male_voice_audio():
     script = """
-    Welcome to the Global Surveillance Radar Portal, now covering Haiti and the Dominican Republic airspace and the Caribbean Sea. Built by Gesner Deslandes at GlobalInternet.py.
+    Welcome to the Global Surveillance Radar Portal, now covering Haiti airspace from a ground station in the south. Built by Gesner Deslandes at GlobalInternet.py.
     
     This application features six main modules: Radar Control, Satellite Tracker, AI Analyst, Flight Tracker, Maritime Detection, and Live World Cup.
     
     The Radar Control tab shows a 360-degree live radar display. Aircraft are automatically classified with military-style symbols: red triangles for military, purple squares for UFOs, orange diamonds for drones, green for commercial, and blue for general aviation. Ships appear as squares with colors indicating military (red) or cargo (yellow) vessels.
     
-    The Maritime Detection tab lists all vessels within range, including military ships and cargo vessels in the Caribbean.
+    The Maritime Detection tab lists demo vessels for testing.
     
     The Satellite Tracker predicts satellite passes and shows an interactive map with aircraft, ships, and satellite overlays.
     
@@ -339,13 +339,13 @@ def generate_male_voice_audio():
 
 def generate_female_voice_audio():
     script = """
-    Welcome to the Global Surveillance Radar Portal, now covering Haiti and the Dominican Republic airspace and the Caribbean Sea. Built by Gesner Deslandes at GlobalInternet.py.
+    Welcome to the Global Surveillance Radar Portal, now covering Haiti airspace from a ground station in the south. Built by Gesner Deslandes at GlobalInternet.py.
     
     This advanced surveillance system features a live radar with a classic fetching sound. Click the radar screen to enable the audio, and you will hear a sonar ping on every sweep.
     
     Objects are automatically classified and displayed with real military-style symbols. Military targets appear as red triangles, unknown or UFO contacts as purple squares, drones as orange diamonds, civilian aircraft as green or blue circles, and ships as squares.
     
-    The Maritime Detection tab provides real-time information on vessels in Caribbean waters, including military ships, cargo, and tankers.
+    The Maritime Detection tab provides demo vessel data.
     
     The Satellite Tracker tab predicts satellite passes and shows an interactive map.
     
@@ -566,7 +566,7 @@ def classify_aircraft(alt_ft, callsign=""):
 
 # ========== LIVE AIRCRAFT FETCH ==========
 def fetch_live_aircraft(ground_lat, ground_lon):
-    max_range = st.session_state.get("max_range", 500)  # increased default to 500 km
+    max_range = st.session_state.get("max_range", 180)  # changed default to 180 km
     haiti_tz = pytz.timezone('America/Port-au-Prince')
     
     if st.session_state.cached_aircraft_data and st.session_state.cached_timestamp:
@@ -668,116 +668,17 @@ def get_demo_aircraft():
         {"id": "N1234A", "type": "General Aviation", "color": "#3498db", "label": "🛩️ General", "alt": "5,000ft", "dist": 0.4, "distance_km": 160, "detected_at": now_str}
     ]
 
-# ========== MARITIME DETECTION – AISSTREAM WITH CARIBBEAN BOUNDING BOX ==========
-
-def parse_aisstream_vessels(vessels_data, ground_lat, ground_lon):
-    """Parse vessels from aisstream.io response into unified format"""
-    max_range = st.session_state.get("max_range", 500)
-    haiti_tz = pytz.timezone('America/Port-au-Prince')
-    now_str = datetime.now(haiti_tz).strftime("%Y-%m-%d %I:%M:%S %p")
-    vessels = []
-    
-    for v in vessels_data:
-        lat = v.get("latitude")
-        lon = v.get("longitude")
-        if lat is None or lon is None:
-            continue
-        
-        # Distance
-        R = 6371
-        dlat = math.radians(lat - ground_lat)
-        dlon = math.radians(lon - ground_lon)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(ground_lat)) * math.cos(math.radians(lat)) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        dist_km = R * c
-        if dist_km > max_range:
-            continue
-        
-        # Type classification
-        ship_type = v.get("shipType", "Unknown")
-        ship_type_lower = str(ship_type).lower()
-        mmsi = str(v.get("mmsi", ""))
-        
-        if 'military' in ship_type_lower or 'navy' in ship_type_lower or 'warship' in ship_type_lower:
-            vessel_type = "Military Ship"; color = "#e74c3c"; label = "⚓ Military Ship"
-        elif 'tanker' in ship_type_lower or 'oil' in ship_type_lower:
-            vessel_type = "Tanker"; color = "#00bfff"; label = "⛽ Tanker"
-        elif 'cargo' in ship_type_lower or 'container' in ship_type_lower or 'freight' in ship_type_lower:
-            vessel_type = "Cargo Ship"; color = "#f1c40f"; label = "🚢 Cargo"
-        elif 'fishing' in ship_type_lower:
-            vessel_type = "Fishing Vessel"; color = "#2ecc71"; label = "🎣 Fishing"
-        elif 'passenger' in ship_type_lower or 'cruise' in ship_type_lower:
-            vessel_type = "Passenger Ship"; color = "#9b59b6"; label = "🛳️ Passenger"
-        else:
-            vessel_type = "Other Vessel"; color = "#95a5a6"; label = "🚢 Other"
-        
-        vessels.append({
-            "id": v.get("callsign", str(v.get("mmsi", "Unknown"))),
-            "type": vessel_type,
-            "color": color,
-            "label": label,
-            "alt": "0ft",
-            "dist": min(dist_km / max_range, 0.95),
-            "distance_km": round(dist_km, 1),
-            "lat": lat,
-            "lon": lon,
-            "verified": True,
-            "detected_at": now_str
-        })
-    return vessels
+# ========== MARITIME DETECTION – DEMO ONLY (AISSTREAM REMOVED) ==========
 
 def fetch_live_ships(ground_lat, ground_lon):
     """
-    Fetch real vessel data from aisstream.io using the provided API key.
-    Key hardcoded as fallback; can also be set in secrets as AISSTREAM_API_KEY.
+    No AISSTREAM_API_KEY used – returning demo ships only.
     """
-    ais_key = st.secrets.get("AISSTREAM_API_KEY")
-    if not ais_key:
-        ais_key = "e8622757a267cc06fb9ad0126d52ad519d784039"  # fallback, replace with your own
-    
-    if not ais_key:
-        st.warning("⚠️ No AISStream API key found. Using demo ship data.")
-        return get_demo_ships()
-    
-    # Caribbean bounding box covering Haiti and DR: lon min, lat min, lon max, lat max
-    url = "https://api.aisstream.io/v1/vessels"
-    headers = {"X-API-Key": ais_key}
-    params = {"bbox": "-75,17,-68,20"}  # covers Hispaniola and surrounding waters
-    
-    try:
-        r = requests.get(url, headers=headers, params=params, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            vessels = data.get("vessels", [])
-            if vessels:
-                parsed = parse_aisstream_vessels(vessels, ground_lat, ground_lon)
-                if parsed:
-                    st.success(f"🟢 Retrieved {len(parsed)} vessels from AISStream")
-                    return parsed
-            else:
-                st.warning("⚠️ No vessels found in the Caribbean area.")
-                return get_demo_ships()
-        elif r.status_code == 401:
-            st.error("❌ AISStream API key is invalid or expired. Please check your key.")
-            return get_demo_ships()
-        elif r.status_code == 429:
-            st.warning("⏳ AISStream rate limit exceeded. Please try again later.")
-            return get_demo_ships()
-        else:
-            st.warning(f"⚠️ AISStream returned status {r.status_code}. Using demo data.")
-            return get_demo_ships()
-    except requests.exceptions.Timeout:
-        st.warning("⏳ AISStream request timed out. Using demo data.")
-        return get_demo_ships()
-    except requests.exceptions.ConnectionError:
-        st.warning("🌐 Could not connect to AISStream. Using demo data.")
-        return get_demo_ships()
-    except Exception as e:
-        st.warning(f"⚠️ Error fetching vessel data: {str(e)}. Using demo data.")
-        return get_demo_ships()
+    st.info("🚢 Maritime detection is using demo data (AISStream key removed).")
+    return get_demo_ships()
 
 def get_demo_ships():
-    """Generate demo ship data for testing when API is unavailable."""
+    """Generate demo ship data for testing."""
     ground_lat = st.session_state.get("lat_override", 18.5392)
     ground_lon = st.session_state.get("lon_override", -72.3364)
     
@@ -800,7 +701,7 @@ def get_demo_ships():
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         dist_km = R * c
         ship["distance_km"] = round(dist_km, 1)
-        ship["dist"] = min(dist_km / st.session_state.get("max_range", 500), 0.95)
+        ship["dist"] = min(dist_km / st.session_state.get("max_range", 180), 0.95)
         ship["detected_at"] = datetime.now(pytz.timezone('America/Port-au-Prince')).strftime("%Y-%m-%d %I:%M:%S %p")
         ship["alt"] = "0ft"
     
@@ -933,7 +834,7 @@ UI = {
         "detect_tab": "✈️ Flight Tracker",
         "maritime_tab": "🚢 Maritime Detection",
         "worldcup_tab": "⚽ Live World Cup",
-        "title": "GLOBAL SURVEILLANCE RADAR – HAITI & DR",
+        "title": "GLOBAL SURVEILLANCE RADAR – HAITI",
         "author_tag": "Built by Gesner Deslandes",
         "logout": "Terminate Session",
         "report": "Download Asset Report",
@@ -954,8 +855,8 @@ UI = {
         "security_caption": "All data is secured and anonymized",
         "flight_tracker_title": "✈️ Live Flight Tracker",
         "flight_tracker_desc": "Real-time flight delay information powered by FlightAware",
-        "maritime_title": "🚢 Maritime Detection – Caribbean",
-        "maritime_desc": "List of vessels within range, including military and cargo ships.",
+        "maritime_title": "🚢 Maritime Detection – Caribbean (Demo)",
+        "maritime_desc": "List of demo vessels (AISStream key not used).",
         "refresh_btn": "Refresh Live Data",
         "live_note": "💻 To run this app on your own computer for full live data, click the instructions below.",
         "voice_male_explain": "🎙️ AI Male Voice – Explain App",
@@ -1068,7 +969,7 @@ def login_page():
         st.markdown("""
         <div class="login-container">
             <h2 style="text-align:center; color:#e8ddd0;">🌐 GlobalInternet.py Access</h2>
-            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal – Haiti & DR</p>
+            <p style="text-align:center; color:#a09080;">Secure Surveillance Portal – Haiti</p>
         </div>
         """, unsafe_allow_html=True)
         pwd = st.text_input("Enter Security Key", type="password")
@@ -1180,10 +1081,10 @@ def main_page():
             "Distance from ground station (km)",
             min_value=50,
             max_value=800,
-            value=500,  # changed default to 500 km for better Haiti coverage
+            value=180,  # set to 180 km for optimal Haiti coverage
             step=10,
             key="max_range",
-            help="Adjust to cover Haiti and the Dominican Republic."
+            help="Adjust to cover Haiti airspace effectively."
         )
         st.caption(f"Current range: **{max_range} km**")
         st.divider()
@@ -1221,7 +1122,7 @@ def main_page():
 
         st.markdown("### 📍 Fixed Location")
         st.info("**Port-au-Prince, Haiti** (18.5392, -72.3364)")
-        st.caption("Radar covers Haiti and the Dominican Republic.")
+        st.caption("Radar covers Haiti airspace from the southern ground station.")
         
         location_name = "Port-au-Prince, Haiti"
         u_lat = 18.5392
@@ -1233,13 +1134,12 @@ def main_page():
         u_lat_override = st.number_input("Latitude", value=u_lat, format="%.4f", key="lat_override")
         u_lon_override = st.number_input("Longitude", value=u_lon, format="%.4f", key="lon_override")
         
-        # ---- NEW: Reset to Haiti Defaults button ----
+        # ---- Reset to Haiti Defaults button ----
         if st.button("🔄 Reset to Haiti Defaults", use_container_width=True):
-            # We need to update the session state keys for the override inputs
             st.session_state.loc_name_override = "Port-au-Prince, Haiti"
             st.session_state.lat_override = 18.5392
             st.session_state.lon_override = -72.3364
-            st.session_state.max_range = 500
+            st.session_state.max_range = 180
             st.rerun()
         
         if location_name_override != location_name or u_lat_override != u_lat or u_lon_override != u_lon:
@@ -1259,24 +1159,9 @@ def main_page():
             st.rerun()
         st.divider()
         
-        # ---- Maritime API test button ----
-        with st.expander("🔍 Test Maritime API"):
-            if st.button("Run Diagnostic"):
-                with st.spinner("Testing AISStream..."):
-                    ais_key = st.secrets.get("AISSTREAM_API_KEY")
-                    if not ais_key:
-                        ais_key = "e8622757a267cc06fb9ad0126d52ad519d784039"
-                    if not ais_key:
-                        st.warning("No AISStream key available.")
-                    else:
-                        try:
-                            r = requests.get("https://api.aisstream.io/v1/vessels", 
-                                             headers={"X-API-Key": ais_key}, 
-                                             params={"bbox": "-75,17,-68,20"}, timeout=10)
-                            st.write(f"Status: {r.status_code}")
-                            st.text(r.text[:1000])
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+        # ---- Maritime API test button (removed since no key) ----
+        with st.expander("🔍 Maritime API Status"):
+            st.info("AISStream API key is no longer configured. Maritime tab shows demo data only.")
 
         st.write("📞 (509) 4738-5663")
         st.write("✉️ deslandes78@gmail.com")
@@ -1295,12 +1180,9 @@ def main_page():
         elif status == "demo":
             st.warning("📡 No live signal yet. Waiting for OpenSky data...")
 
-    # ---- Fetch maritime data ----
-    if use_demo:
-        ships_data = get_demo_ships()
-        st.info("🚢 Using demo ship data (Demo Mode enabled)")
-    else:
-        ships_data = fetch_live_ships(u_lat, u_lon)
+    # ---- Fetch maritime data (always demo) ----
+    ships_data = get_demo_ships()
+    st.info("🚢 Maritime detection is in demo mode (no AISStream key).")
 
     # ---- Satellite data ----
     sat_data = []
@@ -1648,7 +1530,7 @@ def main_page():
         st.title("🤖 AI Surveillance Analyst")
         
         common_questions = [
-            "What is the current threat level in Haiti/DR?",
+            "What is the current threat level in Haiti?",
             "How many aircraft are within 200 km of Port-au-Prince?",
             "Are there any military ships in the Caribbean?",
             "What is the closest contact to my location?",
@@ -1773,7 +1655,7 @@ def main_page():
         st.markdown(L['maritime_desc'])
 
         if ships_data:
-            st.success(f"🟢 **{len(ships_data)}** vessels detected within range.")
+            st.success(f"🟢 **{len(ships_data)}** demo vessels shown.")
             for ship in ships_data:
                 with st.container(border=True):
                     cols = st.columns([1, 3, 1])
@@ -1788,7 +1670,7 @@ def main_page():
                     with cols[2]:
                         st.markdown(f"<span style='color:{ship['color']}; font-size:2rem;'>{ship.get('label', '🚢')}</span>", unsafe_allow_html=True)
         else:
-            st.info("No ships detected within range. Adjust range or check data source.")
+            st.info("No demo ships available.")
 
     # World Cup tab
     with tab_worldcup:
